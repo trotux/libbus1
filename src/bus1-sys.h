@@ -22,11 +22,7 @@
  * XXX: Add description
  */
 
-#include <assert.h>
-#include <errno.h>
-#include <inttypes.h>
 #include <stdlib.h>
-#include "bus1-macro.h"
 
 #ifdef __cplusplus
 extern "C" {
