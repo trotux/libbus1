@@ -19,7 +19,12 @@
 
 /*
  * Macros
- * XXX: Add description
+ * This header contains macros useful across our codebase. This includes
+ * pre-processor macros and a *very* limited set of inlined functions that are
+ * used throughout the code-base.
+ *
+ * As this header is included all over the place, make sure to only add stuff
+ * that really belongs all-over-the-place.
  */
 
 #include <assert.h>
@@ -29,10 +34,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include <sys/resource.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include "bus1-public.h"
 
 #ifdef __cplusplus

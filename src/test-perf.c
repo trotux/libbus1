@@ -28,6 +28,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/uio.h>
+#include <unistd.h>
 #include "bus1-macro.h"
 #include "bus1-shared.h"
 #include "bus1-sys.h"
