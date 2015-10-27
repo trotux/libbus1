@@ -49,6 +49,7 @@ noinst_LIBRARIES += \
 
 libbus1_a_SOURCES = \
 	src/bus1-macro.h \
+	src/bus1-public.h \
 	src/bus1-sys.c \
 	src/bus1-sys.h
 
@@ -98,6 +99,21 @@ test_perf_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_perf_LDADD = \
+	libbus1.a
+
+# ------------------------------------------------------------------------------
+# test-public
+
+default_tests += \
+	test-public
+
+test_public_SOURCES = \
+	src/test-public.c
+
+test_public_CFLAGS = \
+	$(AM_CFLAGS)
+
+test_public_LDADD = \
 	libbus1.a
 
 # ------------------------------------------------------------------------------

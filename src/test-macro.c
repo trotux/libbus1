@@ -15,6 +15,11 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
+/*
+ * Tests for <bus1-macro.h>
+ * Bunch of tests for all macros exported by bus1-macro.h.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -102,57 +107,11 @@ static void test_cc(int non_constant_expr) {
         }
 
         /*
-         * Test compile-time conditions. The B1_CC_IF() macro allows evaluation
-         * at compile-time, and as such yields exactly one of the code-blocks
-         * passed to it (depending on whether the expression is true).
-         */
-        foo = B1_CC_IF(false, foo + 0, foo + 1);
-        foo = B1_CC_IF(true, foo + 4, foo + 8);
-        assert(foo == 11);
-
-        /*
-         * Test constant-expr checks.
-         * The B1_CC_IS_CONST() macro allows verifying whether an expression is
-         * constant. The return value of the macro itself is constant, and as
-         * such can be used for constant expressions itself.
-         */
-        B1_CC_ASSERT(B1_CC_IS_CONST(5));
-        B1_CC_ASSERT(!B1_CC_IS_CONST(non_constant_expr));
-        B1_CC_ASSERT(B1_CC_IS_CONST(B1_CC_IS_CONST(non_constant_expr)));
-        B1_CC_ASSERT(!B1_CC_IS_CONST(foo++)); /* *NOT* evaluated */
-        assert(foo == 11);
-
-        /*
-         * Test stringify/concatenation helpers. Also make sure to test that
-         * the passed arguments are evaluated first, before they're stringified
-         * and/or concatenated.
-         */
-#define TEST_TOKEN foobar
-        assert(!strcmp("foobar", B1_CC_STRINGIFY(foobar)));
-        assert(!strcmp("foobar", B1_CC_STRINGIFY(TEST_TOKEN)));
-        assert(!strcmp("foobar", B1_CC_STRINGIFY(B1_CC_CONCATENATE(foo, bar))));
-        assert(!strcmp("foobarfoobar", B1_CC_STRINGIFY(B1_CC_CONCATENATE(TEST_TOKEN, foobar))));
-        assert(!strcmp("foobarfoobar", B1_CC_STRINGIFY(B1_CC_CONCATENATE(foobar, TEST_TOKEN))));
-#undef TEST_TOKEN
-
-        /*
          * Test array-size helper. This simply computes the number of elements
          * of an array, instead of the binary size.
          */
         B1_CC_ASSERT(B1_CC_ARRAY_SIZE(bar) == 8);
         B1_CC_ASSERT(B1_CC_IS_CONST(B1_CC_ARRAY_SIZE(bar)));
-
-        /*
-         * Test unique compile-time value. The B1_CC_UNIQUE value evaluates to
-         * a compile-time unique value for each time it is used. Hence, it can
-         * never compare equal to itself, furthermore, it's evaluated at
-         * compile-time, not pre-processor time!
-         */
-#define TEST_UNIQUE_MACRO B1_CC_UNIQUE
-        assert(B1_CC_UNIQUE != B1_CC_UNIQUE);
-        assert(TEST_UNIQUE_MACRO != TEST_UNIQUE_MACRO);
-        assert(B1_CC_UNIQUE != TEST_UNIQUE_MACRO);
-#undef TEST_UNIQUE_MACRO
 
         /*
          * Test decimal-representation calculator. Make sure it is
@@ -270,7 +229,7 @@ static void test_misc(int non_constant_expr) {
 
 /* test b1_math_* helpers */
 static void test_math(int non_constant_expr) {
-        int i, j, foo;
+        int i;
 
         /*
          * Count Leading Zeroes: The b1_math_clz() macro is a type-generic
@@ -295,46 +254,6 @@ static void test_math(int non_constant_expr) {
                 static const int sub = b1_math_clz(1U);
                 B1_CC_ASSERT(sub == 31);
         }
-
-        /*
-         * Div Round Up: Normal division, but round up to next integer, instead
-         * of clipping. Also verify that it does not suffer from the integer
-         * overflow in the prevalant, alternative implementation:
-         *      [(x + y - 1) / y].
-         */
-#define TEST_ALT_DIV(_x, _y) (((_x) + (_y) - 1) / (_y))
-        foo = 8;
-        assert(b1_math_div_round_up(0, 5) == 0);
-        assert(b1_math_div_round_up(1, 5) == 1);
-        assert(b1_math_div_round_up(5, 5) == 1);
-        assert(b1_math_div_round_up(6, 5) == 2);
-        assert(b1_math_div_round_up(foo++, 1) == 8);
-        assert(foo == 9);
-        assert(b1_math_div_round_up(foo++, foo++) >= 0);
-        assert(foo == 11);
-
-        B1_CC_ASSERT(B1_CC_IS_CONST(b1_math_div_round_up(1, 5)));
-        B1_CC_ASSERT(!B1_CC_IS_CONST(b1_math_div_round_up(1, non_constant_expr)));
-
-        /* alternative calculation is [(x + y - 1) / y], but it may overflow */
-        for (i = 0; i <= 0xffff; ++i) {
-                for (j = 1; j <= 0xff; ++j)
-                        assert(b1_math_div_round_up(i, j) == TEST_ALT_DIV(i, j));
-                for (j = 0xff00; j <= 0xffff; ++j)
-                        assert(b1_math_div_round_up(i, j) == TEST_ALT_DIV(i, j));
-        }
-
-        /* make sure it doesn't suffer from high overflow */
-        assert(UINT32_C(0xfffffffa) % 10 == 0);
-        assert(UINT32_C(0xfffffffa) / 10 == UINT32_C(429496729));
-        assert(b1_math_div_round_up(UINT32_C(0xfffffffa), 10) == UINT32_C(429496729));
-        assert(TEST_ALT_DIV(UINT32_C(0xfffffffa), 10) == 0); /* overflow */
-
-        assert(UINT32_C(0xfffffffd) % 10 == 3);
-        assert(UINT32_C(0xfffffffd) / 10 == UINT32_C(429496729));
-        assert(b1_math_div_round_up(UINT32_C(0xfffffffd), 10) == UINT32_C(429496730));
-        assert(TEST_ALT_DIV(UINT32_C(0xfffffffd), 10) == 0);
-#undef TEST_ALT_DIV
 
         /*
          * Align to multiple of: Test the alignment macro. Check that it does

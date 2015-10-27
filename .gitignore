@@ -28,3 +28,4 @@ m4/
 stamp-*
 test-macro
 test-perf
+test-public
