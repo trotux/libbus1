@@ -29,3 +29,4 @@ stamp-*
 test-macro
 test-perf
 test-public
+test-shared

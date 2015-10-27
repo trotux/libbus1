@@ -50,6 +50,7 @@ noinst_LIBRARIES += \
 libbus1_a_SOURCES = \
 	src/bus1-macro.h \
 	src/bus1-public.h \
+	src/bus1-shared.h \
 	src/bus1-sys.c \
 	src/bus1-sys.h
 
@@ -114,6 +115,21 @@ test_public_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_public_LDADD = \
+	libbus1.a
+
+# ------------------------------------------------------------------------------
+# test-shared
+
+default_tests += \
+	test-shared
+
+test_shared_SOURCES = \
+	src/test-shared.c
+
+test_shared_CFLAGS = \
+	$(AM_CFLAGS)
+
+test_shared_LDADD = \
 	libbus1.a
 
 # ------------------------------------------------------------------------------
