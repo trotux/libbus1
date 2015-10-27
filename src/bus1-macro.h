@@ -55,27 +55,27 @@ extern "C" {
 #endif
 
 /*
- * Shortcuts for gcc attributes. See GCC manual for details. We do not prefix
- * them as they're 1-on-1 mappings to the GCC equivalents.
+ * Shortcuts for gcc attributes. See GCC manual for details. They're 1-to-1
+ * mappings to the GCC equivalents. No additional magic here.
  */
-#define _align_(_x) __attribute__((__aligned__(_x)))
-#define _alignas_(_x) __attribute__((__aligned__(__alignof(_x))))
-#define _alloc_(...) __attribute__((__alloc_size__(__VA_ARGS__)))
-#define _cleanup_(_x) __attribute__((__cleanup__(_x)))
-#define _const_ __attribute__((__const__))
-#define _deprecated_ __attribute__((__deprecated__))
-#define _hidden_ __attribute__((__visibility__("hidden")))
-#define _likely_(_x) (__builtin_expect(!!(_x), 1))
-#define _malloc_ __attribute__((__malloc__))
-#define _packed_ __attribute__((__packed__))
-#define _printf_(_a, _b) __attribute__((__format__(printf, _a, _b)))
-#define _public_ __attribute__((__visibility__("default")))
-#define _pure_ __attribute__((__pure__))
-#define _sentinel_ __attribute__((__sentinel__))
-#define _unlikely_(_x) (__builtin_expect(!!(_x), 0))
-#define _unused_ __attribute__((__unused__))
-#define _weak_ __attribute__((__weak__))
-#define _weakref_(_x) __attribute__((__weakref__(#_x)))
+#define _b1_align_(_x) __attribute__((__aligned__(_x)))
+#define _b1_alignas_(_x) __attribute__((__aligned__(__alignof(_x))))
+#define _b1_alloc_(...) __attribute__((__alloc_size__(__VA_ARGS__)))
+#define _b1_cleanup_(_x) __attribute__((__cleanup__(_x)))
+#define _b1_const_ __attribute__((__const__))
+#define _b1_deprecated_ __attribute__((__deprecated__))
+#define _b1_hidden_ __attribute__((__visibility__("hidden")))
+#define _b1_likely_(_x) (__builtin_expect(!!(_x), 1))
+#define _b1_malloc_ __attribute__((__malloc__))
+#define _b1_packed_ __attribute__((__packed__))
+#define _b1_printf_(_a, _b) __attribute__((__format__(printf, _a, _b)))
+#define _b1_public_ __attribute__((__visibility__("default")))
+#define _b1_pure_ __attribute__((__pure__))
+#define _b1_sentinel_ __attribute__((__sentinel__))
+#define _b1_unlikely_(_x) (__builtin_expect(!!(_x), 0))
+#define _b1_unused_ __attribute__((__unused__))
+#define _b1_weak_ __attribute__((__weak__))
+#define _b1_weakref_(_x) __attribute__((__weakref__(#_x)))
 
 /**
  * B1_TYPE_MATCH() - match two variables/types for unqualified equality
@@ -446,7 +446,7 @@ extern "C" {
  * Return: Negative error code is returned.
  */
 static inline int b1_negative_errno(void) {
-        return _likely_(errno > 0) ? -errno : -EINVAL;
+        return _b1_likely_(errno > 0) ? -errno : -EINVAL;
 }
 
 /**
@@ -632,11 +632,11 @@ static inline void b1_bitmap_clear_all(void *bitmap, unsigned int n_bits) {
 
 #include <string.h>
 
-_pure_ static inline bool b1_str_equal(const char *a, const char *b) {
+_b1_pure_ static inline bool b1_str_equal(const char *a, const char *b) {
         return (!a || !b) ? (a == b) : !strcmp(a, b);
 }
 
-_pure_ static inline char *b1_str_prefix(const char *str, const char *prefix) {
+_b1_pure_ static inline char *b1_str_prefix(const char *str, const char *prefix) {
         size_t l = strlen(prefix);
         return !strncmp(str, prefix, l) ? (char *)str + l : NULL;
 }
