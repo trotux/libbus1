@@ -29,6 +29,15 @@ extern "C" {
 #endif
 
 /**
+ * B1_SYS_UIO_FASTIOV - number of iovecs that can be handled in fast-path
+ *
+ * This is equivalent to the linux-defined UIO_FASTIOV as defined in
+ * <linux/uio.h>. However, POSIX doesn't define it and the linux header clashes
+ * with <sys/uio.h>, so we provide a replacement here.
+ */
+#define B1_SYS_UIO_FASTIOV 8
+
+/**
  * b1_sys_memfd_create() - wrapper for memfd_create(2) syscall
  * @name:       name for memfd inode
  * @flags:      memfd flags
