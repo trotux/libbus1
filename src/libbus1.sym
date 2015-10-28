@@ -15,18 +15,9 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
-#include <linux/memfd.h>
-#include <stdlib.h>
-#include <sys/resource.h>
-#include <sys/syscall.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include "bus1-macro.h"
-#include "bus1-sys.h"
-
-_b1_public_ int b1_sys_memfd_create(const char *name, unsigned int flags) {
-#ifndef __NR_memfd_create
-        static_assert(false, "System lacks memfd_create(2) syscall");
-#endif
-        return syscall(__NR_memfd_create, name, flags);
-}
+LIBBUS1_1 {
+global:
+        b1_sys_memfd_create;
+local:
+       *;
+};

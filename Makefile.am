@@ -23,8 +23,8 @@ CLEANFILES = $(BUILT_SOURCES)
 DISTCLEANFILES =
 EXTRA_DIST =
 BUILT_SOURCES =
-lib_LIBRARIES =
 noinst_LIBRARIES =
+lib_LTLIBRARIES =
 bin_PROGRAMS =
 noinst_PROGRAMS =
 check_PROGRAMS =
@@ -41,21 +41,21 @@ AM_CFLAGS = $(OUR_CFLAGS)
 AM_LDFLAGS = $(OUR_LDFLAGS)
 
 # ------------------------------------------------------------------------------
-# libbus1
-# XXX: for now static, should be made dynamic later on
+lib_LTLIBRARIES += \
+	libbus1.la
 
-noinst_LIBRARIES += \
-	libbus1.a
-
-libbus1_a_SOURCES = \
+libbus1_la_SOURCES = \
+	src/libbus1.sym \
 	src/bus1-macro.h \
 	src/bus1-public.h \
 	src/bus1-shared.h \
 	src/bus1-sys.c \
 	src/bus1-sys.h
 
-libbus1_a_CFLAGS = \
-	$(AM_CFLAGS)
+libbus1_la_LDFLAGS = \
+	$(AM_LDFLAGS) \
+	-version-info $(LIBRARY_CURRENT):$(LIBRARY_REVISION):$(LIBRARY_AGE) \
+	-Wl,--version-script=$(top_srcdir)/src/libbus1.sym
 
 # ------------------------------------------------------------------------------
 # bus1ctl
@@ -70,7 +70,7 @@ bus1ctl_CFLAGS = \
 	$(AM_CFLAGS)
 
 bus1ctl_LDADD = \
-	libbus1.a
+	libbus1.la
 
 # ------------------------------------------------------------------------------
 # test-macro
@@ -85,7 +85,7 @@ test_macro_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_macro_LDADD = \
-	libbus1.a
+	libbus1.la
 
 # ------------------------------------------------------------------------------
 # test-perf
@@ -100,7 +100,7 @@ test_perf_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_perf_LDADD = \
-	libbus1.a
+	libbus1.la
 
 # ------------------------------------------------------------------------------
 # test-public
@@ -115,7 +115,7 @@ test_public_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_public_LDADD = \
-	libbus1.a
+	libbus1.la
 
 # ------------------------------------------------------------------------------
 # test-shared
@@ -130,10 +130,17 @@ test_shared_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_shared_LDADD = \
-	libbus1.a
+	libbus1.la
 
 # ------------------------------------------------------------------------------
 # test suite
 
 check_PROGRAMS += $(default_tests)
 TESTS += $(default_tests)
+
+# ------------------------------------------------------------------------------
+.PHONY: install-tree
+install-tree: all
+	rm -rf $(abs_srcdir)/install-tree
+	$(MAKE) install DESTDIR=$(abs_srcdir)/install-tree
+	tree $(abs_srcdir)/install-tree
