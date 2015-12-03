@@ -16,7 +16,9 @@
 ***/
 
 #include <stdlib.h>
+#include <bus1/b1.h>
 
 int main(int argc, char **argv) {
+        b1_void();
         return 0;
 }
