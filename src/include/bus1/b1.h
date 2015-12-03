@@ -21,6 +21,8 @@
 extern "C" {
 #endif
 
+void b1_void(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -15,13 +15,7 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
-LIBBUS1_PRIVATE_1 {
-        c_sys_memfd_create;
-};
+#include "bus1/b1.h"
+#include "c-macro.h"
 
-LIBBUS1_1 {
-global:
-        b1_void;
-local:
-       *;
-};
+_c_public_ void b1_void(void) {}

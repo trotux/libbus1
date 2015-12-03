@@ -60,6 +60,7 @@ pkginclude_HEADERS= \
 
 libbus1_la_SOURCES = \
 	src/libbus1.sym \
+	src/b1.c \
 	src/sys.c
 
 libbus1_la_LDFLAGS = \
