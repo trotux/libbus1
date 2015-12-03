@@ -55,7 +55,7 @@ include_HEADERS += \
 	src/include/c-cleanup.h \
 	src/include/c-sys.h
 
-pkginclude_HEADERS= \
+pkginclude_HEADERS += \
 	src/include/bus1/b1.h
 
 libbus1_la_SOURCES = \
