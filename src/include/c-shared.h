@@ -29,9 +29,12 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "bus1-public.h"
+#include <unistd.h>
+
+#include "c-public.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,7 +50,7 @@ extern "C" {
 #include <string.h>
 
 /**
- * b1_bitmap_test() - test bit in bitmap
+ * c_bitmap_test() - test bit in bitmap
  * @bitmap:     bitmap
  * @bit:        bit to test
  *
@@ -60,23 +63,23 @@ extern "C" {
  *
  * Return: True if the bit is set, false if not.
  */
-static inline bool b1_bitmap_test(const void *bitmap, unsigned int bit) {
+static inline bool c_bitmap_test(const void *bitmap, unsigned int bit) {
         return *((const uint8_t *)bitmap + bit / 8) & (1 << (bit % 8));
 }
 
-static inline void b1_bitmap_set(void *bitmap, unsigned int bit) {
+static inline void c_bitmap_set(void *bitmap, unsigned int bit) {
         *((uint8_t *)bitmap + bit / 8) |= (1 << (bit % 8));
 }
 
-static inline void b1_bitmap_clear(void *bitmap, unsigned int bit) {
+static inline void c_bitmap_clear(void *bitmap, unsigned int bit) {
         *((uint8_t *)bitmap + bit / 8) &= ~(1 << (bit % 8));
 }
 
-static inline void b1_bitmap_set_all(void *bitmap, unsigned int n_bits) {
+static inline void c_bitmap_set_all(void *bitmap, unsigned int n_bits) {
         memset(bitmap, 0xff, n_bits / 8);
 }
 
-static inline void b1_bitmap_clear_all(void *bitmap, unsigned int n_bits) {
+static inline void c_bitmap_clear_all(void *bitmap, unsigned int n_bits) {
         memset(bitmap, 0, n_bits / 8);
 }
 
@@ -89,11 +92,11 @@ static inline void b1_bitmap_clear_all(void *bitmap, unsigned int n_bits) {
 
 #include <string.h>
 
-_b1_pure_ static inline bool b1_str_equal(const char *a, const char *b) {
+_c_pure_ static inline bool c_str_equal(const char *a, const char *b) {
         return (!a || !b) ? (a == b) : !strcmp(a, b);
 }
 
-_b1_pure_ static inline char *b1_str_prefix(const char *str, const char *prefix) {
+_c_pure_ static inline char *c_str_prefix(const char *str, const char *prefix) {
         size_t l = strlen(prefix);
         return !strncmp(str, prefix, l) ? (char *)str + l : NULL;
 }
@@ -107,23 +110,24 @@ _b1_pure_ static inline char *b1_str_prefix(const char *str, const char *prefix)
 
 #include <sys/time.h>
 #include <time.h>
+#include <assert.h>
 
 /* stores up to 584,942.417355 years */
-typedef uint64_t b1_usec;
+typedef uint64_t c_usec;
 
-#define b1_usec_from_nsec(_nsec) ((_nsec) / UINT64_C(1000))
-#define b1_usec_from_msec(_msec) ((_msec) * UINT64_C(1000))
-#define b1_usec_from_sec(_sec) b1_usec_from_msec((_sec) * UINT64_C(1000))
-#define b1_usec_from_timespec(_ts) (b1_usec_from_sec((_ts)->tv_sec) + b1_usec_from_nsec((_ts)->tv_nsec))
-#define b1_usec_from_timeval(_tv) (b1_usec_from_sec((_tv)->tv_sec) + (_tv)->tv_usec)
+#define c_usec_from_nsec(_nsec) ((_nsec) / UINT64_C(1000))
+#define c_usec_from_msec(_msec) ((_msec) * UINT64_C(1000))
+#define c_usec_from_sec(_sec) c_usec_from_msec((_sec) * UINT64_C(1000))
+#define c_usec_from_timespec(_ts) (c_usec_from_sec((_ts)->tv_sec) + c_usec_from_nsec((_ts)->tv_nsec))
+#define c_usec_from_timeval(_tv) (c_usec_from_sec((_tv)->tv_sec) + (_tv)->tv_usec)
 
-static inline b1_usec b1_usec_from_clock(clockid_t clock) {
+static inline c_usec c_usec_from_clock(clockid_t clock) {
         struct timespec ts;
         int r;
 
         r = clock_gettime(clock, &ts);
         assert(r >= 0);
-        return b1_usec_from_timespec(&ts);
+        return c_usec_from_timespec(&ts);
 }
 
 #ifdef __cplusplus

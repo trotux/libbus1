@@ -21,10 +21,10 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "bus1-macro.h"
-#include "bus1-sys.h"
+#include "c-macro.h"
+#include "c-sys.h"
 
-_b1_public_ int b1_sys_memfd_create(const char *name, unsigned int flags) {
+_c_public_ int c_sys_memfd_create(const char *name, unsigned int flags) {
 #ifndef __NR_memfd_create
         static_assert(false, "System lacks memfd_create(2) syscall");
 #endif

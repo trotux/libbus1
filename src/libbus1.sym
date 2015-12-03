@@ -17,7 +17,7 @@
 
 LIBBUS1_1 {
 global:
-        b1_sys_memfd_create;
+        c_sys_memfd_create;
 local:
        *;
 };

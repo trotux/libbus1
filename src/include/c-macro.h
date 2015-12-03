@@ -34,14 +34,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
-#include "bus1-public.h"
+#include "c-public.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * B1_TYPE_MATCH() - match two variables/types for unqualified equality
+ * C_TYPE_MATCH() - match two variables/types for unqualified equality
  * @_a:         first variable/type
  * @_b:         second variable/type
  *
@@ -51,10 +51,10 @@ extern "C" {
  *
  * Return: 1 if both unqualified types are equal, 0 if not.
  */
-#define B1_TYPE_MATCH(_a, _b) __builtin_types_compatible_p(__typeof__(_a), __typeof__(_b))
+#define C_TYPE_MATCH(_a, _b) __builtin_types_compatible_p(__typeof__(_a), __typeof__(_b))
 
 /**
- * B1_TYPE_IS_ARRAY() - evaluate whether given variable is of an array type
+ * C_TYPE_IS_ARRAY() - evaluate whether given variable is of an array type
  * @_a:         variable/type to evaluate
  *
  * This function checks whether a given variable is an array type. Note that
@@ -66,10 +66,10 @@ extern "C" {
  *
  * Return: 1 if it is an array type, 0 if not.
  */
-#define B1_TYPE_IS_ARRAY(_a) (!B1_TYPE_MATCH(__typeof__(_a), &(*(__typeof__(_a)*)0)[0]))
+#define C_TYPE_IS_ARRAY(_a) (!C_TYPE_MATCH(__typeof__(_a), &(*(__typeof__(_a)*)0)[0]))
 
 /**
- * B1_CC_ASSERT_MSG() - compile time assertion
+ * C_CC_ASSERT_MSG() - compile time assertion
  * @_cond:      condition
  * @_msg:       message to make the compiler print
  *
@@ -83,45 +83,45 @@ extern "C" {
  *
  * Return: This macro evaluates to a void expression.
  */
-#define B1_CC_ASSERT_MSG(_cond, _msg) ((void)B1_CC_ASSERT1_MSG((_cond), _msg))
+#define C_CC_ASSERT_MSG(_cond, _msg) ((void)C_CC_ASSERT1_MSG((_cond), _msg))
 
 /**
- * B1_CC_ASSERT1_MSG() - compile time assertion
+ * C_CC_ASSERT1_MSG() - compile time assertion
  * @_cond:      condition
  * @_msg:       message to make the compiler print
  *
- * This is the same as B1_CC_ASSERT_MSG(), but evaluates to constant 1.
+ * This is the same as C_CC_ASSERT_MSG(), but evaluates to constant 1.
  *
  * Return: This macro evaluates to constant 1.
  */
-#define B1_CC_ASSERT1_MSG(_cond, _msg) (sizeof(int[!(_cond) * -1]) * 0 + 1)
+#define C_CC_ASSERT1_MSG(_cond, _msg) (sizeof(int[!(_cond) * -1]) * 0 + 1)
 
 /**
- * B1_CC_ASSERT() - compile time assertion
+ * C_CC_ASSERT() - compile time assertion
  * @_cond:      condition
  *
- * Same as B1_CC_ASSERT_MSG() but prints the condition as error message.
+ * Same as C_CC_ASSERT_MSG() but prints the condition as error message.
  *
  * Return: This macro evaluates to a void expression.
  */
-#define B1_CC_ASSERT(_cond) ((void)B1_CC_ASSERT1(_cond))
+#define C_CC_ASSERT(_cond) ((void)C_CC_ASSERT1(_cond))
 
 /**
- * B1_CC_ASSERT1() - compile time assertion
+ * C_CC_ASSERT1() - compile time assertion
  * @_cond:      condition
  *
- * This is the same as B1_CC_ASSERT(), but evaluates to constant 1.
+ * This is the same as C_CC_ASSERT(), but evaluates to constant 1.
  *
  * Return: This macro evaluates to constant 1.
  */
-#define B1_CC_ASSERT1(_cond) B1_CC_ASSERT1_MSG((_cond), #_cond)
+#define C_CC_ASSERT1(_cond) C_CC_ASSERT1_MSG((_cond), #_cond)
 
 /**
- * B1_CC_ASSERT_TO() - compile time assertion with explicit return value
+ * C_CC_ASSERT_TO() - compile time assertion with explicit return value
  * @_cond:      condition to assert
  * @_expr:      expression to yield
  *
- * This is equivalent to B1_CC_ASSERT1(_cond), but yields a return value of
+ * This is equivalent to C_CC_ASSERT1(_cond), but yields a return value of
  * @_expr, rather than constant 1.
  *
  * In case the compile-time assertion is false, this causes a compile-time
@@ -132,35 +132,35 @@ extern "C" {
  *     (ASSERT(cond), expr)
  * thus using the comma-operator to yield a specific value. However,
  * suprisingly STD-C does *not* define the comma operator as constant
- * expression. Hence, we have to use B1_CC_IF() to yield the same result.
+ * expression. Hence, we have to use C_CC_IF() to yield the same result.
  *
  * Return: This macro evaluates to @_expr.
  */
-#define B1_CC_ASSERT_TO(_cond, _expr) B1_CC_IF(B1_CC_ASSERT1(_cond), (_expr), ((void)0))
+#define C_CC_ASSERT_TO(_cond, _expr) C_CC_IF(C_CC_ASSERT1(_cond), (_expr), ((void)0))
 
 /**
- * B1_CC_STATIC_ASSERT() - static compile time assertion
+ * C_CC_STATIC_ASSERT() - static compile time assertion
  * @_cond:      condition
  *
- * This is equivalent to B1_CC_ASSERT(), but evaluates to a statement instead
+ * This is equivalent to C_CC_ASSERT(), but evaluates to a statement instead
  * of an expression. This allows usage in file-context, where STD-C does not
  * allow plain expressions. If you need a custom compiler message to print, use
  * static_assert() directly (it's STD-C11).
  *
  * Return: This macro evaluates to a statement.
  */
-#define B1_CC_STATIC_ASSERT(_cond) static_assert((_cond), #_cond)
+#define C_CC_STATIC_ASSERT(_cond) static_assert((_cond), #_cond)
 
 /**
- * B1_CC_ARRAY_SIZE() - calculate number of array elements at compile time
+ * C_CC_ARRAY_SIZE() - calculate number of array elements at compile time
  * @_x:         array to calculate size of
  *
  * Return: Evaluates to a constant integer expression
  */
-#define B1_CC_ARRAY_SIZE(_x) B1_CC_ASSERT_TO(B1_TYPE_IS_ARRAY(_x), sizeof(_x) / sizeof((_x)[0]))
+#define C_CC_ARRAY_SIZE(_x) C_CC_ASSERT_TO(C_TYPE_IS_ARRAY(_x), sizeof(_x) / sizeof((_x)[0]))
 
 /**
- * B1_CC_DECIMAL_MAX() - calculate maximum length of the decimal
+ * C_CC_DECIMAL_MAX() - calculate maximum length of the decimal
  *                       representation of an integer
  * @_type: integer variable/type
  *
@@ -170,24 +170,24 @@ extern "C" {
  *
  * Return: Evaluates to a constant integer expression
  */
-#define B1_CC_DECIMAL_MAX(_type)                                                \
+#define C_CC_DECIMAL_MAX(_type)                                                \
         _Generic((_type){ 0 },                                                  \
-                char:                   B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed char:            B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned char:          B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed short:           B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned short:         B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed int:             B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned int:           B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed long:            B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned long:          B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed long long:       B1_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned long long:     B1_INTERNAL_CC_DECIMAL_MAX(_type))
-#define B1_INTERNAL_CC_DECIMAL_MAX(_type)               \
+                char:                   C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                signed char:            C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                unsigned char:          C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                signed short:           C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                unsigned short:         C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                signed int:             C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                unsigned int:           C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                signed long:            C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                unsigned long:          C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                signed long long:       C_INTERNAL_CC_DECIMAL_MAX(_type),      \
+                unsigned long long:     C_INTERNAL_CC_DECIMAL_MAX(_type))
+#define C_INTERNAL_CC_DECIMAL_MAX(_type)               \
         (1 + (sizeof(_type) <= 1 ?  3 :                 \
               sizeof(_type) <= 2 ?  5 :                 \
               sizeof(_type) <= 4 ? 10 :                 \
-              B1_CC_ASSERT_TO(sizeof(_type) <= 8, 20)))
+              C_CC_ASSERT_TO(sizeof(_type) <= 8, 20)))
 
 /**
  * container_of() - cast a member of a structure out to the containing structure
@@ -195,15 +195,15 @@ extern "C" {
  * @_type:      type of the container struct this is embedded in
  * @_member:    name of the member within the struct
  */
-#define b1_container_of(_ptr, _type, _member) b1_internal_container_of(B1_CC_UNIQUE, (_ptr), _type, _member)
-#define b1_internal_container_of(_uniq, _ptr, _type, _member)                                   \
+#define c_container_of(_ptr, _type, _member) c_internal_container_of(C_CC_UNIQUE, (_ptr), _type, _member)
+#define c_internal_container_of(_uniq, _ptr, _type, _member)                                   \
         __extension__ ({                                                                        \
-                const __typeof__( ((_type*)0)->_member ) *B1_VAR(A, _uniq) = (_ptr);            \
-                (_ptr) ? (_type*)( (char*)B1_VAR(A, _uniq) - offsetof(_type, _member) ) : NULL; \
+                const __typeof__( ((_type*)0)->_member ) *C_VAR(A, _uniq) = (_ptr);            \
+                (_ptr) ? (_type*)( (char*)C_VAR(A, _uniq) - offsetof(_type, _member) ) : NULL; \
         })
 
 /**
- * b1_max() - compute maximum of two values
+ * c_max() - compute maximum of two values
  * @_a:         value A
  * @_b:         value B
  *
@@ -213,19 +213,19 @@ extern "C" {
  *
  * Return: Maximum of both values is returned.
  */
-#define b1_max(_a, _b) b1_internal_max(B1_CC_UNIQUE, (_a), B1_CC_UNIQUE, (_b))
-#define b1_internal_max(_aq, _a, _bq, _b)                                                       \
-        B1_CC_IF(                                                                               \
-                (B1_CC_IS_CONST(_a) && B1_CC_IS_CONST(_b)),                                     \
+#define c_max(_a, _b) c_internal_max(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
+#define c_internal_max(_aq, _a, _bq, _b)                                                       \
+        C_CC_IF(                                                                               \
+                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                     \
                 ((_a) > (_b) ? (_a) : (_b)),                                                    \
                 __extension__ ({                                                                \
-                        const __auto_type B1_VAR(A, _aq) = (_a);                                \
-                        const __auto_type B1_VAR(B, _bq) = (_b);                                \
-                        B1_VAR(A, _aq) > B1_VAR(B, _bq) ? B1_VAR(A, _aq) : B1_VAR(B, _bq);      \
+                        const __auto_type C_VAR(A, _aq) = (_a);                                \
+                        const __auto_type C_VAR(B, _bq) = (_b);                                \
+                        C_VAR(A, _aq) > C_VAR(B, _bq) ? C_VAR(A, _aq) : C_VAR(B, _bq);      \
                 }))
 
 /**
- * b1_min() - compute minimum of two values
+ * c_min() - compute minimum of two values
  * @_a:         value A
  * @_b:         value B
  *
@@ -235,19 +235,19 @@ extern "C" {
  *
  * Return: Minimum of both values is returned.
  */
-#define b1_min(_a, _b) b1_internal_min(B1_CC_UNIQUE, (_a), B1_CC_UNIQUE, (_b))
-#define b1_internal_min(_aq, _a, _bq, _b)                                                       \
-        B1_CC_IF(                                                                               \
-                (B1_CC_IS_CONST(_a) && B1_CC_IS_CONST(_b)),                                     \
+#define c_min(_a, _b) c_internal_min(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
+#define c_internal_min(_aq, _a, _bq, _b)                                                       \
+        C_CC_IF(                                                                               \
+                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                     \
                 ((_a) < (_b) ? (_a) : (_b)),                                                    \
                 __extension__ ({                                                                \
-                        const __auto_type B1_VAR(A, _aq) = (_a);                                \
-                        const __auto_type B1_VAR(B, _bq) = (_b);                                \
-                        B1_VAR(A, _aq) < B1_VAR(B, _bq) ? B1_VAR(A, _aq) : B1_VAR(B, _bq);      \
+                        const __auto_type C_VAR(A, _aq) = (_a);                                \
+                        const __auto_type C_VAR(B, _bq) = (_b);                                \
+                        C_VAR(A, _aq) < C_VAR(B, _bq) ? C_VAR(A, _aq) : C_VAR(B, _bq);      \
                 }))
 
 /**
- * b1_less_by() - calculate clamped difference of two values
+ * c_less_by() - calculate clamped difference of two values
  * @_a:         minuend
  * @_b:         subtrahend
  *
@@ -257,19 +257,19 @@ extern "C" {
  *
  * Return: This computes [_a - _b], if [_a > _b]. Otherwise, 0 is returned.
  */
-#define b1_less_by(_a, _b) b1_internal_less_by(B1_CC_UNIQUE, (_a), B1_CC_UNIQUE, (_b))
-#define b1_internal_less_by(_aq, _a, _bq, _b)                                                   \
-        B1_CC_IF(                                                                               \
-                (B1_CC_IS_CONST(_a) && B1_CC_IS_CONST(_b)),                                     \
+#define c_less_by(_a, _b) c_internal_less_by(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
+#define c_internal_less_by(_aq, _a, _bq, _b)                                                   \
+        C_CC_IF(                                                                               \
+                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                     \
                 ((_a) > (_b) ? ((_a) - (_b)) : 0),                                              \
                 __extension__ ({                                                                \
-                        const __auto_type B1_VAR(A, _aq) = (_a);                                \
-                        const __auto_type B1_VAR(B, _bq) = (_b);                                \
-                        B1_VAR(A, _aq) > B1_VAR(B, _bq) ? B1_VAR(A, _aq) - B1_VAR(B, _bq) : 0;  \
+                        const __auto_type C_VAR(A, _aq) = (_a);                                \
+                        const __auto_type C_VAR(B, _bq) = (_b);                                \
+                        C_VAR(A, _aq) > C_VAR(B, _bq) ? C_VAR(A, _aq) - C_VAR(B, _bq) : 0;  \
                 }))
 
 /**
- * b1_clamp() - clamp value to lower and upper boundary
+ * c_clamp() - clamp value to lower and upper boundary
  * @_x:         value to clamp
  * @_low:       lower boundary
  * @_high:      higher boundary
@@ -280,32 +280,32 @@ extern "C" {
  *
  * Return: Clamped integer value.
  */
-#define b1_clamp(_x, _low, _high) b1_internal_clamp(B1_CC_UNIQUE, (_x), B1_CC_UNIQUE, (_low), B1_CC_UNIQUE, (_high))
-#define b1_internal_clamp(_xq, _x, _lowq, _low, _highq, _high)          \
-        B1_CC_IF(                                                                               \
-                (B1_CC_IS_CONST(_x) && B1_CC_IS_CONST(_low) && B1_CC_IS_CONST(_high)),          \
+#define c_clamp(_x, _low, _high) c_internal_clamp(C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_low), C_CC_UNIQUE, (_high))
+#define c_internal_clamp(_xq, _x, _lowq, _low, _highq, _high)          \
+        C_CC_IF(                                                                               \
+                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_low) && C_CC_IS_CONST(_high)),          \
                 ((_x) > (_high) ?                                                               \
                         (_high) :                                                               \
                         (_x) < (_low) ?                                                         \
                         (_low) :                                                                \
                         (_x)),                                                                  \
                 __extension__ ({                                                                \
-                        const __auto_type B1_VAR(X, _xq) = (_x);                                \
-                        const __auto_type B1_VAR(LOW, _lowq) = (_low);                          \
-                        const __auto_type B1_VAR(HIGH, _highq) = (_high);                       \
-                                B1_VAR(X, _xq) > B1_VAR(HIGH, _highq) ?                         \
-                                        B1_VAR(HIGH, _highq) :                                  \
-                                        B1_VAR(X, _xq) < B1_VAR(LOW, _lowq) ?                   \
-                                                B1_VAR(LOW, _lowq) :                            \
-                                                B1_VAR(X, _xq);                                 \
+                        const __auto_type C_VAR(X, _xq) = (_x);                                \
+                        const __auto_type C_VAR(LOW, _lowq) = (_low);                          \
+                        const __auto_type C_VAR(HIGH, _highq) = (_high);                       \
+                                C_VAR(X, _xq) > C_VAR(HIGH, _highq) ?                         \
+                                        C_VAR(HIGH, _highq) :                                  \
+                                        C_VAR(X, _xq) < C_VAR(LOW, _lowq) ?                   \
+                                                C_VAR(LOW, _lowq) :                            \
+                                                C_VAR(X, _xq);                                 \
                 }))
 
 /**
- * b1_negative_errno() - return negative errno
+ * c_negative_errno() - return negative errno
  *
  * This helper should be used to shut up gcc if you know 'errno' is valid (ie.,
  * errno is > 0). Instead of "return -errno;", use
- * "return b1_negative_errno();" It will suppress bogus gcc warnings in case
+ * "return c_negative_errno();" It will suppress bogus gcc warnings in case
  * it assumes 'errno' might be 0 (or <0) and thus the caller's error-handling
  * might not be triggered.
  *
@@ -320,12 +320,12 @@ extern "C" {
  *
  * Return: Negative error code is returned.
  */
-static inline int b1_negative_errno(void) {
-        return _b1_likely_(errno > 0) ? -errno : -EINVAL;
+static inline int c_negative_errno(void) {
+        return _c_likely_(errno > 0) ? -errno : -EINVAL;
 }
 
 /**
- * b1_math_clz() - count leading zeroes
+ * c_math_clz() - count leading zeroes
  * @_val:       value to count leading zeroes of
  *
  * This counts the leading zeroes of the binary representation of @_val. Note
@@ -343,14 +343,14 @@ static inline int b1_negative_errno(void) {
  *
  * Return: Evaluates to an 'int', the number of leading zeroes.
  */
-#define b1_math_clz(_val)                                       \
+#define c_math_clz(_val)                                       \
         _Generic((_val),                                        \
                 unsigned int: __builtin_clz(_val),              \
                 unsigned long: __builtin_clzl(_val),            \
                 unsigned long long: __builtin_clzll(_val))
 
 /**
- * b1_math_align_to() - align value to
+ * c_math_align_to() - align value to
  * @_val:       value to align
  * @_to:        align to multiple of this
  *
@@ -367,39 +367,39 @@ static inline int b1_negative_errno(void) {
  *
  * Return: @_val aligned to a multiple of @_to
  */
-#define b1_math_align_to(_val, _to) b1_internal_math_align_to((_val), B1_CC_UNIQUE, (_to))
-#define b1_internal_math_align_to(_val, _toq, _to)                                                      \
-        B1_CC_IF(                                                                                       \
-                B1_CC_IS_CONST(_to),                                                                    \
-                B1_CC_ASSERT_TO(__builtin_popcountll(B1_CC_IF(B1_CC_IS_CONST(_to), (_to), 1)) == 1,     \
+#define c_math_align_to(_val, _to) c_internal_math_align_to((_val), C_CC_UNIQUE, (_to))
+#define c_internal_math_align_to(_val, _toq, _to)                                                      \
+        C_CC_IF(                                                                                       \
+                C_CC_IS_CONST(_to),                                                                    \
+                C_CC_ASSERT_TO(__builtin_popcountll(C_CC_IF(C_CC_IS_CONST(_to), (_to), 1)) == 1,     \
                                 (((_val) + (_to) - 1) & ~((_to) - 1))),                                 \
                 __extension__ ({                                                                        \
-                        const __auto_type B1_VAR(to, _toq) = (_to);                                     \
-                        ((_val) + B1_VAR(to, _toq) - 1) & ~(B1_VAR(to, _toq) - 1);                      \
+                        const __auto_type C_VAR(to, _toq) = (_to);                                     \
+                        ((_val) + C_VAR(to, _toq) - 1) & ~(C_VAR(to, _toq) - 1);                      \
                 }))
 
 /**
- * b1_math_align() - align to native size
+ * c_math_align() - align to native size
  * @_val:       value to align
  *
- * This is the same as b1_math_align_to((_val), __SIZEOF_POINTER__).
+ * This is the same as c_math_align_to((_val), __SIZEOF_POINTER__).
  *
  * Return: @_val aligned to the native size
  */
-#define b1_math_align(_val) b1_math_align_to((_val), __SIZEOF_POINTER__)
+#define c_math_align(_val) c_math_align_to((_val), __SIZEOF_POINTER__)
 
 /**
- * b1_math_align8() - align value to multiple of 8
+ * c_math_align8() - align value to multiple of 8
  * @_val:       value to align
  *
- * This is the same as b1_math_align_to((_val), 8).
+ * This is the same as c_math_align_to((_val), 8).
  *
  * Return: @_val aligned to a multiple of 8.
  */
-#define b1_math_align8(_val) b1_math_align_to((_val), 8)
+#define c_math_align8(_val) c_math_align_to((_val), 8)
 
 /**
- * b1_math_align_power2() - align value to next power of 2
+ * c_math_align_power2() - align value to next power of 2
  * @_val:       value to align
  *
  * This aligns @_val to the next higher power of 2. If it already is a power of
@@ -410,19 +410,19 @@ static inline int b1_negative_errno(void) {
  *
  * Return: @_val aligned to the next higher power of 2
  */
-#define b1_math_align_power2(_val) b1_internal_math_align_power2(B1_CC_UNIQUE, (_val))
-#define b1_internal_math_align_power2(_vq, _v)                                                          \
+#define c_math_align_power2(_val) c_internal_math_align_power2(C_CC_UNIQUE, (_val))
+#define c_internal_math_align_power2(_vq, _v)                                                          \
         __extension__ ({                                                                                \
-                __auto_type B1_VAR(v, _vq) = (_v);                                                      \
+                __auto_type C_VAR(v, _vq) = (_v);                                                      \
                 /* cannot use ?: as gcc cannot do const-folding then (apparently..) */                  \
-                if (B1_VAR(v, _vq) == 1) /* clz(0) is undefined */                                      \
-                        B1_VAR(v, _vq) = 1;                                                             \
-                else if (b1_math_clz(B1_VAR(v, _vq) - 1) < 1) /* shift overflow is undefined */         \
-                        B1_VAR(v, _vq) = 0;                                                             \
+                if (C_VAR(v, _vq) == 1) /* clz(0) is undefined */                                      \
+                        C_VAR(v, _vq) = 1;                                                             \
+                else if (c_math_clz(C_VAR(v, _vq) - 1) < 1) /* shift overflow is undefined */         \
+                        C_VAR(v, _vq) = 0;                                                             \
                 else                                                                                    \
-                        B1_VAR(v, _vq) = ((__typeof__(B1_VAR(v, _vq)))1) <<                             \
-                                        (sizeof(B1_VAR(v, _vq)) * 8 - b1_math_clz(B1_VAR(v, _vq) - 1)); \
-                B1_VAR(v, _vq);                                                                         \
+                        C_VAR(v, _vq) = ((__typeof__(C_VAR(v, _vq)))1) <<                             \
+                                        (sizeof(C_VAR(v, _vq)) * 8 - c_math_clz(C_VAR(v, _vq) - 1)); \
+                C_VAR(v, _vq);                                                                         \
         })
 
 #ifdef __cplusplus

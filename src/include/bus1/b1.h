@@ -17,37 +17,9 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
-/*
- * Syscall helpers
- * XXX: Add description
- */
-
-#include <stdlib.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * B1_SYS_UIO_FASTIOV - number of iovecs that can be handled in fast-path
- *
- * This is equivalent to the linux-defined UIO_FASTIOV as defined in
- * <linux/uio.h>. However, POSIX doesn't define it and the linux header clashes
- * with <sys/uio.h>, so we provide a replacement here.
- */
-#define B1_SYS_UIO_FASTIOV 8
-
-/**
- * b1_sys_memfd_create() - wrapper for memfd_create(2) syscall
- * @name:       name for memfd inode
- * @flags:      memfd flags
- *
- * This is a wrapper for the memfd_create(2) syscall. Currently, no user-space
- * wrapper is exported by any libc.
- *
- * Return: New memfd file-descriptor on success, -1 on failure.
- */
-int b1_sys_memfd_create(const char *name, unsigned int flags);
 
 #ifdef __cplusplus
 }

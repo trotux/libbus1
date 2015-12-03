@@ -19,10 +19,14 @@ SUBDIRS = .
 # Keep the test-suite.log and Makefile around at all times
 .PRECIOUS: $(TEST_SUITE_LOG) Makefile
 
+pkgincludedir=$(includedir)/bus1
+
 CLEANFILES = $(BUILT_SOURCES)
 DISTCLEANFILES =
 EXTRA_DIST =
 BUILT_SOURCES =
+pkginclude_HEADERS=
+include_HEADERS=
 noinst_LIBRARIES =
 lib_LTLIBRARIES =
 bin_PROGRAMS =
@@ -33,7 +37,7 @@ default_tests =
 
 AM_CPPFLAGS = \
 	-include $(top_builddir)/config.h \
-	-I $(top_srcdir)/src \
+	-I $(top_srcdir)/src/include \
 	-I $(top_builddir)/src \
 	$(OUR_CPPFLAGS)
 
@@ -44,13 +48,19 @@ AM_LDFLAGS = $(OUR_LDFLAGS)
 lib_LTLIBRARIES += \
 	libbus1.la
 
+include_HEADERS += \
+	src/include/c-macro.h \
+	src/include/c-public.h \
+	src/include/c-shared.h \
+	src/include/c-cleanup.h \
+	src/include/c-sys.h
+
+pkginclude_HEADERS= \
+	src/include/bus1/b1.h
+
 libbus1_la_SOURCES = \
 	src/libbus1.sym \
-	src/bus1-macro.h \
-	src/bus1-public.h \
-	src/bus1-shared.h \
-	src/bus1-sys.c \
-	src/bus1-sys.h
+	src/sys.c
 
 libbus1_la_LDFLAGS = \
 	$(AM_LDFLAGS) \

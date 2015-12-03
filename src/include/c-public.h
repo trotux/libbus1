@@ -34,7 +34,7 @@
 
 #include <limits.h>
 #include <stddef.h>
-/* must not depend on any other bus1-header */
+/* must not depend on any other c-header */
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,27 +60,27 @@ extern "C" {
  * Shortcuts for gcc attributes. See GCC manual for details. They're 1-to-1
  * mappings to the GCC equivalents. No additional magic here.
  */
-#define _b1_align_(_x) __attribute__((__aligned__(_x)))
-#define _b1_alignas_(_x) __attribute__((__aligned__(__alignof(_x))))
-#define _b1_alloc_(...) __attribute__((__alloc_size__(__VA_ARGS__)))
-#define _b1_cleanup_(_x) __attribute__((__cleanup__(_x)))
-#define _b1_const_ __attribute__((__const__))
-#define _b1_deprecated_ __attribute__((__deprecated__))
-#define _b1_hidden_ __attribute__((__visibility__("hidden")))
-#define _b1_likely_(_x) (__builtin_expect(!!(_x), 1))
-#define _b1_malloc_ __attribute__((__malloc__))
-#define _b1_packed_ __attribute__((__packed__))
-#define _b1_printf_(_a, _b) __attribute__((__format__(printf, _a, _b)))
-#define _b1_public_ __attribute__((__visibility__("default")))
-#define _b1_pure_ __attribute__((__pure__))
-#define _b1_sentinel_ __attribute__((__sentinel__))
-#define _b1_unlikely_(_x) (__builtin_expect(!!(_x), 0))
-#define _b1_unused_ __attribute__((__unused__))
-#define _b1_weak_ __attribute__((__weak__))
-#define _b1_weakref_(_x) __attribute__((__weakref__(#_x)))
+#define _c_align_(_x) __attribute__((__aligned__(_x)))
+#define _c_alignas_(_x) __attribute__((__aligned__(__alignof(_x))))
+#define _c_alloc_(...) __attribute__((__alloc_size__(__VA_ARGS__)))
+#define _c_cleanup_(_x) __attribute__((__cleanup__(_x)))
+#define _c_const_ __attribute__((__const__))
+#define _c_deprecated_ __attribute__((__deprecated__))
+#define _c_hidden_ __attribute__((__visibility__("hidden")))
+#define _c_likely_(_x) (__builtin_expect(!!(_x), 1))
+#define _c_malloc_ __attribute__((__malloc__))
+#define _c_packed_ __attribute__((__packed__))
+#define _c_printf_(_a, _b) __attribute__((__format__(printf, _a, _b)))
+#define _c_public_ __attribute__((__visibility__("default")))
+#define _c_pure_ __attribute__((__pure__))
+#define _c_sentinel_ __attribute__((__sentinel__))
+#define _c_unlikely_(_x) (__builtin_expect(!!(_x), 0))
+#define _c_unused_ __attribute__((__unused__))
+#define _c_weak_ __attribute__((__weak__))
+#define _c_weakref_(_x) __attribute__((__weakref__(#_x)))
 
 /**
- * B1_CC_IF() - conditional expression at compile time
+ * C_CC_IF() - conditional expression at compile time
  * @_cond:      condition
  * @_if:        if-clause
  * @_else:      else-clause
@@ -93,10 +93,10 @@ extern "C" {
  * Return: Evaluates to either if-clause or else-clause, depending on whether
  *         the condition is true. The other clause is *not* evaluated.
  */
-#define B1_CC_IF(_cond, _if, _else) __builtin_choose_expr(!!(_cond), _if, _else)
+#define C_CC_IF(_cond, _if, _else) __builtin_choose_expr(!!(_cond), _if, _else)
 
 /**
- * B1_CC_IS_CONST() - check whether a value is known at compile time
+ * C_CC_IS_CONST() - check whether a value is known at compile time
  * @_expr:      expression
  *
  * This checks whether the value of @_expr is known at compile time. Note that
@@ -108,34 +108,34 @@ extern "C" {
  * the passed expression is constant.
  *
  * The passed in expression is *never* evaluated. Hence, it can safely be used
- * in combination with B1_CC_IF() to avoid multiple evaluations of macro
+ * in combination with C_CC_IF() to avoid multiple evaluations of macro
  * parameters.
  *
  * Return: 1 if constant, 0 if not.
  */
-#define B1_CC_IS_CONST(_expr) __builtin_constant_p(_expr)
+#define C_CC_IS_CONST(_expr) __builtin_constant_p(_expr)
 
 /**
- * B1_CC_STRINGIFY() - stringify a token, but evaluate it first
+ * C_CC_STRINGIFY() - stringify a token, but evaluate it first
  * @_x:         token to evaluate and stringify
  *
  * Return: Evaluates to a constant string literal
  */
-#define B1_CC_STRINGIFY(_x) B1_INTERNAL_CC_STRINGIFY(_x)
-#define B1_INTERNAL_CC_STRINGIFY(_x) #_x
+#define C_CC_STRINGIFY(_x) C_INTERNAL_CC_STRINGIFY(_x)
+#define C_INTERNAL_CC_STRINGIFY(_x) #_x
 
 /**
- * B1_CC_CONCATENATE() - concatenate two tokens, but evaluate them first
+ * C_CC_CONCATENATE() - concatenate two tokens, but evaluate them first
  * @_x:         first token
  * @_y:         second token
  *
  * Return: Evaluates to a constant identifier
  */
-#define B1_CC_CONCATENATE(_x, _y) B1_INTERNAL_CC_CONCATENATE(_x, _y)
-#define B1_INTERNAL_CC_CONCATENATE(_x, _y) _x ## _y
+#define C_CC_CONCATENATE(_x, _y) C_INTERNAL_CC_CONCATENATE(_x, _y)
+#define C_INTERNAL_CC_CONCATENATE(_x, _y) _x ## _y
 
 /**
- * B1_CC_UNIQUE - generate unique compile-time integer
+ * C_CC_UNIQUE - generate unique compile-time integer
  *
  * This evaluates to a unique compile-time integer. Each occurrence of this
  * macro in the *preprocessed* C-code resolves to a different, unique integer.
@@ -144,31 +144,31 @@ extern "C" {
  *
  * Return: This evaluates to an integer literal
  */
-#define B1_CC_UNIQUE __COUNTER__
+#define C_CC_UNIQUE __COUNTER__
 
 /**
- * B1_VAR() - generate unique variable name
+ * C_VAR() - generate unique variable name
  * @_x:         name of variable
- * @_uniq:      unique prefix, usually provided by @B1_CC_UNIQUE
+ * @_uniq:      unique prefix, usually provided by @C_CC_UNIQUE
  *
  * This macro shall be used to generate unique variable names, that will not be
  * shadowed by recursive macro invocations. It is effectively a
- * B1_CC_CONCATENATE of both arguments, but also provides a globally separated
+ * C_CC_CONCATENATE of both arguments, but also provides a globally separated
  * prefix and makes the code better readable.
  *
  * This helper may be used by macro implementations that might reasonable well
  * be called in a stacked fasion, like:
- *     b1_max(foo, b1_max(bar, baz))
- * Such a stacked call of b1_max() might cause compiler warnings of shadowed
- * variables in the definition of b1_max(). By using B1_VAR(), such warnings
- * can be silenced as each evaluation of b1_max() uses unique variable names.
+ *     c_max(foo, c_max(bar, baz))
+ * Such a stacked call of c_max() might cause compiler warnings of shadowed
+ * variables in the definition of c_max(). By using C_VAR(), such warnings
+ * can be silenced as each evaluation of c_max() uses unique variable names.
  *
  * Return: This evaluates to a constant identifier
  */
-#define B1_VAR(_x, _uniq) B1_CC_CONCATENATE(b1_internal_var_unique_, B1_CC_CONCATENATE(_uniq, _x))
+#define C_VAR(_x, _uniq) C_CC_CONCATENATE(c_internal_var_unique_, C_CC_CONCATENATE(_uniq, _x))
 
 /**
- * b1_math_div_round_up() - calculate integer quotient but round up
+ * c_math_div_round_up() - calculate integer quotient but round up
  * @_x:         dividend
  * @_y:         divisor
  *
@@ -185,16 +185,16 @@ extern "C" {
  *
  * Return: The quotient is returned.
  */
-#define b1_math_div_round_up(_x, _y) b1_internal_math_div_round_up(B1_CC_UNIQUE, (_x), B1_CC_UNIQUE, (_y))
-#define b1_internal_math_div_round_up(_xq, _x, _yq, _y)                 \
-        B1_CC_IF(                                                       \
-                (B1_CC_IS_CONST(_x) && B1_CC_IS_CONST(_y)),             \
+#define c_math_div_round_up(_x, _y) c_internal_math_div_round_up(C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_y))
+#define c_internal_math_div_round_up(_xq, _x, _yq, _y)                 \
+        C_CC_IF(                                                       \
+                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_y)),             \
                 ((_x) / (_y) + !!((_x) % (_y))),                        \
                 __extension__ ({                                        \
-                        const __auto_type B1_VAR(X, _xq) = (_x);        \
-                        const __auto_type B1_VAR(Y, _yq) = (_y);        \
-                        (B1_VAR(X, _xq) / B1_VAR(Y, _yq) +              \
-                         !!(B1_VAR(X, _xq) % B1_VAR(Y, _yq)));          \
+                        const __auto_type C_VAR(X, _xq) = (_x);        \
+                        const __auto_type C_VAR(Y, _yq) = (_y);        \
+                        (C_VAR(X, _xq) / C_VAR(Y, _yq) +              \
+                         !!(C_VAR(X, _xq) % C_VAR(Y, _yq)));          \
                 }))
 
 #ifdef __cplusplus

@@ -16,17 +16,17 @@
 ***/
 
 /*
- * Tests for <bus1-shared.h>
- * Bunch of tests for all functionality exported by bus1-shared.h.
+ * Tests for <c-shared.h>
+ * Bunch of tests for all functionality exported by c-shared.h.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "bus1-macro.h"
-#include "bus1-shared.h"
+#include "c-macro.h"
+#include "c-shared.h"
 
-/* test b1_bitmap_* helpers */
+/* test c_bitmap_* helpers */
 static void test_bitmap(void) {
         uint8_t bitmap[] = {
                 0xff, 0x00,
@@ -48,47 +48,47 @@ static void test_bitmap(void) {
 
         /* 0-15 */
         for (i = 0; i < 8; ++i)
-                assert(b1_bitmap_test(bitmap, i));
+                assert(c_bitmap_test(bitmap, i));
         for ( ; i < 16; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
+                assert(!c_bitmap_test(bitmap, i));
 
         /* 16-31 */
         for ( ; i < 23; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
-        assert(b1_bitmap_test(bitmap, i++));
+                assert(!c_bitmap_test(bitmap, i));
+        assert(c_bitmap_test(bitmap, i++));
         for ( ; i < 28; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
+                assert(!c_bitmap_test(bitmap, i));
         for ( ; i < 32; ++i)
-                assert(b1_bitmap_test(bitmap, i));
+                assert(c_bitmap_test(bitmap, i));
 
         /* 32-47 */
         for ( ; i < 34; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
-        assert(b1_bitmap_test(bitmap, i++));
+                assert(!c_bitmap_test(bitmap, i));
+        assert(c_bitmap_test(bitmap, i++));
         for ( ; i < 40; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
+                assert(!c_bitmap_test(bitmap, i));
         for ( ; i < 48; ++i)
-                assert(b1_bitmap_test(bitmap, i));
+                assert(c_bitmap_test(bitmap, i));
 
         /* 48-63 */
         for ( ; i < 64; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
+                assert(!c_bitmap_test(bitmap, i));
 
         /* 64-79 */
         for ( ; i < 80; ++i)
-                assert(b1_bitmap_test(bitmap, i));
+                assert(c_bitmap_test(bitmap, i));
 
         /* 80-95 */
         for ( ; i < 96; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
+                assert(!c_bitmap_test(bitmap, i));
 
         /* 96-111 */
         for ( ; i < 112; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
+                assert(!c_bitmap_test(bitmap, i));
 
         /* 112-127 */
         for ( ; i < 128; ++i)
-                assert(b1_bitmap_test(bitmap, i));
+                assert(c_bitmap_test(bitmap, i));
 
         /*
          * Verify that set_all/clear_all works correctly on our bitmap. Make
@@ -96,21 +96,21 @@ static void test_bitmap(void) {
          * maps.
          */
 
-        b1_bitmap_set_all(bitmap, sizeof(bitmap) * 8);
+        c_bitmap_set_all(bitmap, sizeof(bitmap) * 8);
         for (i = 0; i < sizeof(bitmap) * 8; ++i)
-                assert(b1_bitmap_test(bitmap, i));
+                assert(c_bitmap_test(bitmap, i));
 
-        b1_bitmap_clear_all(bitmap, sizeof(bitmap) * 8);
+        c_bitmap_clear_all(bitmap, sizeof(bitmap) * 8);
         for (i = 0; i < sizeof(bitmap) * 8; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
+                assert(!c_bitmap_test(bitmap, i));
 
-        b1_bitmap_set_all(bitmap, sizeof(bitmap) * 8);
+        c_bitmap_set_all(bitmap, sizeof(bitmap) * 8);
         for (i = 0; i < sizeof(bitmap) * 8; ++i)
-                assert(b1_bitmap_test(bitmap, i));
+                assert(c_bitmap_test(bitmap, i));
 
-        b1_bitmap_clear_all(bitmap, sizeof(bitmap) * 8);
+        c_bitmap_clear_all(bitmap, sizeof(bitmap) * 8);
         for (i = 0; i < sizeof(bitmap) * 8; ++i)
-                assert(!b1_bitmap_test(bitmap, i));
+                assert(!c_bitmap_test(bitmap, i));
 
         /*
          * Verify that set/clear affect only a single bit. We do this by
@@ -118,24 +118,24 @@ static void test_bitmap(void) {
          * the inverse. Then we check that just a single bit was flipped.
          */
 
-        b1_bitmap_clear_all(bitmap, sizeof(bitmap) * 8);
+        c_bitmap_clear_all(bitmap, sizeof(bitmap) * 8);
         for (i = 0; i < sizeof(bitmap) * 8; ++i) {
-                b1_bitmap_set(bitmap, i);
+                c_bitmap_set(bitmap, i);
                 for (j = 0; j < sizeof(bitmap) * 8; ++j)
-                        assert(b1_bitmap_test(bitmap, j) == (i == j));
-                b1_bitmap_clear(bitmap, i);
+                        assert(c_bitmap_test(bitmap, j) == (i == j));
+                c_bitmap_clear(bitmap, i);
                 for (j = 0; j < sizeof(bitmap) * 8; ++j)
-                        assert(!b1_bitmap_test(bitmap, j));
+                        assert(!c_bitmap_test(bitmap, j));
         }
 
-        b1_bitmap_set_all(bitmap, sizeof(bitmap) * 8);
+        c_bitmap_set_all(bitmap, sizeof(bitmap) * 8);
         for (i = 0; i < sizeof(bitmap) * 8; ++i) {
-                b1_bitmap_clear(bitmap, i);
+                c_bitmap_clear(bitmap, i);
                 for (j = 0; j < sizeof(bitmap) * 8; ++j)
-                        assert(b1_bitmap_test(bitmap, j) == (i != j));
-                b1_bitmap_set(bitmap, i);
+                        assert(c_bitmap_test(bitmap, j) == (i != j));
+                c_bitmap_set(bitmap, i);
                 for (j = 0; j < sizeof(bitmap) * 8; ++j)
-                        assert(b1_bitmap_test(bitmap, j));
+                        assert(c_bitmap_test(bitmap, j));
         }
 }
 

@@ -29,9 +29,9 @@
 #include <sys/mman.h>
 #include <sys/uio.h>
 #include <unistd.h>
-#include "bus1-macro.h"
-#include "bus1-shared.h"
-#include "bus1-sys.h"
+#include "c-macro.h"
+#include "c-shared.h"
+#include "c-sys.h"
 
 #define TEST_BUFSIZE (4096LL * 4096LL) /* 4096 pages */
 
@@ -132,7 +132,7 @@ static void test_message_validate(const void *map, const TestMessage *args) {
 }
 
 static void test_message_xmit(int fd, void *map, const TestMessage *args, unsigned int xmitter) {
-        assert(xmitter < B1_CC_ARRAY_SIZE(test_xmitters));
+        assert(xmitter < C_CC_ARRAY_SIZE(test_xmitters));
 
         test_xmitters[xmitter](fd, map, args);
         test_message_validate(map, args);
@@ -160,7 +160,7 @@ static void test_xmit(int fd, void *map, unsigned int xmitter, uint64_t times, u
 }
 
 static void test_run_one(int fd, void *map, unsigned int xmitter, uint64_t times, uint64_t size) {
-        b1_usec time_start, time_end;
+        c_usec time_start, time_end;
 
         fprintf(stderr, "Run: times:%" PRIu64 " size:%" PRIu64 "\n", times, size);
 
@@ -169,9 +169,9 @@ static void test_run_one(int fd, void *map, unsigned int xmitter, uint64_t times
         test_xmit(fd, map, xmitter, times / 10, size);
 
         /* do real tests and measure time */
-        time_start = b1_usec_from_clock(CLOCK_THREAD_CPUTIME_ID);
+        time_start = c_usec_from_clock(CLOCK_THREAD_CPUTIME_ID);
         test_xmit(fd, map, xmitter, times, size);
-        time_end = b1_usec_from_clock(CLOCK_THREAD_CPUTIME_ID);
+        time_end = c_usec_from_clock(CLOCK_THREAD_CPUTIME_ID);
 
         /* print result table */
         printf("%" PRIu64 " %d %" PRIu64 "\n", size, xmitter, time_end - time_start);
@@ -198,7 +198,7 @@ static void test_transaction(unsigned int xmitter) {
         long i;
 
         /* create memfd and pre-allocate buffer space */
-        memfd = b1_sys_memfd_create("test-file", MFD_CLOEXEC);
+        memfd = c_sys_memfd_create("test-file", MFD_CLOEXEC);
         assert(memfd >= 0);
 
         r = fallocate(memfd, 0, 0, TEST_BUFSIZE);
@@ -228,8 +228,8 @@ int main(int argc, char **argv) {
         }
 
         xmitter = atoi(argv[1]);
-        if (xmitter >= B1_CC_ARRAY_SIZE(test_xmitters)) {
-                fprintf(stderr, "Invalid xmitter (available: %zu)\n", B1_CC_ARRAY_SIZE(test_xmitters));
+        if (xmitter >= C_CC_ARRAY_SIZE(test_xmitters)) {
+                fprintf(stderr, "Invalid xmitter (available: %zu)\n", C_CC_ARRAY_SIZE(test_xmitters));
                 return 77;
         }
 
