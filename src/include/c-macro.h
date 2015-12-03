@@ -425,6 +425,14 @@ static inline int c_negative_errno(void) {
                 C_VAR(v, _vq);                                                                         \
         })
 
+/**
+ * C_ARRAY_SIZE() - number of array elements
+ * @_a:         array
+ *
+ * Return: the number of array elements.
+ */
+# define C_ARRAY_SIZE(_a) (sizeof(_a) / sizeof((_a)[0]))
+
 #ifdef __cplusplus
 }
 #endif
