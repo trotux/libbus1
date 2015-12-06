@@ -21,8 +21,8 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "c-macro.h"
-#include "c-sys.h"
+#include "bus1/c-macro.h"
+#include "bus1/c-sys.h"
 
 _c_public_ int c_sys_memfd_create(const char *name, unsigned int flags) {
 #ifndef __NR_memfd_create

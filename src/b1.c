@@ -16,6 +16,6 @@
 ***/
 
 #include "bus1/b1.h"
-#include "c-macro.h"
+#include "bus1/c-macro.h"
 
 _c_public_ void b1_void(void) {}

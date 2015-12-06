@@ -26,7 +26,6 @@ DISTCLEANFILES =
 EXTRA_DIST =
 BUILT_SOURCES =
 pkginclude_HEADERS=
-include_HEADERS=
 noinst_LIBRARIES =
 lib_LTLIBRARIES =
 bin_PROGRAMS =
@@ -37,7 +36,6 @@ default_tests =
 
 AM_CPPFLAGS = \
 	-include $(top_builddir)/config.h \
-	-I $(top_srcdir)/src/include \
 	-I $(top_builddir)/src \
 	$(OUR_CPPFLAGS)
 
@@ -48,15 +46,13 @@ AM_LDFLAGS = $(OUR_LDFLAGS)
 lib_LTLIBRARIES += \
 	libbus1.la
 
-include_HEADERS += \
-	src/include/c-macro.h \
-	src/include/c-public.h \
-	src/include/c-shared.h \
-	src/include/c-cleanup.h \
-	src/include/c-sys.h
-
 pkginclude_HEADERS += \
-	src/include/bus1/b1.h
+	src/bus1/b1.h \
+	src/bus1/c-macro.h \
+	src/bus1/c-public.h \
+	src/bus1/c-shared.h \
+	src/bus1/c-cleanup.h \
+	src/bus1/c-sys.h
 
 libbus1_la_SOURCES = \
 	src/libbus1.sym \

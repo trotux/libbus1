@@ -15,7 +15,7 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
-LIBBUS1_PRIVATE_1 {
+C_PRIVATE_1 {
         c_sys_memfd_create;
 };
 
