@@ -43,6 +43,8 @@ AM_CFLAGS = $(OUR_CFLAGS)
 AM_LDFLAGS = $(OUR_LDFLAGS)
 
 # ------------------------------------------------------------------------------
+# libbus1.so
+
 lib_LTLIBRARIES += \
 	libbus1.la
 
@@ -147,6 +149,8 @@ TESTS += $(default_tests)
 noinst_PROGRAMS += $(default_tests) # build as part of 'make all'
 
 # ------------------------------------------------------------------------------
+# 'make install-tree'
+
 .PHONY: install-tree
 install-tree: all
 	rm -rf $(abs_srcdir)/install-tree
