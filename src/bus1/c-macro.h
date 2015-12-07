@@ -30,6 +30,23 @@
  * means, we include the very basic set of headers, to avoid copying them to
  * all common callers. This set is quite limited, though, and is considered API
  * of this header.
+ *
+ * Conventions:
+ *  - Any macro written in UPPER-CASE letters might have side-effects and
+ *    special behavior. See its comments for details. Usually, such macros
+ *    cannot be implemented as normal C-functions, so they behave differently.
+ *  - Macros that behave like C-functions (no multiple evaluation, type-safe,
+ *    etc.) use lower-case names, like c_min(). If those functions can be
+ *    evaluated at compile-time, they *must* support constant folding (i.e.,
+ *    you can use them in constant expressions), and they also provide an
+ *    equivalent call without any guards, which is written as upper-case name,
+ *    like C_MIN(). Those calls do *not* provide any guards, but can rather be
+ *    used in file-context, compared to function-context (file-contexts don't
+ *    allow statement-expressions).
+ *  - If macros support different numbers of arguments, we use the number as
+ *    suffix, like C_CC_MACRO2() and C_CC_MACRO3(). Usually, their concept can
+ *    be extended to infinity, but the C-preprocessor does not allow it. Hence,
+ *    we hard-code the number of arguments.
  */
 
 /*
@@ -266,6 +283,56 @@ extern "C" {
 #define C_CC_ASSERT_TO(_cond, _expr) C_CC_IF(C_CC_ASSERT1(_cond), (_expr), ((void)0))
 
 /**
+ * C_CC_MACRO2() - provide save environment to a macro
+ * @_call:      macro to call
+ * @_x:         first argument
+ * @_y:         second argument
+ *
+ * This function simplifies the implementation of macros. Whenever you
+ * implement a macro, provide the internal macro name as @_call and its
+ * arguments as @_x and @_y. Inside of your internal macro, you:
+ *  - are safe against multiple evaluation errors
+ *  - support constant folding
+ *  - have unique variable names for recursive callers
+ *  - have properly typed arguments
+ *
+ * Return: Result of @_call is returned.
+ */
+#define C_CC_MACRO2(_call, _x, _y) C_INTERNAL_CC_MACRO2(_call, C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_y))
+#define C_INTERNAL_CC_MACRO2(_call, _xq, _x, _yq, _y)                   \
+        C_CC_IF(                                                        \
+                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_y)),               \
+                _call((_x), (_y)),                                      \
+                __extension__ ({                                        \
+                        const __auto_type C_VAR(X, _xq) = (_x);         \
+                        const __auto_type C_VAR(Y, _yq) = (_y);         \
+                        _call(C_VAR(X, _xq), C_VAR(Y, _yq));            \
+                }))
+
+/**
+ * C_CC_MACRO3() - provide save environment to a macro
+ * @_call:      macro to call
+ * @_x:         first argument
+ * @_y:         second argument
+ * @_z:         third argument
+ *
+ * This is the 3-argument equivalent of C_CC_MACRO2().
+ *
+ * Return: Result of @_call is returned.
+ */
+#define C_CC_MACRO3(_call, _x, _y, _z) C_INTERNAL_CC_MACRO3(_call, C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_y), C_CC_UNIQUE, (_z))
+#define C_INTERNAL_CC_MACRO3(_call, _xq, _x, _yq, _y, _zq, _z)                  \
+        C_CC_IF(                                                                \
+                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_y) && C_CC_IS_CONST(_z)),  \
+                _call((_x), (_y), (_z)),                                        \
+                __extension__ ({                                                \
+                        const __auto_type C_VAR(X, _xq) = (_x);                 \
+                        const __auto_type C_VAR(Y, _yq) = (_y);                 \
+                        const __auto_type C_VAR(Z, _zq) = (_z);                 \
+                        _call(C_VAR(X, _xq), C_VAR(Y, _yq), C_VAR(Z, _zq));     \
+                }))
+
+/**
  * C_STRINGIFY() - stringify a token, but evaluate it first
  * @_x:         token to evaluate and stringify
  *
@@ -346,16 +413,8 @@ extern "C" {
  *
  * Return: Maximum of both values is returned.
  */
-#define c_max(_a, _b) c_internal_max(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
-#define c_internal_max(_aq, _a, _bq, _b)                                                        \
-        C_CC_IF(                                                                                \
-                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                       \
-                ((_a) > (_b) ? (_a) : (_b)),                                                    \
-                __extension__ ({                                                                \
-                        const __auto_type C_VAR(A, _aq) = (_a);                                 \
-                        const __auto_type C_VAR(B, _bq) = (_b);                                 \
-                        C_VAR(A, _aq) > C_VAR(B, _bq) ? C_VAR(A, _aq) : C_VAR(B, _bq);          \
-                }))
+#define c_max(_a, _b) C_CC_MACRO2(C_MAX, (_a), (_b))
+#define C_MAX(_a, _b) ((_a) > (_b) ? (_a) : (_b))
 
 /**
  * c_min() - compute minimum of two values
@@ -368,16 +427,8 @@ extern "C" {
  *
  * Return: Minimum of both values is returned.
  */
-#define c_min(_a, _b) c_internal_min(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
-#define c_internal_min(_aq, _a, _bq, _b)                                                        \
-        C_CC_IF(                                                                                \
-                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                       \
-                ((_a) < (_b) ? (_a) : (_b)),                                                    \
-                __extension__ ({                                                                \
-                        const __auto_type C_VAR(A, _aq) = (_a);                                 \
-                        const __auto_type C_VAR(B, _bq) = (_b);                                 \
-                        C_VAR(A, _aq) < C_VAR(B, _bq) ? C_VAR(A, _aq) : C_VAR(B, _bq);          \
-                }))
+#define c_min(_a, _b) C_CC_MACRO2(C_MIN, (_a), (_b))
+#define C_MIN(_a, _b) ((_a) < (_b) ? (_a) : (_b))
 
 /**
  * c_less_by() - calculate clamped difference of two values
@@ -390,16 +441,8 @@ extern "C" {
  *
  * Return: This computes [_a - _b], if [_a > _b]. Otherwise, 0 is returned.
  */
-#define c_less_by(_a, _b) c_internal_less_by(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
-#define c_internal_less_by(_aq, _a, _bq, _b)                                                    \
-        C_CC_IF(                                                                                \
-                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                       \
-                ((_a) > (_b) ? ((_a) - (_b)) : 0),                                              \
-                __extension__ ({                                                                \
-                        const __auto_type C_VAR(A, _aq) = (_a);                                 \
-                        const __auto_type C_VAR(B, _bq) = (_b);                                 \
-                        C_VAR(A, _aq) > C_VAR(B, _bq) ? C_VAR(A, _aq) - C_VAR(B, _bq) : 0;      \
-                }))
+#define c_less_by(_a, _b) C_CC_MACRO2(C_LESS_BY, (_a), (_b))
+#define C_LESS_BY(_a, _b) ((_a) > (_b) ? (_a) - (_b) : 0)
 
 /**
  * c_clamp() - clamp value to lower and upper boundary
@@ -413,25 +456,8 @@ extern "C" {
  *
  * Return: Clamped integer value.
  */
-#define c_clamp(_x, _low, _high) c_internal_clamp(C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_low), C_CC_UNIQUE, (_high))
-#define c_internal_clamp(_xq, _x, _lowq, _low, _highq, _high)                                   \
-        C_CC_IF(                                                                                \
-                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_low) && C_CC_IS_CONST(_high)),             \
-                ((_x) > (_high) ?                                                               \
-                        (_high) :                                                               \
-                        (_x) < (_low) ?                                                         \
-                        (_low) :                                                                \
-                        (_x)),                                                                  \
-                __extension__ ({                                                                \
-                        const __auto_type C_VAR(X, _xq) = (_x);                                 \
-                        const __auto_type C_VAR(LOW, _lowq) = (_low);                           \
-                        const __auto_type C_VAR(HIGH, _highq) = (_high);                        \
-                                C_VAR(X, _xq) > C_VAR(HIGH, _highq) ?                           \
-                                        C_VAR(HIGH, _highq) :                                   \
-                                        C_VAR(X, _xq) < C_VAR(LOW, _lowq) ?                     \
-                                                C_VAR(LOW, _lowq) :                             \
-                                                C_VAR(X, _xq);                                  \
-                }))
+#define c_clamp(_x, _low, _high) C_CC_MACRO3(C_CLAMP, (_x), (_low), (_high))
+#define C_CLAMP(_x, _low, _high) ((_x) > (_high) ? (_high) : (_x) < (_low) ? (_low) : (_x))
 
 /**
  * c_negative_errno() - return negative errno
@@ -500,16 +526,8 @@ static inline int c_negative_errno(void) {
  *
  * Return: @_val aligned to a multiple of @_to
  */
-#define c_align_to(_val, _to) c_internal_align_to((_val), C_CC_UNIQUE, (_to))
-#define c_internal_align_to(_val, _toq, _to)                                                            \
-        C_CC_IF(                                                                                        \
-                C_CC_IS_CONST(_to),                                                                     \
-                C_CC_ASSERT_TO(__builtin_popcountll(C_CC_IF(C_CC_IS_CONST(_to), (_to), 1)) == 1,        \
-                                (((_val) + (_to) - 1) & ~((_to) - 1))),                                 \
-                __extension__ ({                                                                        \
-                        const __auto_type C_VAR(to, _toq) = (_to);                                      \
-                        ((_val) + C_VAR(to, _toq) - 1) & ~(C_VAR(to, _toq) - 1);                        \
-                }))
+#define c_align_to(_val, _to) C_CC_MACRO2(C_ALIGN_TO, (_val), (_to))
+#define C_ALIGN_TO(_val, _to) (((_val) + (_to) - 1) & ~((_to) - 1))
 
 /**
  * c_align() - align to native size
@@ -576,17 +594,8 @@ static inline int c_negative_errno(void) {
  *
  * Return: The quotient is returned.
  */
-#define c_div_round_up(_x, _y) c_internal_div_round_up(C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_y))
-#define c_internal_div_round_up(_xq, _x, _yq, _y)                       \
-        C_CC_IF(                                                        \
-                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_y)),               \
-                ((_x) / (_y) + !!((_x) % (_y))),                        \
-                __extension__ ({                                        \
-                        const __auto_type C_VAR(X, _xq) = (_x);         \
-                        const __auto_type C_VAR(Y, _yq) = (_y);         \
-                        (C_VAR(X, _xq) / C_VAR(Y, _yq) +                \
-                         !!(C_VAR(X, _xq) % C_VAR(Y, _yq)));            \
-                }))
+#define c_div_round_up(_x, _y) C_CC_MACRO2(C_DIV_ROUND_UP, (_x), (_y))
+#define C_DIV_ROUND_UP(_x, _y) ((_x) / (_y) + !!((_x) % (_y)))
 
 #ifdef __cplusplus
 }
