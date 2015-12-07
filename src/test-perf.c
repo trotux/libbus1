@@ -21,6 +21,7 @@
  *      than test-perf.
  */
 
+#undef NDEBUG
 #include <fcntl.h>
 #include <linux/memfd.h>
 #include <stdio.h>

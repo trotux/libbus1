@@ -20,6 +20,7 @@
  * Bunch of tests for all functionality exported by c-shared.h.
  */
 
+#undef NDEBUG
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

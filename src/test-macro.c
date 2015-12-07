@@ -20,6 +20,7 @@
  * Bunch of tests for all macros exported by c-macro.h.
  */
 
+#undef NDEBUG
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
