@@ -51,6 +51,7 @@ lib_LTLIBRARIES += \
 pkginclude_HEADERS += \
 	src/bus1/b1.h \
 	src/bus1/c-macro.h \
+	src/bus1/c-rbtree.h \
 	src/bus1/c-shared.h \
 	src/bus1/c-cleanup.h \
 	src/bus1/c-sys.h
@@ -58,6 +59,7 @@ pkginclude_HEADERS += \
 libbus1_la_SOURCES = \
 	src/libbus1.sym \
 	src/b1.c \
+	src/c-rbtree.c \
 	src/sys.c
 
 libbus1_la_LDFLAGS = \
@@ -108,6 +110,21 @@ test_perf_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_perf_LDADD = \
+	libbus1.la
+
+# ------------------------------------------------------------------------------
+# test-rbtree
+
+default_tests += \
+	test-rbtree
+
+test_rbtree_SOURCES = \
+	src/test-rbtree.c
+
+test_rbtree_CFLAGS = \
+	$(AM_CFLAGS)
+
+test_rbtree_LDADD = \
 	libbus1.la
 
 # ------------------------------------------------------------------------------
