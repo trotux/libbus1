@@ -155,25 +155,6 @@ extern "C" {
 #define C_CC_IS_CONST(_expr) __builtin_constant_p(_expr)
 
 /**
- * C_CC_STRINGIFY() - stringify a token, but evaluate it first
- * @_x:         token to evaluate and stringify
- *
- * Return: Evaluates to a constant string literal
- */
-#define C_CC_STRINGIFY(_x) C_INTERNAL_CC_STRINGIFY(_x)
-#define C_INTERNAL_CC_STRINGIFY(_x) #_x
-
-/**
- * C_CC_CONCATENATE() - concatenate two tokens, but evaluate them first
- * @_x:         first token
- * @_y:         second token
- *
- * Return: Evaluates to a constant identifier
- */
-#define C_CC_CONCATENATE(_x, _y) C_INTERNAL_CC_CONCATENATE(_x, _y)
-#define C_INTERNAL_CC_CONCATENATE(_x, _y) _x ## _y
-
-/**
  * C_CC_UNIQUE - generate unique compile-time integer
  *
  * This evaluates to a unique compile-time integer. Each occurrence of this
@@ -192,7 +173,7 @@ extern "C" {
  *
  * This macro shall be used to generate unique variable names, that will not be
  * shadowed by recursive macro invocations. It is effectively a
- * C_CC_CONCATENATE of both arguments, but also provides a globally separated
+ * C_CONCATENATE of both arguments, but also provides a globally separated
  * prefix and makes the code better readable.
  *
  * The second argument is optional. If not given, __LINE__ is implied, and as
@@ -211,8 +192,8 @@ extern "C" {
  */
 #define C_VAR(...) C_INTERNAL_VAR(__VA_ARGS__, 2, 1)
 #define C_INTERNAL_VAR(_x, _uniq, _num, ...) C_VAR ## _num (_x, _uniq)
-#define C_VAR1(_x, _unused) C_VAR2(_x, C_CC_CONCATENATE(line, __LINE__))
-#define C_VAR2(_x, _uniq) C_CC_CONCATENATE(c_internal_var_unique_, C_CC_CONCATENATE(_uniq, _x))
+#define C_VAR1(_x, _unused) C_VAR2(_x, C_CONCATENATE(line, __LINE__))
+#define C_VAR2(_x, _uniq) C_CONCATENATE(c_internal_var_unique_, C_CONCATENATE(_uniq, _x))
 
 /**
  * C_CC_ASSERT_MSG() - compile time assertion
@@ -298,8 +279,35 @@ extern "C" {
 #define C_CC_STATIC_ASSERT(_cond) static_assert((_cond), #_cond)
 
 /**
- * C_CC_DECIMAL_MAX() - calculate maximum length of the decimal
- *                       representation of an integer
+ * C_STRINGIFY() - stringify a token, but evaluate it first
+ * @_x:         token to evaluate and stringify
+ *
+ * Return: Evaluates to a constant string literal
+ */
+#define C_STRINGIFY(_x) C_INTERNAL_STRINGIFY(_x)
+#define C_INTERNAL_STRINGIFY(_x) #_x
+
+/**
+ * C_CONCATENATE() - concatenate two tokens, but evaluate them first
+ * @_x:         first token
+ * @_y:         second token
+ *
+ * Return: Evaluates to a constant identifier
+ */
+#define C_CONCATENATE(_x, _y) C_INTERNAL_CONCATENATE(_x, _y)
+#define C_INTERNAL_CONCATENATE(_x, _y) _x ## _y
+
+/**
+ * C_ARRAY_SIZE() - calculate number of array elements at compile time
+ * @_x:         array to calculate size of
+ *
+ * Return: Evaluates to a constant integer expression
+ */
+#define C_ARRAY_SIZE(_x) C_CC_ASSERT_TO(C_TYPE_IS_ARRAY(_x), sizeof(_x) / sizeof((_x)[0]))
+
+/**
+ * C_DECIMAL_MAX() - calculate maximum length of the decimal
+ *                   representation of an integer
  * @_type: integer variable/type
  *
  * This calculates the bytes required for the decimal representation of an
@@ -308,36 +316,36 @@ extern "C" {
  *
  * Return: Evaluates to a constant integer expression
  */
-#define C_CC_DECIMAL_MAX(_type)                                                \
+#define C_DECIMAL_MAX(_type)                                                    \
         _Generic((_type){ 0 },                                                  \
-                char:                   C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed char:            C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned char:          C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed short:           C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned short:         C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed int:             C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned int:           C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed long:            C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned long:          C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                signed long long:       C_INTERNAL_CC_DECIMAL_MAX(_type),      \
-                unsigned long long:     C_INTERNAL_CC_DECIMAL_MAX(_type))
-#define C_INTERNAL_CC_DECIMAL_MAX(_type)               \
+                char:                   C_INTERNAL_DECIMAL_MAX(_type),          \
+                signed char:            C_INTERNAL_DECIMAL_MAX(_type),          \
+                unsigned char:          C_INTERNAL_DECIMAL_MAX(_type),          \
+                signed short:           C_INTERNAL_DECIMAL_MAX(_type),          \
+                unsigned short:         C_INTERNAL_DECIMAL_MAX(_type),          \
+                signed int:             C_INTERNAL_DECIMAL_MAX(_type),          \
+                unsigned int:           C_INTERNAL_DECIMAL_MAX(_type),          \
+                signed long:            C_INTERNAL_DECIMAL_MAX(_type),          \
+                unsigned long:          C_INTERNAL_DECIMAL_MAX(_type),          \
+                signed long long:       C_INTERNAL_DECIMAL_MAX(_type),          \
+                unsigned long long:     C_INTERNAL_DECIMAL_MAX(_type))
+#define C_INTERNAL_DECIMAL_MAX(_type)                   \
         (1 + (sizeof(_type) <= 1 ?  3 :                 \
               sizeof(_type) <= 2 ?  5 :                 \
               sizeof(_type) <= 4 ? 10 :                 \
               C_CC_ASSERT_TO(sizeof(_type) <= 8, 20)))
 
 /**
- * container_of() - cast a member of a structure out to the containing structure
+ * c_container_of() - cast a member of a structure out to the containing structure
  * @_ptr:       pointer to the member or NULL
  * @_type:      type of the container struct this is embedded in
  * @_member:    name of the member within the struct
  */
 #define c_container_of(_ptr, _type, _member) c_internal_container_of(C_CC_UNIQUE, (_ptr), _type, _member)
-#define c_internal_container_of(_uniq, _ptr, _type, _member)                                   \
+#define c_internal_container_of(_uniq, _ptr, _type, _member)                                    \
         __extension__ ({                                                                        \
-                const __typeof__( ((_type*)0)->_member ) *C_VAR(A, _uniq) = (_ptr);            \
-                (_ptr) ? (_type*)( (char*)C_VAR(A, _uniq) - offsetof(_type, _member) ) : NULL; \
+                const __typeof__( ((_type*)0)->_member ) *C_VAR(A, _uniq) = (_ptr);             \
+                (_ptr) ? (_type*)( (char*)C_VAR(A, _uniq) - offsetof(_type, _member) ) : NULL;  \
         })
 
 /**
@@ -352,14 +360,14 @@ extern "C" {
  * Return: Maximum of both values is returned.
  */
 #define c_max(_a, _b) c_internal_max(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
-#define c_internal_max(_aq, _a, _bq, _b)                                                       \
-        C_CC_IF(                                                                               \
-                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                     \
+#define c_internal_max(_aq, _a, _bq, _b)                                                        \
+        C_CC_IF(                                                                                \
+                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                       \
                 ((_a) > (_b) ? (_a) : (_b)),                                                    \
                 __extension__ ({                                                                \
-                        const __auto_type C_VAR(A, _aq) = (_a);                                \
-                        const __auto_type C_VAR(B, _bq) = (_b);                                \
-                        C_VAR(A, _aq) > C_VAR(B, _bq) ? C_VAR(A, _aq) : C_VAR(B, _bq);      \
+                        const __auto_type C_VAR(A, _aq) = (_a);                                 \
+                        const __auto_type C_VAR(B, _bq) = (_b);                                 \
+                        C_VAR(A, _aq) > C_VAR(B, _bq) ? C_VAR(A, _aq) : C_VAR(B, _bq);          \
                 }))
 
 /**
@@ -374,14 +382,14 @@ extern "C" {
  * Return: Minimum of both values is returned.
  */
 #define c_min(_a, _b) c_internal_min(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
-#define c_internal_min(_aq, _a, _bq, _b)                                                       \
-        C_CC_IF(                                                                               \
-                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                     \
+#define c_internal_min(_aq, _a, _bq, _b)                                                        \
+        C_CC_IF(                                                                                \
+                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                       \
                 ((_a) < (_b) ? (_a) : (_b)),                                                    \
                 __extension__ ({                                                                \
-                        const __auto_type C_VAR(A, _aq) = (_a);                                \
-                        const __auto_type C_VAR(B, _bq) = (_b);                                \
-                        C_VAR(A, _aq) < C_VAR(B, _bq) ? C_VAR(A, _aq) : C_VAR(B, _bq);      \
+                        const __auto_type C_VAR(A, _aq) = (_a);                                 \
+                        const __auto_type C_VAR(B, _bq) = (_b);                                 \
+                        C_VAR(A, _aq) < C_VAR(B, _bq) ? C_VAR(A, _aq) : C_VAR(B, _bq);          \
                 }))
 
 /**
@@ -396,14 +404,14 @@ extern "C" {
  * Return: This computes [_a - _b], if [_a > _b]. Otherwise, 0 is returned.
  */
 #define c_less_by(_a, _b) c_internal_less_by(C_CC_UNIQUE, (_a), C_CC_UNIQUE, (_b))
-#define c_internal_less_by(_aq, _a, _bq, _b)                                                   \
-        C_CC_IF(                                                                               \
-                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                     \
+#define c_internal_less_by(_aq, _a, _bq, _b)                                                    \
+        C_CC_IF(                                                                                \
+                (C_CC_IS_CONST(_a) && C_CC_IS_CONST(_b)),                                       \
                 ((_a) > (_b) ? ((_a) - (_b)) : 0),                                              \
                 __extension__ ({                                                                \
-                        const __auto_type C_VAR(A, _aq) = (_a);                                \
-                        const __auto_type C_VAR(B, _bq) = (_b);                                \
-                        C_VAR(A, _aq) > C_VAR(B, _bq) ? C_VAR(A, _aq) - C_VAR(B, _bq) : 0;  \
+                        const __auto_type C_VAR(A, _aq) = (_a);                                 \
+                        const __auto_type C_VAR(B, _bq) = (_b);                                 \
+                        C_VAR(A, _aq) > C_VAR(B, _bq) ? C_VAR(A, _aq) - C_VAR(B, _bq) : 0;      \
                 }))
 
 /**
@@ -419,23 +427,23 @@ extern "C" {
  * Return: Clamped integer value.
  */
 #define c_clamp(_x, _low, _high) c_internal_clamp(C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_low), C_CC_UNIQUE, (_high))
-#define c_internal_clamp(_xq, _x, _lowq, _low, _highq, _high)          \
-        C_CC_IF(                                                                               \
-                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_low) && C_CC_IS_CONST(_high)),          \
+#define c_internal_clamp(_xq, _x, _lowq, _low, _highq, _high)                                   \
+        C_CC_IF(                                                                                \
+                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_low) && C_CC_IS_CONST(_high)),             \
                 ((_x) > (_high) ?                                                               \
                         (_high) :                                                               \
                         (_x) < (_low) ?                                                         \
                         (_low) :                                                                \
                         (_x)),                                                                  \
                 __extension__ ({                                                                \
-                        const __auto_type C_VAR(X, _xq) = (_x);                                \
-                        const __auto_type C_VAR(LOW, _lowq) = (_low);                          \
-                        const __auto_type C_VAR(HIGH, _highq) = (_high);                       \
-                                C_VAR(X, _xq) > C_VAR(HIGH, _highq) ?                         \
-                                        C_VAR(HIGH, _highq) :                                  \
-                                        C_VAR(X, _xq) < C_VAR(LOW, _lowq) ?                   \
-                                                C_VAR(LOW, _lowq) :                            \
-                                                C_VAR(X, _xq);                                 \
+                        const __auto_type C_VAR(X, _xq) = (_x);                                 \
+                        const __auto_type C_VAR(LOW, _lowq) = (_low);                           \
+                        const __auto_type C_VAR(HIGH, _highq) = (_high);                        \
+                                C_VAR(X, _xq) > C_VAR(HIGH, _highq) ?                           \
+                                        C_VAR(HIGH, _highq) :                                   \
+                                        C_VAR(X, _xq) < C_VAR(LOW, _lowq) ?                     \
+                                                C_VAR(LOW, _lowq) :                             \
+                                                C_VAR(X, _xq);                                  \
                 }))
 
 /**
@@ -463,7 +471,7 @@ static inline int c_negative_errno(void) {
 }
 
 /**
- * c_math_clz() - count leading zeroes
+ * c_clz() - count leading zeroes
  * @_val:       value to count leading zeroes of
  *
  * This counts the leading zeroes of the binary representation of @_val. Note
@@ -481,14 +489,14 @@ static inline int c_negative_errno(void) {
  *
  * Return: Evaluates to an 'int', the number of leading zeroes.
  */
-#define c_math_clz(_val)                                       \
+#define c_clz(_val)                                             \
         _Generic((_val),                                        \
                 unsigned int: __builtin_clz(_val),              \
                 unsigned long: __builtin_clzl(_val),            \
                 unsigned long long: __builtin_clzll(_val))
 
 /**
- * c_math_align_to() - align value to
+ * c_align_to() - align value to
  * @_val:       value to align
  * @_to:        align to multiple of this
  *
@@ -505,39 +513,39 @@ static inline int c_negative_errno(void) {
  *
  * Return: @_val aligned to a multiple of @_to
  */
-#define c_math_align_to(_val, _to) c_internal_math_align_to((_val), C_CC_UNIQUE, (_to))
-#define c_internal_math_align_to(_val, _toq, _to)                                                      \
-        C_CC_IF(                                                                                       \
-                C_CC_IS_CONST(_to),                                                                    \
-                C_CC_ASSERT_TO(__builtin_popcountll(C_CC_IF(C_CC_IS_CONST(_to), (_to), 1)) == 1,     \
+#define c_align_to(_val, _to) c_internal_align_to((_val), C_CC_UNIQUE, (_to))
+#define c_internal_align_to(_val, _toq, _to)                                                            \
+        C_CC_IF(                                                                                        \
+                C_CC_IS_CONST(_to),                                                                     \
+                C_CC_ASSERT_TO(__builtin_popcountll(C_CC_IF(C_CC_IS_CONST(_to), (_to), 1)) == 1,        \
                                 (((_val) + (_to) - 1) & ~((_to) - 1))),                                 \
                 __extension__ ({                                                                        \
-                        const __auto_type C_VAR(to, _toq) = (_to);                                     \
-                        ((_val) + C_VAR(to, _toq) - 1) & ~(C_VAR(to, _toq) - 1);                      \
+                        const __auto_type C_VAR(to, _toq) = (_to);                                      \
+                        ((_val) + C_VAR(to, _toq) - 1) & ~(C_VAR(to, _toq) - 1);                        \
                 }))
 
 /**
- * c_math_align() - align to native size
+ * c_align() - align to native size
  * @_val:       value to align
  *
- * This is the same as c_math_align_to((_val), __SIZEOF_POINTER__).
+ * This is the same as c_align_to((_val), __SIZEOF_POINTER__).
  *
  * Return: @_val aligned to the native size
  */
-#define c_math_align(_val) c_math_align_to((_val), __SIZEOF_POINTER__)
+#define c_align(_val) c_align_to((_val), __SIZEOF_POINTER__)
 
 /**
- * c_math_align8() - align value to multiple of 8
+ * c_align8() - align value to multiple of 8
  * @_val:       value to align
  *
- * This is the same as c_math_align_to((_val), 8).
+ * This is the same as c_align_to((_val), 8).
  *
  * Return: @_val aligned to a multiple of 8.
  */
-#define c_math_align8(_val) c_math_align_to((_val), 8)
+#define c_align8(_val) c_align_to((_val), 8)
 
 /**
- * c_math_align_power2() - align value to next power of 2
+ * c_align_power2() - align value to next power of 2
  * @_val:       value to align
  *
  * This aligns @_val to the next higher power of 2. If it already is a power of
@@ -548,23 +556,23 @@ static inline int c_negative_errno(void) {
  *
  * Return: @_val aligned to the next higher power of 2
  */
-#define c_math_align_power2(_val) c_internal_math_align_power2(C_CC_UNIQUE, (_val))
-#define c_internal_math_align_power2(_vq, _v)                                                          \
+#define c_align_power2(_val) c_internal_align_power2(C_CC_UNIQUE, (_val))
+#define c_internal_align_power2(_vq, _v)                                                                \
         __extension__ ({                                                                                \
-                __auto_type C_VAR(v, _vq) = (_v);                                                      \
+                __auto_type C_VAR(v, _vq) = (_v);                                                       \
                 /* cannot use ?: as gcc cannot do const-folding then (apparently..) */                  \
-                if (C_VAR(v, _vq) == 1) /* clz(0) is undefined */                                      \
-                        C_VAR(v, _vq) = 1;                                                             \
-                else if (c_math_clz(C_VAR(v, _vq) - 1) < 1) /* shift overflow is undefined */         \
-                        C_VAR(v, _vq) = 0;                                                             \
+                if (C_VAR(v, _vq) == 1) /* clz(0) is undefined */                                       \
+                        C_VAR(v, _vq) = 1;                                                              \
+                else if (c_clz(C_VAR(v, _vq) - 1) < 1) /* shift overflow is undefined */                \
+                        C_VAR(v, _vq) = 0;                                                              \
                 else                                                                                    \
-                        C_VAR(v, _vq) = ((__typeof__(C_VAR(v, _vq)))1) <<                             \
-                                        (sizeof(C_VAR(v, _vq)) * 8 - c_math_clz(C_VAR(v, _vq) - 1)); \
-                C_VAR(v, _vq);                                                                         \
+                        C_VAR(v, _vq) = ((__typeof__(C_VAR(v, _vq)))1) <<                               \
+                                        (sizeof(C_VAR(v, _vq)) * 8 - c_clz(C_VAR(v, _vq) - 1));         \
+                C_VAR(v, _vq);                                                                          \
         })
 
 /**
- * c_math_div_round_up() - calculate integer quotient but round up
+ * c_div_round_up() - calculate integer quotient but round up
  * @_x:         dividend
  * @_y:         divisor
  *
@@ -581,25 +589,17 @@ static inline int c_negative_errno(void) {
  *
  * Return: The quotient is returned.
  */
-#define c_math_div_round_up(_x, _y) c_internal_math_div_round_up(C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_y))
-#define c_internal_math_div_round_up(_xq, _x, _yq, _y)                 \
-        C_CC_IF(                                                       \
-                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_y)),             \
+#define c_div_round_up(_x, _y) c_internal_div_round_up(C_CC_UNIQUE, (_x), C_CC_UNIQUE, (_y))
+#define c_internal_div_round_up(_xq, _x, _yq, _y)                       \
+        C_CC_IF(                                                        \
+                (C_CC_IS_CONST(_x) && C_CC_IS_CONST(_y)),               \
                 ((_x) / (_y) + !!((_x) % (_y))),                        \
                 __extension__ ({                                        \
-                        const __auto_type C_VAR(X, _xq) = (_x);        \
-                        const __auto_type C_VAR(Y, _yq) = (_y);        \
-                        (C_VAR(X, _xq) / C_VAR(Y, _yq) +              \
-                         !!(C_VAR(X, _xq) % C_VAR(Y, _yq)));          \
+                        const __auto_type C_VAR(X, _xq) = (_x);         \
+                        const __auto_type C_VAR(Y, _yq) = (_y);         \
+                        (C_VAR(X, _xq) / C_VAR(Y, _yq) +                \
+                         !!(C_VAR(X, _xq) % C_VAR(Y, _yq)));            \
                 }))
-
-/**
- * C_ARRAY_SIZE() - calculate number of array elements at compile time
- * @_x:         array to calculate size of
- *
- * Return: Evaluates to a constant integer expression
- */
-#define C_ARRAY_SIZE(_x) C_CC_ASSERT_TO(C_TYPE_IS_ARRAY(_x), sizeof(_x) / sizeof((_x)[0]))
 
 #ifdef __cplusplus
 }

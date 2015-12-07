@@ -142,10 +142,10 @@ static void test_cc(int non_constant_expr) {
          * many bytes are needed to print that integer in decimal form. Also
          * verify that it is a constant expression.
          */
-        C_CC_ASSERT(C_CC_DECIMAL_MAX(int32_t) == 11);
-        C_CC_ASSERT(C_CC_DECIMAL_MAX(uint32_t) == 11);
-        C_CC_ASSERT(C_CC_DECIMAL_MAX(uint64_t) == 21);
-        C_CC_ASSERT(C_CC_IS_CONST(C_CC_DECIMAL_MAX(int32_t)));
+        C_CC_ASSERT(C_DECIMAL_MAX(int32_t) == 11);
+        C_CC_ASSERT(C_DECIMAL_MAX(uint32_t) == 11);
+        C_CC_ASSERT(C_DECIMAL_MAX(uint64_t) == 21);
+        C_CC_ASSERT(C_CC_IS_CONST(C_DECIMAL_MAX(int32_t)));
 
         /*
          * Test stringify/concatenation helpers. Also make sure to test that
@@ -153,11 +153,11 @@ static void test_cc(int non_constant_expr) {
          * and/or concatenated.
          */
 #define TEST_TOKEN foobar
-        assert(!strcmp("foobar", C_CC_STRINGIFY(foobar)));
-        assert(!strcmp("foobar", C_CC_STRINGIFY(TEST_TOKEN)));
-        assert(!strcmp("foobar", C_CC_STRINGIFY(C_CC_CONCATENATE(foo, bar))));
-        assert(!strcmp("foobarfoobar", C_CC_STRINGIFY(C_CC_CONCATENATE(TEST_TOKEN, foobar))));
-        assert(!strcmp("foobarfoobar", C_CC_STRINGIFY(C_CC_CONCATENATE(foobar, TEST_TOKEN))));
+        assert(!strcmp("foobar", C_STRINGIFY(foobar)));
+        assert(!strcmp("foobar", C_STRINGIFY(TEST_TOKEN)));
+        assert(!strcmp("foobar", C_STRINGIFY(C_CONCATENATE(foo, bar))));
+        assert(!strcmp("foobarfoobar", C_STRINGIFY(C_CONCATENATE(TEST_TOKEN, foobar))));
+        assert(!strcmp("foobarfoobar", C_STRINGIFY(C_CONCATENATE(foobar, TEST_TOKEN))));
 #undef TEST_TOKEN
 
         /*
@@ -307,31 +307,31 @@ static void test_misc(int non_constant_expr) {
         }
 }
 
-/* test c_math_* helpers */
+/* test math helpers */
 static void test_math(int non_constant_expr) {
         int i, j, foo;
 
         /*
-         * Count Leading Zeroes: The c_math_clz() macro is a type-generic
+         * Count Leading Zeroes: The c_clz() macro is a type-generic
          * variant of clz(). It counts leading zeroes of an integer. The result
          * highly depends on the integer-width of the input. Make sure it
          * selects the correct implementation.
          * Also note: clz(0) is undefined!
          */
-        C_CC_ASSERT(c_math_clz(UINT32_C(1)) == 31);
-        C_CC_ASSERT(c_math_clz(UINT64_C(1)) == 63);
+        C_CC_ASSERT(c_clz(UINT32_C(1)) == 31);
+        C_CC_ASSERT(c_clz(UINT64_C(1)) == 63);
 
-        C_CC_ASSERT(c_math_clz(UINT32_C(-1)) == 0);
-        C_CC_ASSERT(c_math_clz(UINT32_C(-1) + 2) == 31);
+        C_CC_ASSERT(c_clz(UINT32_C(-1)) == 0);
+        C_CC_ASSERT(c_clz(UINT32_C(-1) + 2) == 31);
 
-        C_CC_ASSERT(c_math_clz((uint64_t)UINT32_C(-1)) == 32);
-        C_CC_ASSERT(c_math_clz((uint64_t)UINT32_C(-1) + 2) == 31);
+        C_CC_ASSERT(c_clz((uint64_t)UINT32_C(-1)) == 32);
+        C_CC_ASSERT(c_clz((uint64_t)UINT32_C(-1) + 2) == 31);
 
         /* make sure it's compile-time constant */
-        C_CC_ASSERT(C_CC_IS_CONST(c_math_clz(1U)));
-        C_CC_ASSERT(!C_CC_IS_CONST(c_math_clz((unsigned int)non_constant_expr)));
+        C_CC_ASSERT(C_CC_IS_CONST(c_clz(1U)));
+        C_CC_ASSERT(!C_CC_IS_CONST(c_clz((unsigned int)non_constant_expr)));
         {
-                static const int sub = c_math_clz(1U);
+                static const int sub = c_clz(1U);
                 C_CC_ASSERT(sub == 31);
         }
 
@@ -340,47 +340,47 @@ static void test_math(int non_constant_expr) {
          * not suffer from incorrect integer overflows, neither should it
          * exceed the boundaries of the input type.
          */
-        assert(c_math_align_to(UINT32_C(0), 1) == 0);
-        assert(c_math_align_to(UINT32_C(0), 2) == 0);
-        assert(c_math_align_to(UINT32_C(0), 4) == 0);
-        assert(c_math_align_to(UINT32_C(0), 8) == 0);
-        assert(c_math_align_to(UINT32_C(1), 8) == 8);
+        assert(c_align_to(UINT32_C(0), 1) == 0);
+        assert(c_align_to(UINT32_C(0), 2) == 0);
+        assert(c_align_to(UINT32_C(0), 4) == 0);
+        assert(c_align_to(UINT32_C(0), 8) == 0);
+        assert(c_align_to(UINT32_C(1), 8) == 8);
 
-        assert(c_math_align_to(UINT32_C(0xffffffff), 8) == 0);
-        assert(c_math_align_to(UINT32_C(0xfffffff1), 8) == 0xfffffff8);
-        assert(c_math_align_to(UINT32_C(0xfffffff1), 8) == 0xfffffff8);
+        assert(c_align_to(UINT32_C(0xffffffff), 8) == 0);
+        assert(c_align_to(UINT32_C(0xfffffff1), 8) == 0xfffffff8);
+        assert(c_align_to(UINT32_C(0xfffffff1), 8) == 0xfffffff8);
 
-        C_CC_ASSERT(C_CC_IS_CONST(c_math_align_to(16, 8)));
-        C_CC_ASSERT(!C_CC_IS_CONST(c_math_align_to(non_constant_expr, 8)));
-        C_CC_ASSERT(!C_CC_IS_CONST(c_math_align_to(16, non_constant_expr)));
-        C_CC_ASSERT(!C_CC_IS_CONST(c_math_align_to(16, non_constant_expr ? 8 : 16)));
-        C_CC_ASSERT(C_CC_IS_CONST(c_math_align_to(16, 7 + 1)));
-        assert(c_math_align_to(15, non_constant_expr ? 8 : 16) == 16);
+        C_CC_ASSERT(C_CC_IS_CONST(c_align_to(16, 8)));
+        C_CC_ASSERT(!C_CC_IS_CONST(c_align_to(non_constant_expr, 8)));
+        C_CC_ASSERT(!C_CC_IS_CONST(c_align_to(16, non_constant_expr)));
+        C_CC_ASSERT(!C_CC_IS_CONST(c_align_to(16, non_constant_expr ? 8 : 16)));
+        C_CC_ASSERT(C_CC_IS_CONST(c_align_to(16, 7 + 1)));
+        assert(c_align_to(15, non_constant_expr ? 8 : 16) == 16);
 
         for (i = 0; i < 0xffff; ++i) {
-                assert(c_math_align(i) == c_math_align_to(i, (int)sizeof(void*)));
-                assert(c_math_align8(i) == c_math_align_to(i, 8));
+                assert(c_align(i) == c_align_to(i, (int)sizeof(void*)));
+                assert(c_align8(i) == c_align_to(i, 8));
         }
 
         /*
-         * Align Power2: The c_math_align_power2() macro aligns passed values to the
+         * Align Power2: The c_align_power2() macro aligns passed values to the
          * next power of 2. Special cases: 0->0, overflow->0
          * Also make sure it never performs an up-cast on overflow.
          */
-        assert(c_math_align_power2(UINT32_C(0)) == 0);
-        assert(c_math_align_power2(UINT32_C(0x80000001)) == 0);
-        assert(c_math_align_power2(UINT64_C(0)) == 0);
-        assert(c_math_align_power2(UINT64_C(0x8000000000000001)) == 0);
+        assert(c_align_power2(UINT32_C(0)) == 0);
+        assert(c_align_power2(UINT32_C(0x80000001)) == 0);
+        assert(c_align_power2(UINT64_C(0)) == 0);
+        assert(c_align_power2(UINT64_C(0x8000000000000001)) == 0);
 
-        assert(c_math_align_power2((uint64_t)UINT32_C(0)) == 0);
-        assert(c_math_align_power2((uint64_t)UINT32_C(0x80000001)) == UINT64_C(0x100000000));
+        assert(c_align_power2((uint64_t)UINT32_C(0)) == 0);
+        assert(c_align_power2((uint64_t)UINT32_C(0x80000001)) == UINT64_C(0x100000000));
 
-        assert(c_math_align_power2(UINT32_C(1)) == 1);
-        assert(c_math_align_power2(UINT32_C(2)) == 2);
-        assert(c_math_align_power2(UINT32_C(3)) == 4);
-        assert(c_math_align_power2(UINT32_C(4)) == 4);
-        assert(c_math_align_power2(UINT32_C(5)) == 8);
-        assert(c_math_align_power2(UINT32_C(0x80000000)) == UINT32_C(0x80000000));
+        assert(c_align_power2(UINT32_C(1)) == 1);
+        assert(c_align_power2(UINT32_C(2)) == 2);
+        assert(c_align_power2(UINT32_C(3)) == 4);
+        assert(c_align_power2(UINT32_C(4)) == 4);
+        assert(c_align_power2(UINT32_C(5)) == 8);
+        assert(c_align_power2(UINT32_C(0x80000000)) == UINT32_C(0x80000000));
 
         /*
          * Div Round Up: Normal division, but round up to next integer, instead
@@ -390,35 +390,35 @@ static void test_math(int non_constant_expr) {
          */
 #define TEST_ALT_DIV(_x, _y) (((_x) + (_y) - 1) / (_y))
         foo = 8;
-        assert(c_math_div_round_up(0, 5) == 0);
-        assert(c_math_div_round_up(1, 5) == 1);
-        assert(c_math_div_round_up(5, 5) == 1);
-        assert(c_math_div_round_up(6, 5) == 2);
-        assert(c_math_div_round_up(foo++, 1) == 8);
+        assert(c_div_round_up(0, 5) == 0);
+        assert(c_div_round_up(1, 5) == 1);
+        assert(c_div_round_up(5, 5) == 1);
+        assert(c_div_round_up(6, 5) == 2);
+        assert(c_div_round_up(foo++, 1) == 8);
         assert(foo == 9);
-        assert(c_math_div_round_up(foo++, foo++) >= 0);
+        assert(c_div_round_up(foo++, foo++) >= 0);
         assert(foo == 11);
 
-        C_CC_ASSERT(C_CC_IS_CONST(c_math_div_round_up(1, 5)));
-        C_CC_ASSERT(!C_CC_IS_CONST(c_math_div_round_up(1, non_constant_expr)));
+        C_CC_ASSERT(C_CC_IS_CONST(c_div_round_up(1, 5)));
+        C_CC_ASSERT(!C_CC_IS_CONST(c_div_round_up(1, non_constant_expr)));
 
         /* alternative calculation is [(x + y - 1) / y], but it may overflow */
         for (i = 0; i <= 0xffff; ++i) {
                 for (j = 1; j <= 0xff; ++j)
-                        assert(c_math_div_round_up(i, j) == TEST_ALT_DIV(i, j));
+                        assert(c_div_round_up(i, j) == TEST_ALT_DIV(i, j));
                 for (j = 0xff00; j <= 0xffff; ++j)
-                        assert(c_math_div_round_up(i, j) == TEST_ALT_DIV(i, j));
+                        assert(c_div_round_up(i, j) == TEST_ALT_DIV(i, j));
         }
 
         /* make sure it doesn't suffer from high overflow */
         assert(UINT32_C(0xfffffffa) % 10 == 0);
         assert(UINT32_C(0xfffffffa) / 10 == UINT32_C(429496729));
-        assert(c_math_div_round_up(UINT32_C(0xfffffffa), 10) == UINT32_C(429496729));
+        assert(c_div_round_up(UINT32_C(0xfffffffa), 10) == UINT32_C(429496729));
         assert(TEST_ALT_DIV(UINT32_C(0xfffffffa), 10) == 0); /* overflow */
 
         assert(UINT32_C(0xfffffffd) % 10 == 3);
         assert(UINT32_C(0xfffffffd) / 10 == UINT32_C(429496729));
-        assert(c_math_div_round_up(UINT32_C(0xfffffffd), 10) == UINT32_C(429496730));
+        assert(c_div_round_up(UINT32_C(0xfffffffd), 10) == UINT32_C(429496730));
         assert(TEST_ALT_DIV(UINT32_C(0xfffffffd), 10) == 0);
 #undef TEST_ALT_DIV
 }
