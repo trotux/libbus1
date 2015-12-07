@@ -25,8 +25,18 @@
  *
  * As this header is included all over the place, make sure to only add stuff
  * that really belongs all-over-the-place.
+ *
+ * This header also provides a basic ISO-C11 environment to the callers. This
+ * means, we include the very basic set of headers, to avoid copying them to
+ * all common callers. This set is quite limited, though, and is considered API
+ * of this header.
  */
 
+/*
+ * Basic ISO-C11 headers are considered API of this header. Don't remove them
+ * as we rely on them in our sources. This includes: assert, errno, inttypes,
+ * limits, stdarg, stdbool, stddef
+ */
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
