@@ -266,19 +266,6 @@ extern "C" {
 #define C_CC_ASSERT_TO(_cond, _expr) C_CC_IF(C_CC_ASSERT1(_cond), (_expr), ((void)0))
 
 /**
- * C_CC_STATIC_ASSERT() - static compile time assertion
- * @_cond:      condition
- *
- * This is equivalent to C_CC_ASSERT(), but evaluates to a statement instead
- * of an expression. This allows usage in file-context, where STD-C does not
- * allow plain expressions. If you need a custom compiler message to print, use
- * static_assert() directly (it's STD-C11).
- *
- * Return: This macro evaluates to a statement.
- */
-#define C_CC_STATIC_ASSERT(_cond) static_assert((_cond), #_cond)
-
-/**
  * C_STRINGIFY() - stringify a token, but evaluate it first
  * @_x:         token to evaluate and stringify
  *

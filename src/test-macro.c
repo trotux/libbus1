@@ -71,8 +71,7 @@ static void test_type(void) {
         assert(sizeof(array) == sizeof(*array) * 16);
 }
 
-/* test static assertions with/without messages on file-context */
-C_CC_STATIC_ASSERT(sizeof(int) > 0);
+/* test static assertions on file-context */
 static_assert(sizeof(int) <= sizeof(long), "Custom error message");
 
 /* test C_CC_* helpers */
@@ -104,11 +103,10 @@ static void test_cc(int non_constant_expr) {
         assert(foo == 11);
 
         /*
-         * Test static assertions with/without messsages on function-context.
+         * Test static assertions on function-context.
          * Those assert-helpers evaluate to a statement, and as such must be
          * valid in function-context.
          */
-        C_CC_STATIC_ASSERT(true);
         static_assert(true, "Custom error message");
 
         /*
