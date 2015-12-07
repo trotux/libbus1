@@ -188,6 +188,21 @@ static void test_cc(int non_constant_expr) {
                 assert(sub == subUNIQUE);
                 assert(sub == UNIQUEsub);
         }
+        {
+                /*
+                 * Make sure both produce different names, even though they're
+                 * exactly the same expression.
+                 */
+                _c_unused_ int C_VAR(sub, C_CC_UNIQUE), C_VAR(sub, C_CC_UNIQUE);
+        }
+        {
+                /* verify C_VAR() with single argument works line-based */
+                int C_VAR(sub); C_VAR(sub) = 5; assert(C_VAR(sub) == 5);
+        }
+        {
+                /* verify C_VAR() with no argument works line-based */
+                int C_VAR(); C_VAR() = 5; assert(C_VAR() == 5);
+        }
 }
 
 /* test un-categorized macro helpers */

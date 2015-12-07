@@ -178,12 +178,17 @@ extern "C" {
 /**
  * C_VAR() - generate unique variable name
  * @_x:         name of variable
- * @_uniq:      unique prefix, usually provided by @C_CC_UNIQUE
+ * @_uniq:      unique prefix, usually provided by @C_CC_UNIQUE, optional
  *
  * This macro shall be used to generate unique variable names, that will not be
  * shadowed by recursive macro invocations. It is effectively a
  * C_CC_CONCATENATE of both arguments, but also provides a globally separated
  * prefix and makes the code better readable.
+ *
+ * The second argument is optional. If not given, __LINE__ is implied, and as
+ * such the macro will generate the same identifier if used multiple times on
+ * the same code-line (or within a macro). This should be used if recursive
+ * calls into the macro are not expected.
  *
  * This helper may be used by macro implementations that might reasonable well
  * be called in a stacked fasion, like:
@@ -194,7 +199,10 @@ extern "C" {
  *
  * Return: This evaluates to a constant identifier
  */
-#define C_VAR(_x, _uniq) C_CC_CONCATENATE(c_internal_var_unique_, C_CC_CONCATENATE(_uniq, _x))
+#define C_VAR(...) C_INTERNAL_VAR(__VA_ARGS__, 2, 1)
+#define C_INTERNAL_VAR(_x, _uniq, _num, ...) C_VAR ## _num (_x, _uniq)
+#define C_VAR1(_x, _unused) C_VAR2(_x, C_CC_CONCATENATE(line, __LINE__))
+#define C_VAR2(_x, _uniq) C_CC_CONCATENATE(c_internal_var_unique_, C_CC_CONCATENATE(_uniq, _x))
 
 /**
  * C_CC_ASSERT_MSG() - compile time assertion
