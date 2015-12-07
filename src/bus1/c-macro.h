@@ -47,6 +47,8 @@
  *    suffix, like C_CC_MACRO2() and C_CC_MACRO3(). Usually, their concept can
  *    be extended to infinity, but the C-preprocessor does not allow it. Hence,
  *    we hard-code the number of arguments.
+ *  - Any internal function is prefixed with C_INTERNAL_*() or c_internal_*().
+ *    Never call those directly.
  */
 
 /*
