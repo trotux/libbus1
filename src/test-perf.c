@@ -29,9 +29,9 @@
 #include <sys/mman.h>
 #include <sys/uio.h>
 #include <unistd.h>
-#include "c-macro.h"
-#include "c-shared.h"
-#include "c-sys.h"
+#include "bus1/c-macro.h"
+#include "bus1/c-shared.h"
+#include "bus1/c-sys.h"
 
 #define TEST_BUFSIZE (4096LL * 4096LL) /* 4096 pages */
 

@@ -28,8 +28,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "c-macro.h"
-#include "c-public.h"
+#include "bus1/c-macro.h"
+#include "bus1/c-public.h"
 
 /* test public C_CC_* helpers */
 static void test_cc(int non_constant_expr) {

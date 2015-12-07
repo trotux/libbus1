@@ -23,8 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "c-macro.h"
-#include "c-shared.h"
+#include "bus1/c-macro.h"
+#include "bus1/c-shared.h"
 
 /* test c_bitmap_* helpers */
 static void test_bitmap(void) {

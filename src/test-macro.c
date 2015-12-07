@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "c-macro.h"
+#include "bus1/c-macro.h"
 
 /* test C_TYPE_* helpers */
 static void test_type(void) {
