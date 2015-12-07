@@ -476,11 +476,19 @@ static void test_destructors(void) {
         for (i = 0; i < 1 * 1024; ++i) {
                 _c_cleanup_(c_freep) void *foo;
                 _c_cleanup_(c_freep) int **bar; /* supports any type */
+                size_t sz = 128 * 1024 * 1024;
 
-                foo = malloc(128 * 1024 * 1024);
+                /*
+                 * Use 128KB instead of 128MB, as many test-runs seem to have
+                 * random large delays when trying to map 128MB.. that makes
+                 * the test useless.. but eh.. c_free() should work just fine.
+                 */
+                sz = 128 * 1024;
+
+                foo = malloc(sz);
                 assert(foo);
 
-                bar = malloc(128 * 1024 * 1024);
+                bar = malloc(sz);
                 assert(bar);
                 bar = c_free(bar);
                 assert(!bar);
