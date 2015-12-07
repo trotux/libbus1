@@ -60,7 +60,7 @@ libbus1_la_SOURCES = \
 	src/libbus1.sym \
 	src/b1.c \
 	src/c-rbtree.c \
-	src/sys.c
+	src/c-sys.c
 
 libbus1_la_LDFLAGS = \
 	$(AM_LDFLAGS) \
