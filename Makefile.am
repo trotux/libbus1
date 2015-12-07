@@ -53,7 +53,6 @@ pkginclude_HEADERS += \
 	src/bus1/c-macro.h \
 	src/bus1/c-rbtree.h \
 	src/bus1/c-shared.h \
-	src/bus1/c-cleanup.h \
 	src/bus1/c-sys.h
 
 libbus1_la_SOURCES = \

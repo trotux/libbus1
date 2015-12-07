@@ -49,6 +49,8 @@
  *    we hard-code the number of arguments.
  *  - Any internal function is prefixed with C_INTERNAL_*() or c_internal_*().
  *    Never call those directly.
+ *  - Inline helpers solely designed for _c_cleanup_(foobarp) always carry the
+ *    'p' suffix (e.g., c_freep(), c_closep(), ...).
  */
 
 /*
@@ -467,30 +469,6 @@ extern "C" {
 #define C_CLAMP(_x, _low, _high) ((_x) > (_high) ? (_high) : (_x) < (_low) ? (_low) : (_x))
 
 /**
- * c_negative_errno() - return negative errno
- *
- * This helper should be used to shut up gcc if you know 'errno' is valid (ie.,
- * errno is > 0). Instead of "return -errno;", use
- * "return c_negative_errno();" It will suppress bogus gcc warnings in case
- * it assumes 'errno' might be 0 (or <0) and thus the caller's error-handling
- * might not be triggered.
- *
- * This helper should be avoided whenever possible. However, occasionally we
- * really want to shut up gcc (especially with static/inline functions). In
- * those cases, gcc usually cannot deduce that some error paths are guaranteed
- * to be taken. Hence, making the return value explicit allows gcc to better
- * optimize the code.
- *
- * Note that you really should never use this helper to work around broken libc
- * calls or syscalls, not setting 'errno' correctly.
- *
- * Return: Negative error code is returned.
- */
-static inline int c_negative_errno(void) {
-        return _c_likely_(errno > 0) ? -errno : -EINVAL;
-}
-
-/**
  * c_clz() - count leading zeroes
  * @_val:       value to count leading zeroes of
  *
@@ -603,6 +581,95 @@ static inline int c_negative_errno(void) {
  */
 #define c_div_round_up(_x, _y) C_CC_MACRO2(C_DIV_ROUND_UP, (_x), (_y))
 #define C_DIV_ROUND_UP(_x, _y) ((_x) / (_y) + !!((_x) % (_y)))
+
+/**
+ * c_negative_errno() - return negative errno
+ *
+ * This helper should be used to shut up gcc if you know 'errno' is valid (ie.,
+ * errno is > 0). Instead of "return -errno;", use
+ * "return c_negative_errno();" It will suppress bogus gcc warnings in case
+ * it assumes 'errno' might be 0 (or <0) and thus the caller's error-handling
+ * might not be triggered.
+ *
+ * This helper should be avoided whenever possible. However, occasionally we
+ * really want to shut up gcc (especially with static/inline functions). In
+ * those cases, gcc usually cannot deduce that some error paths are guaranteed
+ * to be taken. Hence, making the return value explicit allows gcc to better
+ * optimize the code.
+ *
+ * Note that you really should never use this helper to work around broken libc
+ * calls or syscalls, not setting 'errno' correctly.
+ *
+ * Return: Negative error code is returned.
+ */
+static inline int c_negative_errno(void) {
+        return _c_likely_(errno > 0) ? -errno : -EINVAL;
+}
+
+/*
+ * Common Destructors
+ * Followingly, there're a bunch of common 'static inline' constructors, which
+ * simply call the function that they're named after, but return "INVALID"
+ * instead of "void". This allows direct assignment to any member-field and/or
+ * variable they're defined in, like:
+ *
+ *   foo = c_free(foo);
+ * or
+ *   foo->bar = c_close(foo->bar);
+ *
+ * Furthermore, all those destructors can be safely called with the "INVALID"
+ * value as argument, and they will be a no-op.
+ */
+
+static inline void *c_free(void *p) {
+        free(p);
+        return NULL;
+}
+
+static inline int c_close(int fd) {
+        if (fd >= 0)
+                close(fd);
+        return -1;
+}
+
+static inline FILE *c_fclose(FILE *f) {
+        if (f)
+                fclose(f);
+        return NULL;
+}
+
+static inline DIR *c_closedir(DIR *d) {
+        if (d)
+                closedir(d);
+        return NULL;
+}
+
+/*
+ * Common Cleanup Helpers
+ * A bunch of _c_cleanup_(foobarp) helpers that are used all over the place.
+ * Note that all of those have the "if (IS_INVALID(foobar))" check inline, so
+ * compilers can optimize most of the cleanup-paths in a function. However, if
+ * the function they call already does this _inline_, then it might be skipped.
+ */
+
+#define C_DEFINE_CLEANUP(_type, _func)                  \
+        static inline void _func ## p(_type *p) {       \
+                if (*p)                                 \
+                        _func(*p);                      \
+        } struct c_internal_trailing_semicolon
+
+#define C_DEFINE_DIRECT_CLEANUP(_type, _func)           \
+        static inline void _func ## p(_type *p) {       \
+                _func(*p);                              \
+        } struct c_internal_trailing_semicolon
+
+static inline void c_freep(void *p) {
+        c_free(*(void **)p); /* free() is not type-safe, must hard-code it */
+}
+
+C_DEFINE_DIRECT_CLEANUP(int, c_close);
+C_DEFINE_CLEANUP(FILE *, c_fclose);
+C_DEFINE_CLEANUP(DIR *, c_closedir);
 
 #ifdef __cplusplus
 }

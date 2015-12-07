@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bus1/c-macro.h"
+#include "bus1/c-shared.h"
+#include "bus1/c-sys.h"
 
 /* test C_TYPE_* helpers */
 static void test_type(void) {
@@ -422,10 +424,122 @@ static void test_math(int non_constant_expr) {
 #undef TEST_ALT_DIV
 }
 
+static void test_destructors(void) {
+        int i;
+
+        /*
+         * Test the c_closep(), rely on sparse FD allocation. Make sure all the
+         * *_close() helpers actually close the fd, and cope fine with negative
+         * numbers.
+         */
+        {
+                int fd;
+
+                fd = c_sys_memfd_create("foobar", 0);
+                assert(fd >= 0);
+
+                /* verify c_close() returns -1 */
+                assert(c_close(fd) == -1);
+
+                /* verify c_close() deals fine with negative fds */
+                assert(c_close(-1) == -1);
+                assert(c_close(-16) == -1);
+
+                /* make sure c_closep() deals fine with negative FDs */
+                {
+                        _c_cleanup_(c_closep) int t = 0;
+                        t = -1;
+                }
+
+                /*
+                 * Make sure the c_close() earlier worked, by allocating the
+                 * FD again and relying on the same FD number to be reused. Do
+                 * this twice, to verify that the c_closep() in the cleanup
+                 * path works as well.
+                 */
+                for (i = 0; i < 2; ++i) {
+                        _c_cleanup_(c_closep) int t = -1;
+
+                        t = c_sys_memfd_create("foobar", 0);
+                        assert(t >= 0);
+                        assert(t == fd);
+                }
+        }
+
+        /*
+         * Verify that c_free() works as expected. We cannot really verify that
+         * a call to free() worked, however, we can allocate 128MB in a loop
+         * and this way trigger an OOM in case it doesn't work.
+         * This tests for 1024 * 10MB == 10G, everything else is a bit slow. On
+         * newer machines, 10G should be allocatable, but eh.. who cares..
+         */
+        for (i = 0; i < 1 * 1024; ++i) {
+                _c_cleanup_(c_freep) void *foo;
+                _c_cleanup_(c_freep) int **bar; /* supports any type */
+
+                foo = malloc(128 * 1024 * 1024);
+                assert(foo);
+
+                bar = malloc(128 * 1024 * 1024);
+                assert(bar);
+                bar = c_free(bar);
+                assert(!bar);
+        }
+
+        assert(c_free(NULL) == NULL);
+
+        /*
+         * Test c_fclose() and c_fclosep(). This uses the same logic as the
+         * tests for c_close() (i.e., sparse FD allocation).
+         */
+        {
+                FILE *f;
+                int fd;
+
+                fd = c_sys_memfd_create("foobar", 0);
+                assert(fd >= 0);
+
+                f = fdopen(fd, "r");
+                assert(f);
+
+                /* verify c_fclose() returns NULL */
+                f = c_fclose(f);
+                assert(!f);
+
+                /* verify c_fclose() deals fine with NULL */
+                assert(!c_fclose(NULL));
+
+                /* make sure c_flosep() deals fine with NULL */
+                {
+                        _c_cleanup_(c_fclosep) FILE *t = (void *)0xdeadbeef;
+                        t = NULL;
+                }
+
+                /*
+                 * Make sure the c_fclose() earlier worked, by allocating the
+                 * FD again and relying on the same FD number to be reused. Do
+                 * this twice, to verify that the c_fclosep() in the cleanup
+                 * path works as well.
+                 */
+                for (i = 0; i < 2; ++i) {
+                        _c_cleanup_(c_fclosep) FILE *t = NULL;
+                        int tfd;
+
+                        tfd = c_sys_memfd_create("foobar", 0);
+                        assert(tfd >= 0);
+                        assert(tfd == fd); /* the same as before */
+
+                        t = fdopen(tfd, "r");
+                        assert(t);
+                }
+        }
+}
+
 int main(int argc, char **argv) {
         test_type();
         test_cc(argc);
         test_misc(argc);
         test_math(argc);
+        test_destructors();
         return 0;
 }
