@@ -152,14 +152,6 @@ extern "C" {
 #define C_CC_STATIC_ASSERT(_cond) static_assert((_cond), #_cond)
 
 /**
- * C_CC_ARRAY_SIZE() - calculate number of array elements at compile time
- * @_x:         array to calculate size of
- *
- * Return: Evaluates to a constant integer expression
- */
-#define C_CC_ARRAY_SIZE(_x) C_CC_ASSERT_TO(C_TYPE_IS_ARRAY(_x), sizeof(_x) / sizeof((_x)[0]))
-
-/**
  * C_CC_DECIMAL_MAX() - calculate maximum length of the decimal
  *                       representation of an integer
  * @_type: integer variable/type
@@ -426,12 +418,12 @@ static inline int c_negative_errno(void) {
         })
 
 /**
- * C_ARRAY_SIZE() - number of array elements
- * @_a:         array
+ * C_ARRAY_SIZE() - calculate number of array elements at compile time
+ * @_x:         array to calculate size of
  *
- * Return: the number of array elements.
+ * Return: Evaluates to a constant integer expression
  */
-# define C_ARRAY_SIZE(_a) (sizeof(_a) / sizeof((_a)[0]))
+#define C_ARRAY_SIZE(_x) C_CC_ASSERT_TO(C_TYPE_IS_ARRAY(_x), sizeof(_x) / sizeof((_x)[0]))
 
 #ifdef __cplusplus
 }

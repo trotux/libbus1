@@ -110,8 +110,8 @@ static void test_cc(int non_constant_expr) {
          * Test array-size helper. This simply computes the number of elements
          * of an array, instead of the binary size.
          */
-        C_CC_ASSERT(C_CC_ARRAY_SIZE(bar) == 8);
-        C_CC_ASSERT(C_CC_IS_CONST(C_CC_ARRAY_SIZE(bar)));
+        C_CC_ASSERT(C_ARRAY_SIZE(bar) == 8);
+        C_CC_ASSERT(C_CC_IS_CONST(C_ARRAY_SIZE(bar)));
 
         /*
          * Test decimal-representation calculator. Make sure it is

@@ -132,7 +132,7 @@ static void test_message_validate(const void *map, const TestMessage *args) {
 }
 
 static void test_message_xmit(int fd, void *map, const TestMessage *args, unsigned int xmitter) {
-        assert(xmitter < C_CC_ARRAY_SIZE(test_xmitters));
+        assert(xmitter < C_ARRAY_SIZE(test_xmitters));
 
         test_xmitters[xmitter](fd, map, args);
         test_message_validate(map, args);
@@ -228,8 +228,8 @@ int main(int argc, char **argv) {
         }
 
         xmitter = atoi(argv[1]);
-        if (xmitter >= C_CC_ARRAY_SIZE(test_xmitters)) {
-                fprintf(stderr, "Invalid xmitter (available: %zu)\n", C_CC_ARRAY_SIZE(test_xmitters));
+        if (xmitter >= C_ARRAY_SIZE(test_xmitters)) {
+                fprintf(stderr, "Invalid xmitter (available: %zu)\n", C_ARRAY_SIZE(test_xmitters));
                 return 77;
         }
 
