@@ -28,5 +28,6 @@ Makefile.in
 /stamp-*
 /test-macro
 /test-perf
+/test-rbtree
 /test-shared
 /install-tree
