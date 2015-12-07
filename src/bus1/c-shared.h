@@ -33,8 +33,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-
-#include "c-public.h"
+#include "c-macro.h"
 
 #ifdef __cplusplus
 extern "C" {

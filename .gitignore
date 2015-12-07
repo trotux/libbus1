@@ -28,6 +28,5 @@ Makefile.in
 /stamp-*
 /test-macro
 /test-perf
-/test-public
 /test-shared
 /install-tree

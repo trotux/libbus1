@@ -77,8 +77,31 @@ static_assert(sizeof(int) <= sizeof(long), "Custom error message");
 
 /* test C_CC_* helpers */
 static void test_cc(int non_constant_expr) {
-        int foo = -16;
+        int foo;
         int bar[8];
+
+        /*
+         * Test compile-time conditions. The C_CC_IF() macro allows evaluation
+         * at compile-time, and as such yields exactly one of the code-blocks
+         * passed to it (depending on whether the expression is true).
+         */
+        foo = 6;
+        foo = C_CC_IF(false, foo + 0, foo + 1);
+        foo = C_CC_IF(true, foo + 4, foo + 8);
+        assert(foo == 11);
+
+        /*
+         * Test constant-expr checks.
+         * The C_CC_IS_CONST() macro allows verifying whether an expression is
+         * constant. The return value of the macro itself is constant, and as
+         * such can be used for constant expressions itself.
+         */
+        foo = 11;
+        C_CC_ASSERT(C_CC_IS_CONST(5));
+        C_CC_ASSERT(!C_CC_IS_CONST(non_constant_expr));
+        C_CC_ASSERT(C_CC_IS_CONST(C_CC_IS_CONST(non_constant_expr)));
+        C_CC_ASSERT(!C_CC_IS_CONST(foo++)); /* *NOT* evaluated */
+        assert(foo == 11);
 
         /*
          * Test static assertions with/without messsages on function-context.
@@ -123,6 +146,48 @@ static void test_cc(int non_constant_expr) {
         C_CC_ASSERT(C_CC_DECIMAL_MAX(uint32_t) == 11);
         C_CC_ASSERT(C_CC_DECIMAL_MAX(uint64_t) == 21);
         C_CC_ASSERT(C_CC_IS_CONST(C_CC_DECIMAL_MAX(int32_t)));
+
+        /*
+         * Test stringify/concatenation helpers. Also make sure to test that
+         * the passed arguments are evaluated first, before they're stringified
+         * and/or concatenated.
+         */
+#define TEST_TOKEN foobar
+        assert(!strcmp("foobar", C_CC_STRINGIFY(foobar)));
+        assert(!strcmp("foobar", C_CC_STRINGIFY(TEST_TOKEN)));
+        assert(!strcmp("foobar", C_CC_STRINGIFY(C_CC_CONCATENATE(foo, bar))));
+        assert(!strcmp("foobarfoobar", C_CC_STRINGIFY(C_CC_CONCATENATE(TEST_TOKEN, foobar))));
+        assert(!strcmp("foobarfoobar", C_CC_STRINGIFY(C_CC_CONCATENATE(foobar, TEST_TOKEN))));
+#undef TEST_TOKEN
+
+        /*
+         * Test unique compile-time value. The C_CC_UNIQUE value evaluates to
+         * a compile-time unique value for each time it is used. Hence, it can
+         * never compare equal to itself, furthermore, it's evaluated at
+         * compile-time, not pre-processor time!
+         */
+#define TEST_UNIQUE_MACRO C_CC_UNIQUE
+        assert(C_CC_UNIQUE != C_CC_UNIQUE);
+        assert(TEST_UNIQUE_MACRO != TEST_UNIQUE_MACRO);
+        assert(C_CC_UNIQUE != TEST_UNIQUE_MACRO);
+#undef TEST_UNIQUE_MACRO
+
+        /*
+         * Test C_VAR() macro. It's sole purpose is to create a valid C
+         * identifier given a single argument (which itself must be a valid
+         * identifier).
+         * Just test that we can declare variables with it and use it in
+         * expressions.
+         */
+        {
+                int C_VAR(sub, UNIQUE) = 5;
+                /* make sure the variable name does not clash */
+                int sub = 12, subUNIQUE = 12, UNIQUEsub = 12;
+
+                assert(7 + C_VAR(sub, UNIQUE) == sub);
+                assert(sub == subUNIQUE);
+                assert(sub == UNIQUEsub);
+        }
 }
 
 /* test un-categorized macro helpers */
@@ -229,7 +294,7 @@ static void test_misc(int non_constant_expr) {
 
 /* test c_math_* helpers */
 static void test_math(int non_constant_expr) {
-        int i;
+        int i, j, foo;
 
         /*
          * Count Leading Zeroes: The c_math_clz() macro is a type-generic
@@ -301,6 +366,46 @@ static void test_math(int non_constant_expr) {
         assert(c_math_align_power2(UINT32_C(4)) == 4);
         assert(c_math_align_power2(UINT32_C(5)) == 8);
         assert(c_math_align_power2(UINT32_C(0x80000000)) == UINT32_C(0x80000000));
+
+        /*
+         * Div Round Up: Normal division, but round up to next integer, instead
+         * of clipping. Also verify that it does not suffer from the integer
+         * overflow in the prevalant, alternative implementation:
+         *      [(x + y - 1) / y].
+         */
+#define TEST_ALT_DIV(_x, _y) (((_x) + (_y) - 1) / (_y))
+        foo = 8;
+        assert(c_math_div_round_up(0, 5) == 0);
+        assert(c_math_div_round_up(1, 5) == 1);
+        assert(c_math_div_round_up(5, 5) == 1);
+        assert(c_math_div_round_up(6, 5) == 2);
+        assert(c_math_div_round_up(foo++, 1) == 8);
+        assert(foo == 9);
+        assert(c_math_div_round_up(foo++, foo++) >= 0);
+        assert(foo == 11);
+
+        C_CC_ASSERT(C_CC_IS_CONST(c_math_div_round_up(1, 5)));
+        C_CC_ASSERT(!C_CC_IS_CONST(c_math_div_round_up(1, non_constant_expr)));
+
+        /* alternative calculation is [(x + y - 1) / y], but it may overflow */
+        for (i = 0; i <= 0xffff; ++i) {
+                for (j = 1; j <= 0xff; ++j)
+                        assert(c_math_div_round_up(i, j) == TEST_ALT_DIV(i, j));
+                for (j = 0xff00; j <= 0xffff; ++j)
+                        assert(c_math_div_round_up(i, j) == TEST_ALT_DIV(i, j));
+        }
+
+        /* make sure it doesn't suffer from high overflow */
+        assert(UINT32_C(0xfffffffa) % 10 == 0);
+        assert(UINT32_C(0xfffffffa) / 10 == UINT32_C(429496729));
+        assert(c_math_div_round_up(UINT32_C(0xfffffffa), 10) == UINT32_C(429496729));
+        assert(TEST_ALT_DIV(UINT32_C(0xfffffffa), 10) == 0); /* overflow */
+
+        assert(UINT32_C(0xfffffffd) % 10 == 3);
+        assert(UINT32_C(0xfffffffd) / 10 == UINT32_C(429496729));
+        assert(c_math_div_round_up(UINT32_C(0xfffffffd), 10) == UINT32_C(429496730));
+        assert(TEST_ALT_DIV(UINT32_C(0xfffffffd), 10) == 0);
+#undef TEST_ALT_DIV
 }
 
 int main(int argc, char **argv) {

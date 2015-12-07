@@ -51,7 +51,6 @@ lib_LTLIBRARIES += \
 pkginclude_HEADERS += \
 	src/bus1/b1.h \
 	src/bus1/c-macro.h \
-	src/bus1/c-public.h \
 	src/bus1/c-shared.h \
 	src/bus1/c-cleanup.h \
 	src/bus1/c-sys.h
@@ -109,21 +108,6 @@ test_perf_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_perf_LDADD = \
-	libbus1.la
-
-# ------------------------------------------------------------------------------
-# test-public
-
-default_tests += \
-	test-public
-
-test_public_SOURCES = \
-	src/test-public.c
-
-test_public_CFLAGS = \
-	$(AM_CFLAGS)
-
-test_public_LDADD = \
 	libbus1.la
 
 # ------------------------------------------------------------------------------
