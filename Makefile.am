@@ -144,6 +144,7 @@ test_shared_LDADD = \
 
 check_PROGRAMS += $(default_tests)
 TESTS += $(default_tests)
+noinst_PROGRAMS += $(default_tests) # build as part of 'make all'
 
 # ------------------------------------------------------------------------------
 .PHONY: install-tree
