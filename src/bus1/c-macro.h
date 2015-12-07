@@ -26,10 +26,10 @@
  * As this header is included all over the place, make sure to only add stuff
  * that really belongs all-over-the-place.
  *
- * This header also provides a basic ISO-C11 environment to the callers. This
- * means, we include the very basic set of headers, to avoid copying them to
- * all common callers. This set is quite limited, though, and is considered API
- * of this header.
+ * This header also provides a basic ISO-C11/POSIX environment to the callers.
+ * This means, we include the very basic set of headers, to avoid copying them
+ * to all common callers. This set is quite limited, though, and is considered
+ * API of this header.
  *
  * Conventions:
  *  - Any macro written in UPPER-CASE letters might have side-effects and
@@ -52,18 +52,23 @@
  */
 
 /*
- * Basic ISO-C11 headers are considered API of this header. Don't remove them
- * as we rely on them in our sources. This includes: assert, errno, inttypes,
- * limits, stdarg, stdbool, stddef
+ * Basic ISO-C11/POSIX headers are considered API of this header. Don't remove
+ * them as we rely on them in our sources.
  */
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 /* must not depend on any other c-header */
 
 #ifdef __cplusplus
