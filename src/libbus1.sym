@@ -27,6 +27,7 @@ C_PRIVATE_1 {
         c_rbtree_remove;
 
         /* c-sys */
+        c_sys_clone;
         c_sys_memfd_create;
 };
 

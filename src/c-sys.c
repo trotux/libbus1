@@ -24,6 +24,14 @@
 #include "bus1/c-macro.h"
 #include "bus1/c-sys.h"
 
+_c_public_ int c_sys_clone(unsigned long flags, void *child_stack) {
+#if defined(__s390__) || defined(__CRIS__)
+        return (int)syscall(__NR_clone, child_stack, flags);
+#else
+        return (int)syscall(__NR_clone, flags, child_stack);
+#endif
+}
+
 _c_public_ int c_sys_memfd_create(const char *name, unsigned int flags) {
 #ifndef __NR_memfd_create
         static_assert(false, "System lacks memfd_create(2) syscall");
