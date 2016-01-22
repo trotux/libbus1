@@ -104,23 +104,21 @@ _c_pure_ static inline char *c_str_prefix(const char *str, const char *prefix) {
  * XXX: move to separate header
  * XXX: write test suite
  *
- * Micro-second helpers
+ * Microsecond helpers
  */
 
 #include <sys/time.h>
 #include <time.h>
 #include <assert.h>
 
-/* stores up to 584,942.417355 years */
-typedef uint64_t c_usec;
-
+/* uint64_t stores up to 584,942.417355 years in microseconds */
 #define c_usec_from_nsec(_nsec) ((_nsec) / UINT64_C(1000))
 #define c_usec_from_msec(_msec) ((_msec) * UINT64_C(1000))
 #define c_usec_from_sec(_sec) c_usec_from_msec((_sec) * UINT64_C(1000))
 #define c_usec_from_timespec(_ts) (c_usec_from_sec((_ts)->tv_sec) + c_usec_from_nsec((_ts)->tv_nsec))
 #define c_usec_from_timeval(_tv) (c_usec_from_sec((_tv)->tv_sec) + (_tv)->tv_usec)
 
-static inline c_usec c_usec_from_clock(clockid_t clock) {
+static inline uint64_t c_usec_from_clock(clockid_t clock) {
         struct timespec ts;
         int r;
 

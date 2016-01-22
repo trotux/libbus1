@@ -161,7 +161,7 @@ static void test_xmit(int fd, void *map, unsigned int xmitter, uint64_t times, u
 }
 
 static void test_run_one(int fd, void *map, unsigned int xmitter, uint64_t times, uint64_t size) {
-        c_usec time_start, time_end;
+        uint64_t start_usec, end_usec;
 
         fprintf(stderr, "Run: times:%" PRIu64 " size:%" PRIu64 "\n", times, size);
 
@@ -170,12 +170,12 @@ static void test_run_one(int fd, void *map, unsigned int xmitter, uint64_t times
         test_xmit(fd, map, xmitter, times / 10, size);
 
         /* do real tests and measure time */
-        time_start = c_usec_from_clock(CLOCK_THREAD_CPUTIME_ID);
+        start_usec = c_usec_from_clock(CLOCK_THREAD_CPUTIME_ID);
         test_xmit(fd, map, xmitter, times, size);
-        time_end = c_usec_from_clock(CLOCK_THREAD_CPUTIME_ID);
+        end_usec = c_usec_from_clock(CLOCK_THREAD_CPUTIME_ID);
 
         /* print result table */
-        printf("%" PRIu64 " %d %" PRIu64 "\n", size, xmitter, time_end - time_start);
+        printf("%" PRIu64 " %d %" PRIu64 "\n", size, xmitter, end_usec - start_usec);
 }
 
 static void test_run_all(int fd, void *map, unsigned int xmitter, uint64_t times) {
