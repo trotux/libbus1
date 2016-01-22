@@ -67,18 +67,16 @@ libbus1_la_LDFLAGS = \
 	-Wl,--version-script=$(top_srcdir)/src/libbus1.sym
 
 # ------------------------------------------------------------------------------
-# bus1ctl
-
 bin_PROGRAMS += \
-	bus1ctl
+	org.bus1.busctl
 
-bus1ctl_SOURCES = \
-	src/bus1ctl.c
+org_bus1_busctl_SOURCES = \
+	src/busctl.c
 
-bus1ctl_CFLAGS = \
+org_bus1_busctl_CFLAGS = \
 	$(AM_CFLAGS)
 
-bus1ctl_LDADD = \
+org_bus1_busctl_LDADD = \
 	libbus1.la
 
 # ------------------------------------------------------------------------------

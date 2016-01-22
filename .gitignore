@@ -19,7 +19,7 @@ Makefile.in
 /aclocal.m4
 /build-aux/
 /m4/
-/bus1ctl
+/org.bus1.busctl
 /config.h
 /config.h.in
 /config.log
