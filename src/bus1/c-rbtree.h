@@ -54,7 +54,7 @@ typedef struct CRBTree CRBTree;
  * Each node in an RB-Tree must embed an CRBNode object. This object contains
  * pointers to its left and right child, which can be freely accessed by the
  * API user at any time. They are NULL, if the node does not have a left/right
- * child 
+ * child.
  *
  * The @__parent_and_color field must never be accessed directly. It encodes
  * the pointer to the parent node, and the color of the node. Use the accessor
