@@ -292,6 +292,25 @@ extern "C" {
 #define C_CC_ASSERT_TO(_cond, _expr) C_CC_IF(C_CC_ASSERT1(_cond), (_expr), ((void)0))
 
 /**
+ * C_CC_MACRO1() - provide save environment to a macro
+ * @_call:      macro to call
+ * @_x:         first argument
+ *
+ * This is the 1-argument equivalent of C_CC_MACRO2().
+ *
+ * Return: Result of @_call is returned.
+ */
+#define C_CC_MACRO1(_call, _x) C_INTERNAL_CC_MACRO1(_call, C_CC_UNIQUE, (_x))
+#define C_INTERNAL_CC_MACRO1(_call, _xq, _x)                            \
+        C_CC_IF(                                                        \
+                C_CC_IS_CONST(_x),                                      \
+                _call(_x),                                              \
+                __extension__ ({                                        \
+                        const __auto_type C_VAR(X, _xq) = (_x);         \
+                        _call(C_VAR(X, _xq));                           \
+                }))
+
+/**
  * C_CC_MACRO2() - provide save environment to a macro
  * @_call:      macro to call
  * @_x:         first argument
