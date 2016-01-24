@@ -487,11 +487,12 @@ extern "C" {
  *
  * Return: Evaluates to an 'int', the number of leading zeroes.
  */
-#define c_clz(_val)                                             \
-        _Generic((_val),                                        \
-                unsigned int: __builtin_clz(_val),              \
-                unsigned long: __builtin_clzl(_val),            \
-                unsigned long long: __builtin_clzll(_val))
+#define c_clz(_val)                                                     \
+        _Generic((_val),                                                \
+                /* cast to avoid compile-warns/errs in dead-code */     \
+                unsigned int: __builtin_clz((unsigned int)(_val)),      \
+                unsigned long: __builtin_clzl((unsigned long)(_val)),   \
+                unsigned long long: __builtin_clzll((unsigned long long)(_val)))
 
 /**
  * c_align_to() - align value to

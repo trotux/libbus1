@@ -321,6 +321,9 @@ static void test_math(int non_constant_expr) {
          */
         C_CC_ASSERT(c_clz(UINT32_C(1)) == 31);
         C_CC_ASSERT(c_clz(UINT64_C(1)) == 63);
+        C_CC_ASSERT(c_clz(UINT64_C(-1)) == 0);
+        C_CC_ASSERT(c_clz(UINT64_C(0x100000000)) == 31);
+        assert(c_clz(UINT64_C(0x100000000)) == 31); /* explicit runtime check */
 
         C_CC_ASSERT(c_clz(UINT32_C(-1)) == 0);
         C_CC_ASSERT(c_clz(UINT32_C(-1) + 2) == 31);
