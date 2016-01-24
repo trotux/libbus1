@@ -603,6 +603,20 @@ extern "C" {
 #define C_DIV_ROUND_UP(_x, _y) ((_x) / (_y) + !!((_x) % (_y)))
 
 /**
+ * c_log2() - binary logarithm
+ * @_val:       input value
+ *
+ * This calculates the integer binary logarithm of @_val. If the logarithm
+ * cannot be represented as an integer, the result is rounded down.
+ *
+ * Special case: log2(0) is arbitrarily defined as 0.
+ *
+ * Return: Evaluates to an 'int', the binary logarithm of the input.
+ */
+#define c_log2(_val) C_CC_MACRO1(C_LOG2, (_val))
+#define C_LOG2(_val) ((_val) ? (sizeof(_val) * 8 - c_clz(_val) - 1) : 0)
+
+/**
  * c_negative_errno() - return negative errno
  *
  * This helper should be used to shut up gcc if you know 'errno' is valid (ie.,
