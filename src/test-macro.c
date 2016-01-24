@@ -340,6 +340,42 @@ static void test_math(int non_constant_expr) {
         }
 
         /*
+         * Binary logarithm: Normal binary logarithm tests, including special
+         * cases log2(0) (which is defined in the implementation as 0) and
+         * overflow-protection tests.
+         */
+        assert(c_log2(UINT32_C(0)) == 0);
+        assert(c_log2(UINT32_C(1)) == 0);
+        assert(c_log2(UINT32_C(2)) == 1);
+        assert(c_log2(UINT32_C(3)) == 1);
+        assert(c_log2(UINT32_C(4)) == 2);
+        assert(c_log2(UINT32_C(5)) == 2);
+        assert(c_log2(UINT32_C(6)) == 2);
+        assert(c_log2(UINT32_C(7)) == 2);
+        assert(c_log2(UINT32_C(8)) == 3);
+        C_CC_ASSERT(c_log2(UINT32_C(9)) == 3);
+
+        assert(c_log2(UINT64_C(0)) == 0);
+        assert(c_log2(UINT64_C(1)) == 0);
+        assert(c_log2(UINT64_C(2)) == 1);
+        assert(c_log2(UINT64_C(3)) == 1);
+        assert(c_log2(UINT64_C(4)) == 2);
+        assert(c_log2(UINT64_C(5)) == 2);
+        assert(c_log2(UINT64_C(6)) == 2);
+        assert(c_log2(UINT64_C(7)) == 2);
+        assert(c_log2(UINT64_C(8)) == 3);
+        C_CC_ASSERT(c_log2(UINT64_C(9)) == 3);
+
+        assert(c_log2(UINT32_C(0xffffffff)) == 31);
+        assert(c_log2(UINT64_C(0xffffffff)) == 31);
+        assert(c_log2(UINT64_C(0x100000000)) == 32);
+        assert(c_log2(UINT64_C(0x8000000000000000)) == 63);
+        assert(c_log2(UINT64_C(0xffffffffffffffff)) == 63);
+
+        C_CC_ASSERT(C_CC_IS_CONST(c_log2(UINT32_C(1))));
+        C_CC_ASSERT(!C_CC_IS_CONST(c_log2((unsigned int)non_constant_expr)));
+
+        /*
          * Align to multiple of: Test the alignment macro. Check that it does
          * not suffer from incorrect integer overflows, neither should it
          * exceed the boundaries of the input type.
@@ -429,42 +465,6 @@ static void test_math(int non_constant_expr) {
         assert(c_div_round_up(UINT32_C(0xfffffffd), 10) == UINT32_C(429496730));
         assert(TEST_ALT_DIV(UINT32_C(0xfffffffd), 10) == 0);
 #undef TEST_ALT_DIV
-
-        /*
-         * Binary logarithm: Normal binary logarithm tests, including special
-         * cases log2(0) (which is defined in the implementation as 0) and
-         * overflow-protection tests.
-         */
-        assert(c_log2(UINT32_C(0)) == 0);
-        assert(c_log2(UINT32_C(1)) == 0);
-        assert(c_log2(UINT32_C(2)) == 1);
-        assert(c_log2(UINT32_C(3)) == 1);
-        assert(c_log2(UINT32_C(4)) == 2);
-        assert(c_log2(UINT32_C(5)) == 2);
-        assert(c_log2(UINT32_C(6)) == 2);
-        assert(c_log2(UINT32_C(7)) == 2);
-        assert(c_log2(UINT32_C(8)) == 3);
-        C_CC_ASSERT(c_log2(UINT32_C(9)) == 3);
-
-        assert(c_log2(UINT64_C(0)) == 0);
-        assert(c_log2(UINT64_C(1)) == 0);
-        assert(c_log2(UINT64_C(2)) == 1);
-        assert(c_log2(UINT64_C(3)) == 1);
-        assert(c_log2(UINT64_C(4)) == 2);
-        assert(c_log2(UINT64_C(5)) == 2);
-        assert(c_log2(UINT64_C(6)) == 2);
-        assert(c_log2(UINT64_C(7)) == 2);
-        assert(c_log2(UINT64_C(8)) == 3);
-        C_CC_ASSERT(c_log2(UINT64_C(9)) == 3);
-
-        assert(c_log2(UINT32_C(0xffffffff)) == 31);
-        assert(c_log2(UINT64_C(0xffffffff)) == 31);
-        assert(c_log2(UINT64_C(0x100000000)) == 32);
-        assert(c_log2(UINT64_C(0x8000000000000000)) == 63);
-        assert(c_log2(UINT64_C(0xffffffffffffffff)) == 63);
-
-        C_CC_ASSERT(C_CC_IS_CONST(c_log2(UINT32_C(1))));
-        C_CC_ASSERT(!C_CC_IS_CONST(c_log2((unsigned int)non_constant_expr)));
 }
 
 static void test_destructors(void) {
