@@ -46,7 +46,7 @@ extern "C" {
  * corresponds more closely to fork(2) in that execution in the child
  * continues from the point of the call.
  *
- * Return: The thread ID of the child process on success, a negative errno on failure.
+ * Return: The thread ID of the child process on success, -1 on failure.
  */
 int c_sys_clone(unsigned long flags, void *child_stack);
 
@@ -58,7 +58,7 @@ int c_sys_clone(unsigned long flags, void *child_stack);
  * This is a wrapper for the memfd_create(2) syscall. Currently, no user-space
  * wrapper is exported by any libc.
  *
- * Return: New memfd file-descriptor on success, a negative errno on failure.
+ * Return: New memfd file-descriptor on success, -1 on failure.
  */
 int c_sys_memfd_create(const char *name, unsigned int flags);
 
