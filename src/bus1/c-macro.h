@@ -566,20 +566,11 @@ extern "C" {
  *
  * Return: @_val aligned to the next higher power of 2
  */
-#define c_align_power2(_val) c_internal_align_power2(C_CC_UNIQUE, (_val))
-#define c_internal_align_power2(_vq, _v)                                                                \
-        __extension__ ({                                                                                \
-                __auto_type C_VAR(v, _vq) = (_v);                                                       \
-                /* cannot use ?: as gcc cannot do const-folding then (apparently..) */                  \
-                if (C_VAR(v, _vq) == 1) /* clz(0) is undefined */                                       \
-                        C_VAR(v, _vq) = 1;                                                              \
-                else if (c_clz(C_VAR(v, _vq) - 1) < 1) /* shift overflow is undefined */                \
-                        C_VAR(v, _vq) = 0;                                                              \
-                else                                                                                    \
-                        C_VAR(v, _vq) = ((__typeof__(C_VAR(v, _vq)))1) <<                               \
-                                        (sizeof(C_VAR(v, _vq)) * 8 - c_clz(C_VAR(v, _vq) - 1));         \
-                C_VAR(v, _vq);                                                                          \
-        })
+#define c_align_power2(_val) C_CC_MACRO1(C_ALIGN_POWER2, (_val))
+#define C_ALIGN_POWER2(_val)                                                            \
+        (((_val) == 1) ? 1 : /* clz(0) is undefined */                                  \
+                (c_clz((_val) - 1) < 1) ? 0 : /* shift-overflow is undefined */         \
+                        (((__typeof__(_val))1) << (C_LOG2((_val) - 1) + 1)))
 
 /**
  * c_div_round_up() - calculate integer quotient but round up

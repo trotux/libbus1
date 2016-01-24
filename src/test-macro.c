@@ -375,9 +375,11 @@ static void test_math(int non_constant_expr) {
         assert(c_align_power2(UINT32_C(0x80000001)) == 0);
         assert(c_align_power2(UINT64_C(0)) == 0);
         assert(c_align_power2(UINT64_C(0x8000000000000001)) == 0);
+        C_CC_ASSERT(c_align_power2(UINT64_C(0x8000000000000001)) == 0);
 
         assert(c_align_power2((uint64_t)UINT32_C(0)) == 0);
         assert(c_align_power2((uint64_t)UINT32_C(0x80000001)) == UINT64_C(0x100000000));
+        C_CC_ASSERT(c_align_power2((uint64_t)UINT32_C(0x80000001)) == UINT64_C(0x100000000));
 
         assert(c_align_power2(UINT32_C(1)) == 1);
         assert(c_align_power2(UINT32_C(2)) == 2);
@@ -385,6 +387,8 @@ static void test_math(int non_constant_expr) {
         assert(c_align_power2(UINT32_C(4)) == 4);
         assert(c_align_power2(UINT32_C(5)) == 8);
         assert(c_align_power2(UINT32_C(0x80000000)) == UINT32_C(0x80000000));
+        C_CC_ASSERT(C_CC_IS_CONST(c_align_power2(UINT32_C(1))));
+        C_CC_ASSERT(!C_CC_IS_CONST(c_align_power2((unsigned int)non_constant_expr)));
 
         /*
          * Div Round Up: Normal division, but round up to next integer, instead
