@@ -608,6 +608,22 @@ extern "C" {
 #define C_DIV_ROUND_UP(_x, _y) ((_x) / (_y) + !!((_x) % (_y)))
 
 /**
+ * c_alloca8() - aligned alloca()
+ * @_size:       hunk size to allocate
+ *
+ * This is almost the same as alloca(), but makes sure the result is 8-byte
+ * aligned. This function never fails.
+ *
+ * Note: glibc guarantees that alloca() returns 16-byte aligned memory. This
+ *       macro is just for documentational purposes as it is very hard to find
+ *       any documentation on this. Anyway, it is ABI and we can safely rely on
+ *       it.
+ *
+ * Return: Pointer to allocated stack memory.
+ */
+#define c_alloca8(_size) alloca(_size)
+
+/**
  * c_negative_errno() - return negative errno
  *
  * This helper should be used to shut up gcc if you know 'errno' is valid (ie.,

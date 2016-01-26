@@ -293,6 +293,21 @@ static void test_misc(int non_constant_expr) {
         C_CC_ASSERT(!C_CC_IS_CONST(c_clamp(1, 0, non_constant_expr)));
 
         /*
+         * Test c_alloca8(). This is a variant of alloca() but guarantees
+         * 8-byte alignment.
+         */
+        {
+                void *p;
+                int i;
+
+                for (i = 1; i < 32; ++i) {
+                        p = c_alloca8(i);
+                        assert(p);
+                        assert(!((unsigned long)p & 8));
+                }
+        }
+
+        /*
          * Test c_negative_errno(). Do this by writing a code-path where gcc
          * couldn't assume that 'errno' is negative, but the helper does
          * provide such clue.
