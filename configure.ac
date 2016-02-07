@@ -13,7 +13,7 @@ AC_SUBST([LIBRARY_CURRENT], [0])
 AC_SUBST([LIBRARY_AGE], [0])
 AC_SUBST([LIBRARY_REVISION], [1])
 
-AC_CONFIG_SRCDIR([src/bus1/c-macro.h])
+AC_CONFIG_SRCDIR([src/org.bus1/c-macro.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR([build-aux])

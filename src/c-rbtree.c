@@ -42,8 +42,8 @@
 
 #include <assert.h>
 #include <stddef.h>
-#include "bus1/c-macro.h"
-#include "bus1/c-rbtree.h"
+#include "org.bus1/c-macro.h"
+#include "org.bus1/c-rbtree.h"
 
 enum {
         C_RBNODE_RED   = 0,

@@ -49,11 +49,11 @@ lib_LTLIBRARIES += \
 	libbus1.la
 
 pkginclude_HEADERS += \
-	src/bus1/b1.h \
-	src/bus1/c-macro.h \
-	src/bus1/c-rbtree.h \
-	src/bus1/c-shared.h \
-	src/bus1/c-sys.h
+	src/org.bus1/b1.h \
+	src/org.bus1/c-macro.h \
+	src/org.bus1/c-rbtree.h \
+	src/org.bus1/c-shared.h \
+	src/org.bus1/c-sys.h
 
 libbus1_la_SOURCES = \
 	src/libbus1.sym \

@@ -21,8 +21,8 @@
 
 #undef NDEBUG
 #include <stdlib.h>
-#include "bus1/c-macro.h"
-#include "bus1/c-rbtree.h"
+#include "org.bus1/c-macro.h"
+#include "org.bus1/c-rbtree.h"
 
 /* verify that all API calls are exported */
 static void test_api(void) {

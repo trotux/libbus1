@@ -21,8 +21,8 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "bus1/c-macro.h"
-#include "bus1/c-sys.h"
+#include "org.bus1/c-macro.h"
+#include "org.bus1/c-sys.h"
 
 _c_public_ int c_sys_clone(unsigned long flags, void *child_stack) {
 #if defined(__s390__) || defined(__CRIS__)

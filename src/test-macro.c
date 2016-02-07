@@ -24,9 +24,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "bus1/c-macro.h"
-#include "bus1/c-shared.h"
-#include "bus1/c-sys.h"
+#include "org.bus1/c-macro.h"
+#include "org.bus1/c-shared.h"
+#include "org.bus1/c-sys.h"
 
 /* test C_TYPE_* helpers */
 static void test_type(void) {
