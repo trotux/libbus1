@@ -19,7 +19,7 @@ SUBDIRS = .
 # Keep the test-suite.log and Makefile around at all times
 .PRECIOUS: $(TEST_SUITE_LOG) Makefile
 
-pkgincludedir=$(includedir)/bus1
+pkgincludedir=$(includedir)/org.bus1
 pkgconfiglibdir=$(libdir)/pkgconfig
 
 CLEANFILES = $(BUILT_SOURCES)
