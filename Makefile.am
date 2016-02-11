@@ -20,12 +20,14 @@ SUBDIRS = .
 .PRECIOUS: $(TEST_SUITE_LOG) Makefile
 
 pkgincludedir=$(includedir)/bus1
+pkgconfiglibdir=$(libdir)/pkgconfig
 
 CLEANFILES = $(BUILT_SOURCES)
 DISTCLEANFILES =
 EXTRA_DIST =
 BUILT_SOURCES =
 pkginclude_HEADERS=
+pkgconfiglib_DATA =
 noinst_LIBRARIES =
 lib_LTLIBRARIES =
 bin_PROGRAMS =
@@ -42,6 +44,13 @@ AM_CPPFLAGS = \
 AM_CFLAGS = $(OUR_CFLAGS)
 AM_LDFLAGS = $(OUR_LDFLAGS)
 
+%.pc: %.pc.in
+	$(AM_V_GEN)$(SED) \
+		-e 's,@includedir\@,$(includedir),g' \
+		-e 's,@libdir\@,$(libdir),g' \
+		-e 's,@VERSION\@,$(VERSION),g' \
+		$< > $@
+
 # ------------------------------------------------------------------------------
 # libbus1.so
 
@@ -55,6 +64,9 @@ pkginclude_HEADERS += \
 	src/org.bus1/c-shared.h \
 	src/org.bus1/c-sys.h
 
+pkgconfiglib_DATA += \
+	src/libbus1.pc
+
 libbus1_la_SOURCES = \
 	src/libbus1.sym \
 	src/b1.c \
@@ -65,6 +77,12 @@ libbus1_la_LDFLAGS = \
 	$(AM_LDFLAGS) \
 	-version-info $(LIBRARY_CURRENT):$(LIBRARY_REVISION):$(LIBRARY_AGE) \
 	-Wl,--version-script=$(top_srcdir)/src/libbus1.sym
+
+EXTRA_DIST += \
+	src/libbus1.pc.in
+
+CLEANFILES += \
+	src/libbus1.pc
 
 # ------------------------------------------------------------------------------
 bin_PROGRAMS += \
