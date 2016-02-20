@@ -1,7 +1,8 @@
 # ------------------------------------------------------------------------------
-# main
+# autotools
 
-ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
+SHELL=bash
+ACLOCAL_AMFLAGS = -I build/m4 ${ACLOCAL_FLAGS}
 AM_MAKEFLAGS = --no-print-directory
 AUTOMAKE_OPTIONS = color-tests parallel-tests
 
@@ -16,7 +17,7 @@ SUBDIRS = .
 # keep intermediate files
 .SECONDARY:
 
-# Keep the test-suite.log and Makefile around at all times
+# keep the test-suite.log and Makefile around at all times
 .PRECIOUS: $(TEST_SUITE_LOG) Makefile
 
 pkgincludedir=$(includedir)/org.bus1
@@ -37,12 +38,16 @@ TESTS =
 default_tests =
 
 AM_CPPFLAGS = \
-	-include $(top_builddir)/config.h \
+	-include $(top_builddir)/build/config.h \
+	-I $(top_srcdir)/src \
 	-I $(top_builddir)/src \
 	$(OUR_CPPFLAGS)
 
 AM_CFLAGS = $(OUR_CFLAGS)
 AM_LDFLAGS = $(OUR_LDFLAGS)
+
+# ------------------------------------------------------------------------------
+# libbus1.so
 
 %.pc: %.pc.in
 	$(AM_V_GEN)$(SED) \
@@ -50,9 +55,6 @@ AM_LDFLAGS = $(OUR_LDFLAGS)
 		-e 's,@libdir\@,$(libdir),g' \
 		-e 's,@VERSION\@,$(VERSION),g' \
 		$< > $@
-
-# ------------------------------------------------------------------------------
-# libbus1.so
 
 lib_LTLIBRARIES += \
 	libbus1.la
@@ -167,8 +169,8 @@ noinst_PROGRAMS += $(default_tests) # build as part of 'make all'
 # ------------------------------------------------------------------------------
 # 'make install-tree'
 
-.PHONY: install-tree
 install-tree: all
 	rm -rf $(abs_srcdir)/install-tree
 	$(MAKE) install DESTDIR=$(abs_srcdir)/install-tree
 	tree $(abs_srcdir)/install-tree
+.PHONY: install-tree
