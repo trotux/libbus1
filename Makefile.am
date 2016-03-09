@@ -28,7 +28,7 @@ BUILT_SOURCES =
 pkginclude_HEADERS=
 pkgconfiglib_DATA =
 noinst_LIBRARIES =
-lib_LTLIBRARIES =
+lib_LIBRARIES =
 bin_PROGRAMS =
 noinst_PROGRAMS =
 check_PROGRAMS =
@@ -54,8 +54,8 @@ AM_LDFLAGS = $(OUR_LDFLAGS)
 		-e 's,@VERSION\@,$(VERSION),g' \
 		$< > $@
 
-lib_LTLIBRARIES += \
-	libbus1.la
+noinst_LIBRARIES += \
+	libbus1.a
 
 pkginclude_HEADERS += \
 	src/org.bus1/b1.h \
@@ -64,19 +64,35 @@ pkginclude_HEADERS += \
 	src/org.bus1/c-shared.h \
 	src/org.bus1/c-sys.h
 
-pkgconfiglib_DATA += \
-	src/libbus1.pc
-
-libbus1_la_SOURCES = \
+libbus1_a_SOURCES = \
 	src/libbus1.sym \
 	src/b1.c \
 	src/c-rbtree.c \
 	src/c-sys.c
 
-libbus1_la_LDFLAGS = \
-	$(AM_LDFLAGS) \
-	-version-info $(LIBRARY_CURRENT):$(LIBRARY_REVISION):$(LIBRARY_AGE) \
-	-Wl,--version-script=$(top_srcdir)/src/libbus1.sym
+libbus1.so.0: libbus1.a $(top_srcdir)/src/libbus1.sym
+	$(AM_V_CCLD)$(CCLD) $(AM_CFLAGS) $(AM_LDFLAGS) \
+	-shared \
+	-Wl,-soname=$@ \
+	-Wl,--version-script=$(top_srcdir)/src/libbus1.sym \
+	-Wl,--whole-archive libbus1.a -Wl,--no-whole-archive \
+	-o $@
+
+CLEANFILES += \
+	libbus1.so.0
+
+all-local: libbus1.so.0
+
+install-exec-hook:
+	$(MKDIR_P) $(DESTDIR)$(libdir)
+	cp libbus1.so.0 $(DESTDIR)$(libdir)
+	$(AM_V_LN)ln -sf libbus1.so.0 $(DESTDIR)$(libdir)/libbus1.so
+
+uninstall-hook:
+	rm -f $(DESTDIR)$(libdir)/libbus1.so.0
+
+pkgconfiglib_DATA += \
+	src/libbus1.pc
 
 EXTRA_DIST += \
 	src/libbus1.pc.in
@@ -95,7 +111,7 @@ org_bus1_busctl_CFLAGS = \
 	$(AM_CFLAGS)
 
 org_bus1_busctl_LDADD = \
-	libbus1.la
+	libbus1.so.0
 
 # ------------------------------------------------------------------------------
 # test-macro
@@ -110,7 +126,7 @@ test_macro_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_macro_LDADD = \
-	libbus1.la
+	libbus1.a
 
 # ------------------------------------------------------------------------------
 # test-perf
@@ -125,7 +141,7 @@ test_perf_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_perf_LDADD = \
-	libbus1.la
+	libbus1.a
 
 # ------------------------------------------------------------------------------
 # test-rbtree
@@ -140,7 +156,7 @@ test_rbtree_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_rbtree_LDADD = \
-	libbus1.la
+	libbus1.a
 
 # ------------------------------------------------------------------------------
 # test-shared
@@ -155,7 +171,7 @@ test_shared_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_shared_LDADD = \
-	libbus1.la
+	libbus1.a
 
 # ------------------------------------------------------------------------------
 # test suite
