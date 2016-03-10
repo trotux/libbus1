@@ -28,6 +28,5 @@
 
 /test-macro
 /test-perf
-/test-rbtree
 /test-shared
 /src/libbus1.pc

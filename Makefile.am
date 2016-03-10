@@ -52,14 +52,12 @@ noinst_LIBRARIES += \
 pkginclude_HEADERS += \
 	src/org.bus1/b1.h \
 	src/org.bus1/c-macro.h \
-	src/org.bus1/c-rbtree.h \
 	src/org.bus1/c-shared.h \
 	src/org.bus1/c-sys.h
 
 libbus1_a_SOURCES = \
 	src/libbus1.sym \
 	src/b1.c \
-	src/c-rbtree.c \
 	src/c-sys.c
 
 # ------------------------------------------------------------------------------
@@ -143,21 +141,6 @@ test_perf_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_perf_LDADD = \
-	libbus1.a
-
-# ------------------------------------------------------------------------------
-# test-rbtree
-
-default_tests += \
-	test-rbtree
-
-test_rbtree_SOURCES = \
-	src/test-rbtree.c
-
-test_rbtree_CFLAGS = \
-	$(AM_CFLAGS)
-
-test_rbtree_LDADD = \
 	libbus1.a
 
 # ------------------------------------------------------------------------------
