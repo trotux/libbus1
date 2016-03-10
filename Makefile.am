@@ -29,7 +29,6 @@ pkgconfiglib_DATA =
 noinst_LIBRARIES =
 lib_LIBRARIES =
 bin_PROGRAMS =
-noinst_PROGRAMS =
 check_PROGRAMS =
 TESTS =
 default_tests =
@@ -164,10 +163,9 @@ test_shared_LDADD = \
 AM_TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(abs_builddir)
 check_PROGRAMS += $(default_tests)
 TESTS += $(default_tests)
-noinst_PROGRAMS += $(default_tests) # build as part of 'make all'
 
 # ------------------------------------------------------------------------------
-# 'make install-tree'
+# check "make install" directory tree
 
 install-tree: all
 	rm -rf $(abs_srcdir)/install-tree
