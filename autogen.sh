@@ -11,12 +11,12 @@ cd $oldpwd
 
 # https://wiki.debian.org/Multiarch/Tuples
 if [[ "$HOSTTYPE" == "x86_64" ]]; then
-  ARCHITECTURE_TUPLE=x86_64-linux-gnu
+        ARCHITECTURE_TUPLE=x86_64-linux-gnu
 elif [[ "$HOSTTYPE" == "arm" ]]; then
-  ARCHITECTURE_TUPLE=arm-linux-gnueabihf
+        ARCHITECTURE_TUPLE=arm-linux-gnueabihf
 else
-  echo "Unknown HOSTTYPE"
-  exit 1
+        echo "Unknown HOSTTYPE"
+        exit 1
 fi
 
 if [[ "$1" == "b" ]]; then

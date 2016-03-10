@@ -25,7 +25,7 @@ CLEANFILES = $(BUILT_SOURCES)
 DISTCLEANFILES =
 EXTRA_DIST =
 BUILT_SOURCES =
-pkginclude_HEADERS=
+pkginclude_HEADERS =
 pkgconfiglib_DATA =
 noinst_LIBRARIES =
 lib_LIBRARIES =
@@ -45,14 +45,7 @@ AM_CFLAGS = $(OUR_CFLAGS)
 AM_LDFLAGS = $(OUR_LDFLAGS)
 
 # ------------------------------------------------------------------------------
-# libbus1.so
-
-%.pc: %.pc.in
-	$(AM_V_GEN)$(SED) \
-		-e 's,@includedir\@,$(includedir),g' \
-		-e 's,@libdir\@,$(libdir),g' \
-		-e 's,@VERSION\@,$(VERSION),g' \
-		$< > $@
+# libbus1.a
 
 noinst_LIBRARIES += \
 	libbus1.a
@@ -69,6 +62,9 @@ libbus1_a_SOURCES = \
 	src/b1.c \
 	src/c-rbtree.c \
 	src/c-sys.c
+
+# ------------------------------------------------------------------------------
+# libbus1.so.0
 
 libbus1.so.0: libbus1.a $(top_srcdir)/src/libbus1.sym
 	$(AM_V_CCLD)$(CCLD) $(AM_CFLAGS) $(AM_LDFLAGS) \
@@ -90,6 +86,13 @@ install-exec-hook:
 
 uninstall-hook:
 	rm -f $(DESTDIR)$(libdir)/libbus1.so.0
+
+%.pc: %.pc.in
+	$(AM_V_GEN)$(SED) \
+		-e 's,@includedir\@,$(includedir),g' \
+		-e 's,@libdir\@,$(libdir),g' \
+		-e 's,@VERSION\@,$(VERSION),g' \
+		$< > $@
 
 pkgconfiglib_DATA += \
 	src/libbus1.pc
