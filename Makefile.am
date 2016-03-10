@@ -178,6 +178,7 @@ test_shared_LDADD = \
 # ------------------------------------------------------------------------------
 # test suite
 
+AM_TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(abs_builddir)
 check_PROGRAMS += $(default_tests)
 TESTS += $(default_tests)
 noinst_PROGRAMS += $(default_tests) # build as part of 'make all'
