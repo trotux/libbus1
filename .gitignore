@@ -21,10 +21,11 @@
 /libtool
 /Makefile
 /Makefile.in
-
 /install-tree
+
 /libbus1.so.0
 /org.bus1.busctl
+
 /test-macro
 /test-perf
 /test-rbtree

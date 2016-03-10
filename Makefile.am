@@ -21,10 +21,9 @@ export GCC_COLORS
 pkgincludedir=$(includedir)/org.bus1
 pkgconfiglibdir=$(libdir)/pkgconfig
 
-CLEANFILES = $(BUILT_SOURCES)
-DISTCLEANFILES =
-EXTRA_DIST =
 BUILT_SOURCES =
+CLEANFILES = $(BUILT_SOURCES)
+EXTRA_DIST =
 pkginclude_HEADERS =
 pkgconfiglib_DATA =
 noinst_LIBRARIES =
