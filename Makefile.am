@@ -54,6 +54,7 @@ noinst_LIBRARIES += \
 
 pkginclude_HEADERS += \
 	src/org.bus1/b1.h \
+	src/org.bus1/b1-peer.h \
 	src/org.bus1/c-macro.h \
 	src/org.bus1/c-shared.h \
 	src/org.bus1/c-sys.h
