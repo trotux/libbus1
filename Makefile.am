@@ -64,6 +64,7 @@ libbus1_a_SOURCES = \
 	src/bus1-client.c \
 	src/bus1-client.h \
 	src/b1.c \
+	src/b1-peer.c \
 	src/c-sys.c
 
 libbus1_a_CFLAGS = \
