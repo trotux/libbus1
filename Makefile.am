@@ -43,6 +43,10 @@ AM_CFLAGS = $(OUR_CFLAGS)
 AM_LDFLAGS = $(OUR_LDFLAGS)
 
 # ------------------------------------------------------------------------------
+BUS1_CFLAGS = -I$(top_srcdir)/../bus1/include/uapi
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # libbus1.a
 
 noinst_LIBRARIES += \
@@ -56,8 +60,14 @@ pkginclude_HEADERS += \
 
 libbus1_a_SOURCES = \
 	src/libbus1.sym \
+	src/bus1-client.c \
+	src/bus1-client.h \
 	src/b1.c \
 	src/c-sys.c
+
+libbus1_a_CFLAGS = \
+	$(AM_CFLAGS) \
+	$(BUS1_CFLAGS)
 
 # ------------------------------------------------------------------------------
 # libbus1.so.0
