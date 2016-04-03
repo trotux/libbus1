@@ -17,7 +17,9 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <string.h>
 #include "org.bus1/b1-peer.h"
+#include "org.bus1/c-variant.h"
 #include "bus1-client.h"
 
 struct B1Handle {
@@ -31,6 +33,17 @@ struct B1Interface {
 };
 
 struct B1Message {
+        unsigned int n_ref;
+        unsigned int type;
+
+        B1Node *destination;
+        B1Handle *reply_handle;
+        uint32_t uid;
+        uint32_t gid;
+        uint32_t pid;
+        uint32_t tid;
+
+        CVariant *cv;
 };
 
 struct B1Node {
@@ -270,6 +283,40 @@ int b1_message_new_call(B1Message **messagep,
                         B1SlotFn fn,
                         void *userdata)
 {
+        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        const char *type;
+        int r;
+
+        message = malloc(sizeof(*message));
+        if (!message)
+                return -ENOMEM;
+
+        message->type = B1_MESSAGE_TYPE_CALL;
+        message->destination = NULL;
+        message->reply_handle = NULL;
+        message->uid = -1;
+        message->gid = -1;
+        message->pid = -1;
+        message->tid = -1;
+        message->cv = NULL;
+
+        /* XXX: decide on some header format */
+        type = "ussuv";
+        r = c_variant_new(&message->cv, type, strlen(type));
+        if (r < 0)
+                return r;
+
+        r = c_variant_write(message->cv, "ussu",
+                            message->type,
+                            interface,
+                            member,
+                            -1);
+        if (r < 0)
+                return r;
+
+        *messagep = message;
+        message = NULL;
+
         return 0;
 }
 
@@ -291,6 +338,35 @@ int b1_message_new_reply(B1Message **messagep,
                          B1SlotFn fn,
                          void *userdata)
 {
+        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        const char *type;
+        int r;
+
+        message = malloc(sizeof(*message));
+        if (!message)
+                return -ENOMEM;
+
+        message->type = B1_MESSAGE_TYPE_REPLY;
+        message->destination = NULL;
+        message->reply_handle = NULL;
+        message->uid = -1;
+        message->gid = -1;
+        message->pid = -1;
+        message->tid = -1;
+        message->cv = NULL;
+
+        type = "ussuv";
+        r = c_variant_new(&message->cv, type, strlen(type));
+        if (r < 0)
+                return r;
+
+        r = c_variant_write(message->cv, "ussu", message->type, "", "", -1);
+        if (r < 0)
+                return r;
+
+        *messagep = message;
+        message = NULL;
+
         return 0;
 }
 
@@ -305,6 +381,35 @@ int b1_message_new_reply(B1Message **messagep,
  */
 int b1_message_new_error(B1Message **messagep)
 {
+        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        const char *type;
+        int r;
+
+        message = malloc(sizeof(*message));
+        if (!message)
+                return -ENOMEM;
+
+        message->type = B1_MESSAGE_TYPE_ERROR;
+        message->destination = NULL;
+        message->reply_handle = NULL;
+        message->uid = -1;
+        message->gid = -1;
+        message->pid = -1;
+        message->tid = -1;
+        message->cv = NULL;
+
+        type = "ussuv";
+        r = c_variant_new(&message->cv, type, strlen(type));
+        if (r < 0)
+                return r;
+
+        r = c_variant_write(message->cv, "ussu", message->type, "", "", -1);
+        if (r < 0)
+                return r;
+
+        *messagep = message;
+        message = NULL;
+
         return 0;
 }
 
@@ -316,6 +421,13 @@ int b1_message_new_error(B1Message **messagep)
  */
 B1Message *b1_message_ref(B1Message *message)
 {
+        if (!message)
+                return NULL;
+
+        assert(message->n_ref > 0);
+
+        ++message->n_ref;
+
         return message;
 }
 
@@ -327,6 +439,16 @@ B1Message *b1_message_ref(B1Message *message)
  */
 B1Message *b1_message_unref(B1Message *message)
 {
+        if (!message)
+                return NULL;
+
+        if (--message->n_ref > 0)
+                return NULL;
+
+        c_variant_free(message->cv);
+
+        free(message);
+
         return NULL;
 }
 
@@ -340,7 +462,7 @@ B1Message *b1_message_unref(B1Message *message)
  */
 bool b1_message_is_sealed(B1Message *message)
 {
-        return true;
+        return c_variant_is_sealed(message ? message->cv : NULL);
 }
 
 /**
@@ -354,7 +476,10 @@ bool b1_message_is_sealed(B1Message *message)
  */
 unsigned int b1_message_get_type(B1Message *message)
 {
-        return (unsigned int)-1;
+        if (!message)
+                return _B1_MESSAGE_TYPE_INVALID;
+
+        return message->type;
 }
 
 /**
@@ -382,7 +507,10 @@ int b1_message_dispatch(B1Message *message)
  */
 B1Node *b1_message_get_destination_node(B1Message *message)
 {
-        return NULL;
+        if (!message)
+                return NULL;
+
+        return message->destination;
 }
 
 /**
@@ -396,7 +524,10 @@ B1Node *b1_message_get_destination_node(B1Message *message)
  */
 B1Handle *b1_message_get_reply_handle(B1Message *message)
 {
-        return NULL;
+        if (!message)
+                return NULL;
+
+        return message->reply_handle;
 }
 
 /**
@@ -407,7 +538,10 @@ B1Handle *b1_message_get_reply_handle(B1Message *message)
  */
 uid_t b1_message_get_uid(B1Message *message)
 {
-        return 0;
+        if (!message)
+                return -1;
+
+        return message->uid;
 }
 
 /**
@@ -418,7 +552,10 @@ uid_t b1_message_get_uid(B1Message *message)
  */
 gid_t b1_message_get_gid(B1Message *message)
 {
-        return 0;
+        if (!message)
+                return -1;
+
+        return message->gid;
 }
 
 /**
@@ -429,7 +566,10 @@ gid_t b1_message_get_gid(B1Message *message)
  */
 pid_t b1_message_get_pid(B1Message *message)
 {
-        return 0;
+        if (!message)
+                return -1;
+
+        return message->pid;
 }
 
 /**
@@ -440,7 +580,10 @@ pid_t b1_message_get_pid(B1Message *message)
  */
 pid_t b1_message_get_tid(B1Message *message)
 {
-        return 0;
+        if (!message)
+                return -1;
+
+        return message->tid;
 }
 
 /**
@@ -448,15 +591,15 @@ pid_t b1_message_get_tid(B1Message *message)
  */
 size_t b1_message_peek_count(B1Message *message)
 {
-        return 0;
+        return c_variant_peek_count(message ? message->cv : NULL);
 }
 
 /**
  * XXX: see CVariant
  */
-const char *b1_message_peek_type(B1Message *message)
+const char *b1_message_peek_type(B1Message *message, size_t *sizep)
 {
-        return NULL;
+        return c_variant_peek_type(message ? message->cv : NULL, sizep);
 }
 
 /**
@@ -464,7 +607,7 @@ const char *b1_message_peek_type(B1Message *message)
  */
 int b1_message_enter(B1Message *message, const char *containers)
 {
-        return 0;
+        return c_variant_enter(message ? message->cv : NULL, containers);
 }
 
 /**
@@ -472,7 +615,7 @@ int b1_message_enter(B1Message *message, const char *containers)
  */
 int b1_message_exit(B1Message *message, const char *containers)
 {
-        return 0;
+        return c_variant_exit(message ? message->cv : NULL, containers);
 }
 
 /**
@@ -480,7 +623,7 @@ int b1_message_exit(B1Message *message, const char *containers)
  */
 int b1_message_readv(B1Message *message, const char *signature, va_list args)
 {
-        return 0;
+        return c_variant_readv(message ? message->cv : NULL, signature, args);
 }
 
 /**
@@ -488,6 +631,7 @@ int b1_message_readv(B1Message *message, const char *signature, va_list args)
  */
 void b1_message_rewind(B1Message *message)
 {
+        return c_variant_rewind(message ? message->cv : NULL);
 }
 
 /**
@@ -495,7 +639,7 @@ void b1_message_rewind(B1Message *message)
  */
 int b1_message_beginv(B1Message *message, const char *containers, va_list args)
 {
-        return 0;
+        return c_variant_beginv(message ? message->cv : NULL, containers, args);
 }
 
 /**
@@ -503,7 +647,7 @@ int b1_message_beginv(B1Message *message, const char *containers, va_list args)
  */
 int b1_message_end(B1Message *message, const char *containers)
 {
-        return 0;
+        return c_variant_end(message ? message->cv : NULL, containers);
 }
 
 /**
@@ -511,7 +655,7 @@ int b1_message_end(B1Message *message, const char *containers)
  */
 int b1_message_writev(B1Message *message, const char *signature, va_list args)
 {
-        return 0;
+        return c_variant_writev(message ? message->cv : NULL, signature, args);
 }
 
 /**
@@ -519,7 +663,7 @@ int b1_message_writev(B1Message *message, const char *signature, va_list args)
  */
 int b1_message_seal(B1Message *message)
 {
-        return 0;
+        return c_variant_seal(message ? message->cv : NULL);
 }
 
 static int b1_handle_new(B1Handle **handlep, B1Peer *peer)

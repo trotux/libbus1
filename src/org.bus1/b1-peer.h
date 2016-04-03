@@ -69,6 +69,7 @@ enum {
         B1_MESSAGE_TYPE_REPLY,
         B1_MESSAGE_TYPE_ERROR,
         _B1_MESSAGE_TYPE_N,
+        _B1_MESSAGE_TYPE_INVALID = -1,
 };
 
 int b1_message_new_call(B1Message **messagep,
@@ -98,7 +99,7 @@ pid_t b1_message_get_pid(B1Message *message);
 pid_t b1_message_get_tid(B1Message *message);
 
 size_t b1_message_peek_count(B1Message *message);
-const char *b1_message_peek_type(B1Message *message);
+const char *b1_message_peek_type(B1Message *message, size_t *sizep);
 int b1_message_enter(B1Message *message, const char *containers);
 int b1_message_exit(B1Message *message, const char *containers);
 int b1_message_readv(B1Message *message, const char *signature, va_list args);
