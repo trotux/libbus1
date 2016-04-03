@@ -15,8 +15,10 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
+#include <assert.h>
 #include <errno.h>
 #include "org.bus1/b1-peer.h"
+#include "bus1-client.h"
 
 struct B1Handle {
 };
@@ -31,10 +33,16 @@ struct B1Node {
 };
 
 struct B1Peer {
+        unsigned n_ref;
+
+        struct bus1_client *client;
 };
 
 struct B1Slot {
 };
+
+#define BUS1_DEFAULT_POOL_SIZE (1024 * 1024 * 16)
+#define _cleanup_(_x) __attribute__((__cleanup__(_x)))
 
 /**
  * b1_peer_new() - creates a new disconnected peer
@@ -47,6 +55,32 @@ struct B1Slot {
  */
 int b1_peer_new(B1Peer **peerp, const char *path)
 {
+        _cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        int r;
+
+        assert(peerp);
+
+        peer = malloc(sizeof(*peer));
+        if (!peer)
+                return -ENOMEM;
+
+        peer->n_ref = 1;
+
+        r = bus1_client_new_from_path(&peer->client, path);
+        if (r < 0)
+                return r;
+
+        r = bus1_client_init(peer->client, BUS1_DEFAULT_POOL_SIZE);
+        if (r < 0)
+                return r;
+
+        r = bus1_client_mmap(peer->client);
+        if (r < 0)
+                return r;
+
+        *peerp = peer;
+        peer = NULL;
+
         return 0;
 }
 
@@ -62,6 +96,28 @@ int b1_peer_new(B1Peer **peerp, const char *path)
  */
 int b1_peer_new_from_fd(B1Peer **peerp, int fd)
 {
+        _cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        int r;
+
+        assert(peerp);
+
+        peer = malloc(sizeof(*peer));
+        if (!peer)
+                return -ENOMEM;
+
+        peer->n_ref = 1;
+
+        r = bus1_client_new_from_fd(&peer->client, fd);
+        if (r < 0)
+                return r;
+
+        r = bus1_client_mmap(peer->client);
+        if (r < 0)
+                return r;
+
+        *peerp = peer;
+        peer = NULL;
+
         return 0;
 }
 
@@ -73,6 +129,13 @@ int b1_peer_new_from_fd(B1Peer **peerp, int fd)
  */
 B1Peer *b1_peer_ref(B1Peer *peer)
 {
+        if (!peer)
+                return NULL;
+
+        assert(peer->n_ref > 0);
+
+        ++peer->n_ref;
+
         return peer;
 }
 
@@ -84,6 +147,15 @@ B1Peer *b1_peer_ref(B1Peer *peer)
  */
 B1Peer *b1_peer_unref(B1Peer *peer)
 {
+        if (!peer)
+                return NULL;
+
+        if (--peer->n_ref > 0)
+                return NULL;
+
+        bus1_client_free(peer->client);
+        free(peer);
+
         return NULL;
 }
 
@@ -95,7 +167,9 @@ B1Peer *b1_peer_unref(B1Peer *peer)
  */
 int b1_peer_get_fd(B1Peer *peer)
 {
-        return -1;
+        assert(peer);
+
+        return bus1_client_get_fd(peer->client);
 }
 
 /**
