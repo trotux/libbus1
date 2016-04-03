@@ -165,6 +165,11 @@ static inline void b1_node_freep(B1Node **node) {
                 b1_node_free(*node);
 }
 
+static inline void b1_interface_unrefp(B1Interface **interface) {
+        if (*interface)
+                b1_interface_unref(*interface);
+}
+
 static inline int b1_message_read(B1Message *message,
 				  const char *signature, ...) {
         va_list args;

@@ -19,8 +19,21 @@
 #include <errno.h>
 #include <string.h>
 #include "org.bus1/b1-peer.h"
+#include "org.bus1/c-rbtree.h"
 #include "org.bus1/c-variant.h"
+#include "org.bus1/c-macro.h"
 #include "bus1-client.h"
+
+typedef struct B1Member {
+        CRBNode rb;
+        char *name;
+        B1NodeFn fn;
+} B1Member;
+
+typedef struct B1Implementation {
+        CRBNode rb;
+        B1Interface *interface;
+} B1Implementation;
 
 struct B1Handle {
         unsigned n_ref;
@@ -30,6 +43,11 @@ struct B1Handle {
 };
 
 struct B1Interface {
+        unsigned n_ref;
+
+        char *name;
+
+        CRBTree members;
 };
 
 struct B1Message {
@@ -51,6 +69,8 @@ struct B1Node {
         B1Handle *handle;
         uint64_t id;
         void *userdata;
+
+        CRBTree implementations;
 };
 
 struct B1Peer {
@@ -743,11 +763,23 @@ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata)
  */
 B1Node *b1_node_free(B1Node *node)
 {
+        CRBNode *n;
+
         if (!node)
                 return NULL;
 
         b1_handle_unref(node->handle);
         b1_node_destroy(node);
+
+        while ((n = c_rbtree_first(&node->implementations))) {
+                B1Implementation *implementation =
+                                c_container_of(n, B1Implementation, rb);
+
+                c_rbtree_remove(&node->implementations, n);
+
+                b1_interface_unref(implementation->interface);
+                free(implementation);
+        }
 
         free(node);
 
@@ -813,6 +845,14 @@ void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn)
 {
 }
 
+static int implementations_compare(CRBTree *t, void *k, CRBNode *n) {
+        B1Implementation *implementation = c_container_of(n, B1Implementation,
+                                                          rb);
+        const char *name = k;
+
+        return strcmp(name, implementation->interface->name);
+}
+
 /**
  * b1_node_implement() - implement interface on node
  * @node:               the node
@@ -825,6 +865,25 @@ void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn)
  */
 int b1_node_implement(B1Node *node, B1Interface *interface)
 {
+        B1Implementation *implementation;
+        CRBNode **slot, *p;
+
+        assert(node);
+        assert(interface);
+
+        slot = c_rbtree_find_slot(&node->implementations,
+                                  implementations_compare, interface->name, &p);
+        if (!slot)
+                return -ENOTUNIQ;
+
+        implementation = malloc(sizeof(*implementation));
+        if (!implementation)
+                return -ENOMEM;
+
+        implementation->interface = b1_interface_ref(interface);
+
+        c_rbtree_add(&node->implementations, p, slot, &implementation->rb);
+
         return 0;
 }
 
@@ -961,6 +1020,21 @@ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn,
  */
 int b1_interface_new(B1Interface **interfacep, const char *name)
 {
+        _cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
+
+        assert(interfacep);
+        assert(name);
+
+        interface = malloc(sizeof(*interface));
+        if (!interface)
+                return -ENOMEM;
+
+        interface->name = strdup(name);
+        interface->members = (CRBTree){};
+
+        *interfacep = interface;
+        interface = NULL;
+
         return 0;
 }
 
@@ -972,6 +1046,13 @@ int b1_interface_new(B1Interface **interfacep, const char *name)
  */
 B1Interface *b1_interface_ref(B1Interface *interface)
 {
+        if (!interface)
+                return NULL;
+
+        assert(interface->n_ref > 0);
+
+        ++interface->n_ref;
+
         return interface;
 }
 
@@ -983,7 +1064,33 @@ B1Interface *b1_interface_ref(B1Interface *interface)
  */
 B1Interface *b1_interface_unref(B1Interface *interface)
 {
+        CRBNode *node;
+
+        if (!interface)
+                return NULL;
+
+        if (--interface->n_ref > 0)
+                return NULL;
+
+        while ((node = c_rbtree_first(&interface->members))) {
+                B1Member *member = c_container_of(node, B1Member, rb);
+
+                c_rbtree_remove(&interface->members, node);
+
+                free(member);
+        }
+
+        free(interface->name);
+        free(interface);
+
         return NULL;
+}
+
+static int members_compare(CRBTree *t, void *k, CRBNode *n) {
+        B1Member *member = c_container_of(n, B1Member, rb);
+        const char *name = k;
+
+        return strcmp(name, member->name);
 }
 
 /**
@@ -997,6 +1104,30 @@ B1Interface *b1_interface_unref(B1Interface *interface)
 int b1_interface_add_member(B1Interface *interface, const char *name,
                             B1NodeFn fn)
 {
+        B1Member *member;
+        CRBNode **slot, *p;
+
+        assert(interface);
+        assert(name);
+        assert(fn);
+
+        slot = c_rbtree_find_slot(&interface->members,
+                                  members_compare, name, &p);
+        if (!slot)
+                return -ENOTUNIQ;
+
+        member = malloc(sizeof(*member));
+        if (!member)
+                return -ENOMEM;
+
+        member->name = strdup(name);
+        if (!member->name) {
+                free(member);
+                return -ENOMEM;
+        }
+
+        c_rbtree_add(&interface->members, p, slot, &member->rb);
+
         return 0;
 }
 
