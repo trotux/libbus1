@@ -21,6 +21,10 @@
 #include "bus1-client.h"
 
 struct B1Handle {
+        unsigned n_ref;
+
+        B1Peer *holder;
+        uint64_t id;
 };
 
 struct B1Interface {
@@ -30,6 +34,10 @@ struct B1Message {
 };
 
 struct B1Node {
+        B1Peer *owner;
+        B1Handle *handle;
+        uint64_t id;
+        void *userdata;
 };
 
 struct B1Peer {
@@ -514,7 +522,27 @@ int b1_message_seal(B1Message *message)
         return 0;
 }
 
-/* nodes */
+static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
+{
+        B1Handle *handle;
+
+        assert(handlep);
+        assert(peer);
+
+        /* XXX: add handle map to the peer object */
+
+        handle = malloc(sizeof(*handle));
+        if (!handle)
+                return -ENOMEM;
+
+        handle->n_ref = 1;
+        handle->holder = peer;
+        handle->id = BUS1_HANDLE_INVALID;
+
+        *handlep = handle;
+
+        return 0;
+}
 
 /**
  * b1_node_new() - create a new node for a peer
@@ -530,6 +558,30 @@ int b1_message_seal(B1Message *message)
  */
 int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata)
 {
+        _cleanup_(b1_node_freep) B1Node *node = NULL;
+        int r;
+
+        assert(nodep);
+        assert(peer);
+
+        /* XXX: add node map to the peer object */
+
+        node = malloc(sizeof(*node));
+        if (!node)
+                return -ENOMEM;
+
+        node->id = BUS1_HANDLE_INVALID;
+        node->owner = peer;
+        node->userdata = userdata;
+        node->handle = NULL;
+
+        r = b1_handle_new(&node->handle, peer);
+        if (r < 0)
+                return r;
+
+        *nodep = node;
+        node = NULL;
+
         return 0;
 }
 
@@ -547,6 +599,14 @@ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata)
  */
 B1Node *b1_node_free(B1Node *node)
 {
+        if (!node)
+                return NULL;
+
+        b1_handle_unref(node->handle);
+        b1_node_destroy(node);
+
+        free(node);
+
         return NULL;
 }
 
@@ -558,7 +618,10 @@ B1Node *b1_node_free(B1Node *node)
  */
 B1Peer *b1_node_get_peer(B1Node *node)
 {
-        return NULL;
+        if (!node)
+                return NULL;
+
+        return node->owner;
 }
 
 /**
@@ -572,7 +635,10 @@ B1Peer *b1_node_get_peer(B1Node *node)
  */
 B1Handle *b1_node_get_handle(B1Node *node)
 {
-        return NULL;
+        if (!node)
+                return NULL;
+
+        return node->handle;
 }
 
 /**
@@ -585,7 +651,10 @@ B1Handle *b1_node_get_handle(B1Node *node)
  */
 void *b1_node_get_userdata(B1Node *node)
 {
-        return NULL;
+        if (!node)
+                return NULL;
+
+        return node->userdata;
 }
 
 /**
@@ -626,6 +695,10 @@ int b1_node_implement(B1Node *node, B1Interface *interface)
  */
 void b1_node_release(B1Node *node)
 {
+        if (!node)
+                return;
+
+        node->handle = b1_handle_unref(node->handle);
 }
 
 /**
@@ -638,7 +711,13 @@ void b1_node_release(B1Node *node)
  */
 void b1_node_destroy(B1Node *node)
 {
+        if (!node)
+                return;
 
+        if (node->id == BUS1_HANDLE_INVALID)
+                return;
+
+        (void)bus1_client_node_destroy(node->owner->client, node->id);
 }
 
 /**
@@ -649,7 +728,25 @@ void b1_node_destroy(B1Node *node)
  */
 B1Handle *b1_handle_ref(B1Handle *handle)
 {
-        return NULL;
+        if (!handle)
+                return NULL;
+
+        assert(handle->n_ref > 0);
+
+        ++handle->n_ref;
+
+        return handle;
+}
+
+static void b1_handle_release(B1Handle *handle)
+{
+        if (!handle)
+                return;
+
+        if (handle->id == BUS1_HANDLE_INVALID)
+                return;
+
+        (void)bus1_client_handle_release(handle->holder->client, handle->id);
 }
 
 /**
@@ -660,6 +757,15 @@ B1Handle *b1_handle_ref(B1Handle *handle)
  */
 B1Handle *b1_handle_unref(B1Handle *handle)
 {
+        if (!handle)
+                return NULL;
+
+        if (--handle->n_ref > 0)
+                return NULL;
+
+        b1_handle_release(handle);
+        free(handle);
+
         return NULL;
 }
 
@@ -673,11 +779,14 @@ B1Handle *b1_handle_unref(B1Handle *handle)
  */
 B1Peer *b1_handle_get_peer(B1Handle *handle)
 {
-        return NULL;
+        if (!handle)
+                return NULL;
+
+        return handle->holder;
 }
 
 /**
- * b1_hanlde_subscribe() - subscribe to handle events
+ * b1_handle_subscribe() - subscribe to handle events
  * @handle:             the handle
  * @slotp:              pointer to handler object
  * @fn:                 handler function

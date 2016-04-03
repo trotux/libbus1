@@ -159,6 +159,11 @@ static inline void b1_message_unrefp(B1Message **message) {
                 b1_message_unref(*message);
 }
 
+static inline void b1_node_freep(B1Node **node) {
+        if (*node)
+                b1_node_free(*node);
+}
+
 static inline int b1_message_read(B1Message *message,
 				  const char *signature, ...) {
         va_list args;
