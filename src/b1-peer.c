@@ -257,10 +257,98 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
         return 0;
 }
 
+static int b1_message_new_from_slice(B1Message **messagep,
+                                     void *slice, size_t n_bytes)
+{
+        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        const struct iovec vec = {
+                .iov_base = slice,
+                .iov_len = n_bytes,
+        };
+        int r;
+
+        assert(messagep);
+
+        message = malloc(sizeof(*message));
+        if (!message)
+                return -ENOMEM;
+
+        r = c_variant_new_from_vecs(&message->cv,
+                                    "tvv", strlen("tvv"),
+                                    &vec, 1);
+        if (r < 0)
+                return r;
+
+        *messagep = message;
+        message = NULL;
+
+        return 0;
+}
+
+static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
+{
+        B1Handle *handle;
+
+        assert(handlep);
+        assert(peer);
+
+        /* XXX: add handle map to the peer object */
+
+        handle = malloc(sizeof(*handle));
+        if (!handle)
+                return -ENOMEM;
+
+        handle->n_ref = 1;
+        handle->holder = peer;
+        handle->id = BUS1_HANDLE_INVALID;
+
+        *handlep = handle;
+
+        return 0;
+}
+
 static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
                              B1Message **messagep)
 {
-        /* XXX */
+        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        void *slice;
+        uint64_t *handle_ids;
+        int r;
+
+        assert(peer);
+        assert(data);
+        assert(messagep);
+
+        slice = bus1_client_slice_from_offset(peer->client, data->offset);
+
+        r = b1_message_new_from_slice(&message, slice, data->n_bytes);
+        if (r < 0)
+                return r;
+
+        /* XXX: get destination node */
+        message->uid = data->uid;
+        message->gid = data->gid;
+        message->pid = data->pid;
+        message->tid = data->tid;
+        handle_ids =
+                (uint64_t*)((uint8_t*)slice + c_align_to(data->n_bytes, 8));
+        message->n_handles = data->n_handles;
+        message->fds = (int*)(handle_ids + message->n_handles);
+        message->n_fds = data->n_fds;
+        message->handles = calloc(data->n_handles, sizeof(*message->handles));
+
+        for (unsigned int i = 0; i < data->n_handles; i++) {
+                r = b1_handle_new(&message->handles[i], peer);
+                if (r < 0)
+                        return r;
+
+                message->handles[i]->id = handle_ids[i];
+        }
+
+        r = c_variant_read(message->cv, "t", message->type);
+        if (r < 0)
+                return r;
+
         return 0;
 }
 
@@ -516,6 +604,12 @@ B1Message *b1_message_unref(B1Message *message)
 
         if (--message->n_ref > 0)
                 return NULL;
+
+        for (unsigned int i = 0; i < message->n_handles; i++)
+                b1_handle_unref(message->handles[i]);
+
+        for (unsigned int i = 0; i < message->n_fds; i++)
+                close(message->fds[i]);
 
         c_variant_free(message->cv);
 
@@ -795,28 +889,6 @@ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp)
                 return -ERANGE;
 
         *fdp = message->fds[index];
-
-        return 0;
-}
-
-static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
-{
-        B1Handle *handle;
-
-        assert(handlep);
-        assert(peer);
-
-        /* XXX: add handle map to the peer object */
-
-        handle = malloc(sizeof(*handle));
-        if (!handle)
-                return -ENOMEM;
-
-        handle->n_ref = 1;
-        handle->holder = peer;
-        handle->id = BUS1_HANDLE_INVALID;
-
-        *handlep = handle;
 
         return 0;
 }
