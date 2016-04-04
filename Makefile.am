@@ -56,7 +56,6 @@ pkginclude_HEADERS += \
 	src/org.bus1/c-sys.h
 
 libbus1_a_SOURCES = \
-	src/b1.c \
 	src/b1-peer.c \
 	src/bus1-client.c \
 	src/bus1-client.h \

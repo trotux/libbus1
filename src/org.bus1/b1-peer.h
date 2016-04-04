@@ -136,8 +136,7 @@ B1Handle *b1_handle_unref(B1Handle *handle);
 
 B1Peer *b1_handle_get_peer(B1Handle *handle);
 
-int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn,
-void *userdata);
+int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn, void *userdata);
 
 /* interfaces */
 
@@ -145,8 +144,7 @@ int b1_interface_new(B1Interface **interfacep, const char *name);
 B1Interface *b1_interface_ref(B1Interface *interface);
 B1Interface *b1_interface_unref(B1Interface *interface);
 
-int b1_interface_add_member(B1Interface *interface, const char *name,
-B1NodeFn fn);
+int b1_interface_add_member(B1Interface *interface, const char *name, B1NodeFn fn);
 
 /* convenience */
 

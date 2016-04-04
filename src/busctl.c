@@ -19,6 +19,5 @@
 #include "org.bus1/b1.h"
 
 int main(int argc, char **argv) {
-        b1_void();
-        return 0;
+        return EXIT_SUCCESS;
 }
