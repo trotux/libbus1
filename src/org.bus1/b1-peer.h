@@ -52,7 +52,7 @@ B1Peer *b1_peer_unref(B1Peer *peer);
 int b1_peer_get_fd(B1Peer *peer);
 
 int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
-		 B1Message *message);
+                 B1Message *message);
 int b1_peer_recv(B1Peer *peer, B1Message **messagep);
 int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep);
 
@@ -175,7 +175,7 @@ static inline void b1_interface_unrefp(B1Interface **interface) {
 }
 
 static inline int b1_message_read(B1Message *message,
-				  const char *signature, ...) {
+                                  const char *signature, ...) {
         va_list args;
         int r;
 
@@ -186,7 +186,7 @@ static inline int b1_message_read(B1Message *message,
 }
 
 static inline int b1_message_begin(B1Message *message,
-				   const char *containers, ...) {
+                                   const char *containers, ...) {
         va_list args;
         int r;
 
@@ -197,7 +197,7 @@ static inline int b1_message_begin(B1Message *message,
 }
 
 static inline int b1_message_write(B1Message *message,
-				   const char *signature, ...) {
+                                   const char *signature, ...) {
         va_list args;
         int r;
 
