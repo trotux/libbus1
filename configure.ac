@@ -103,6 +103,18 @@ AC_SUBST(OUR_CPPFLAGS)
 AC_SUBST(OUR_LDFLAGS)
 
 # ------------------------------------------------------------------------------
+# temporary hack until we do proper shared library linking
+CVARIANT_CFLAGS="-I../cvariant/src"
+CVARIANT_LIBS="-L../cvariant -lcvariant"
+AC_SUBST(CVARIANT_CFLAGS)
+AC_SUBST(CVARIANT_LIBS)
+
+CRBTREE_CFLAGS="-I../crbtree/src"
+CRBTREE_LIBS="-L../crbtree -lcrbtree"
+AC_SUBST(CRBTREE_CFLAGS)
+AC_SUBST(CRBTREE_LIBS)
+
+# ------------------------------------------------------------------------------
 # report
 
 AC_CONFIG_FILES([Makefile])

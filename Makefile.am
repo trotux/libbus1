@@ -43,13 +43,6 @@ AM_CFLAGS = $(OUR_CFLAGS)
 AM_LDFLAGS = $(OUR_LDFLAGS)
 
 # ------------------------------------------------------------------------------
-BUS1_CFLAGS = \
-	-I$(top_srcdir)/../bus1/include/uapi \
-	-I$(top_srcdir)/../cvariant/src \
-	-I$(top_srcdir)/../crbtree/src
-# ------------------------------------------------------------------------------
-
-# ------------------------------------------------------------------------------
 # libbus1.a
 
 noinst_LIBRARIES += \
@@ -63,16 +56,18 @@ pkginclude_HEADERS += \
 	src/org.bus1/c-sys.h
 
 libbus1_a_SOURCES = \
-	src/libbus1.sym \
-	src/bus1-client.c \
-	src/bus1-client.h \
 	src/b1.c \
 	src/b1-peer.c \
-	src/c-sys.c
+	src/bus1-client.c \
+	src/bus1-client.h \
+	src/c-sys.c \
+	src/libbus1.sym \
+	src/linux/bus1.h
 
 libbus1_a_CFLAGS = \
 	$(AM_CFLAGS) \
-	$(BUS1_CFLAGS)
+	$(CVARIANT_CFLAGS) \
+	$(CRBTREE_CFLAGS)
 
 # ------------------------------------------------------------------------------
 # libbus1.so.0
@@ -125,7 +120,9 @@ org_bus1_busctl_CFLAGS = \
 	$(AM_CFLAGS)
 
 org_bus1_busctl_LDADD = \
-	libbus1.so.0
+	libbus1.so.0 \
+	$(CVARIANT_LIBS) \
+	$(CRBTREEE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-macro
@@ -140,7 +137,9 @@ test_macro_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_macro_LDADD = \
-	libbus1.a
+	libbus1.a \
+	$(CVARIANT_LIBS) \
+	$(CRBTREEE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-perf
@@ -155,7 +154,9 @@ test_perf_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_perf_LDADD = \
-	libbus1.a
+	libbus1.a \
+	$(CVARIANT_LIBS) \
+	$(CRBTREEE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-shared
@@ -170,7 +171,9 @@ test_shared_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_shared_LDADD = \
-	libbus1.a
+	libbus1.a \
+	$(CVARIANT_LIBS) \
+	$(CRBTREEE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test suite
