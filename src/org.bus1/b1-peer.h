@@ -110,6 +110,10 @@ int b1_message_end(B1Message *message, const char *containers);
 int b1_message_writev(B1Message *message, const char *signature, va_list args);
 int b1_message_seal(B1Message *message);
 
+int b1_message_get_handle(B1Message *message, unsigned int index,
+                          B1Handle **handlep);
+int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp);
+
 /* nodes */
 
 int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata);

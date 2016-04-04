@@ -61,6 +61,11 @@ struct B1Message {
         uint32_t pid;
         uint32_t tid;
 
+        B1Handle **handles;
+        size_t n_handles;
+        int *fds;
+        size_t n_fds;
+
         CVariant *cv;
 };
 
@@ -377,6 +382,10 @@ int b1_message_new_call(B1Message **messagep,
         message->gid = -1;
         message->pid = -1;
         message->tid = -1;
+        message->handles = NULL;
+        message->n_handles = 0;
+        message->fds = NULL;
+        message->n_fds = 0;
         message->cv = NULL;
 
         /* XXX: decide on some header format */
@@ -432,6 +441,10 @@ int b1_message_new_reply(B1Message **messagep,
         message->gid = -1;
         message->pid = -1;
         message->tid = -1;
+        message->handles = NULL;
+        message->n_handles = 0;
+        message->fds = NULL;
+        message->n_fds = 0;
         message->cv = NULL;
 
         type = "ussuv";
@@ -475,6 +488,10 @@ int b1_message_new_error(B1Message **messagep)
         message->gid = -1;
         message->pid = -1;
         message->tid = -1;
+        message->handles = NULL;
+        message->n_handles = 0;
+        message->fds = NULL;
+        message->n_fds = 0;
         message->cv = NULL;
 
         type = "ussuv";
@@ -743,6 +760,67 @@ int b1_message_writev(B1Message *message, const char *signature, va_list args)
 int b1_message_seal(B1Message *message)
 {
         return c_variant_seal(message ? message->cv : NULL);
+}
+
+/**
+ * b1_message_get_handle() - get hande passed with a message
+ * @message:            the message
+ * @index               the index in the passed handle array
+ * @handlep:            pointer to the returned handle object
+ *
+ * Messages may pass handles along. The payload typically describes the passed
+ * handles and reference them by their index. The index is local to each message
+ * and has no meaning outside of a given message.
+ *
+ * The caller needs to take a reference to the handle if they want to keep it
+ * after the message has been freed.
+ *
+ * Returns: 0 on success, or a negitave error code on failure.
+ */
+int b1_message_get_handle(B1Message *message, unsigned int index,
+                          B1Handle **handlep)
+{
+        assert(handlep);
+
+        if (!message)
+                return -EINVAL;
+
+        if (index >= message->n_handles)
+                return -ERANGE;
+
+        *handlep = message->handles[index];
+
+        return 0;
+}
+
+/**
+ * b1_message_get_fd() - get fd passed with a message
+ * @message:            the message
+ * @index               the index in the passed fd array
+ * @fdp:                pointer to the returned fd number
+ *
+ * Messages may pass file descriptors along. The payload typically describes the
+ * passed fds and reference them by their index. The index is local to each
+ * message and has no meaning outside of a given message.
+ *
+ * The caller needs to duplicate a file descriptor if they want to keep it after
+ * the message has been freed.
+ *
+ * Returns: 0 on success, or a negitave error code on failure.
+ */
+int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp)
+{
+        assert(fdp);
+
+        if (!message)
+                return -EINVAL;
+
+        if (index >= message->n_fds)
+                return -ERANGE;
+
+        *fdp = message->fds[index];
+
+        return 0;
 }
 
 static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
