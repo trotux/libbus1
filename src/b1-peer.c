@@ -232,7 +232,7 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
 {
         /* XXX: limit number of handles, and support handle and fd passing */
         uint64_t destinations[n_handles];
-        struct iovec *vecs;
+        const struct iovec *vecs;
         size_t n_vecs;
         int r;
 
@@ -241,12 +241,10 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
         if (!message || !b1_message_is_sealed(message))
                 return -EINVAL;
 
-        r = c_variant_get_vecs(message->cv, &vecs, &n_vecs);
-        if (r < 0)
-                return r;
-
         for (unsigned int i = 0; i < n_handles; i++)
                 destinations[i] = handles[i]->id;
+
+        vecs = c_variant_get_vecs(message->cv, &n_vecs);
 
         r = bus1_client_send(peer->client,
                              destinations, n_handles,
