@@ -225,6 +225,47 @@ int b1_peer_get_fd(B1Peer *peer)
 int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
                  B1Message *message)
 {
+        /* XXX: limit number of handles, and support handle and fd passing */
+        uint64_t destinations[n_handles];
+        struct iovec *vecs;
+        size_t n_vecs;
+        int r;
+
+        assert(peer);
+
+        if (!message || !b1_message_is_sealed(message))
+                return -EINVAL;
+
+        r = c_variant_get_vecs(message->cv, &vecs, &n_vecs);
+        if (r < 0)
+                return r;
+
+        for (unsigned int i = 0; i < n_handles; i++)
+                destinations[i] = handles[i]->id;
+
+        r = bus1_client_send(peer->client,
+                             destinations, n_handles,
+                             vecs, n_vecs,
+                             NULL, 0,
+                             NULL, 0);
+        if (r < 0)
+                return r;
+
+        return 0;
+}
+
+static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
+                             B1Message **messagep)
+{
+        /* XXX */
+        return 0;
+}
+
+static int b1_peer_recv_node_destroy(B1Peer *peer,
+                                     struct bus1_msg_node_destroy *node_destroy,
+                                     B1Message **messagep)
+{
+        /* XXX */
         return 0;
 }
 
@@ -239,7 +280,25 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
  */
 int b1_peer_recv(B1Peer *peer, B1Message **messagep)
 {
-        return -EAGAIN;
+        struct bus1_cmd_recv recv = {};
+        int r;
+
+        assert(peer);
+
+        r = bus1_client_ioctl(peer->client, BUS1_CMD_SEND, &recv);
+        if (r < 0)
+                return r;
+
+        switch (recv.type) {
+                case BUS1_MSG_DATA:
+                        return b1_peer_recv_data(peer, &recv.data, messagep);
+                case BUS1_MSG_NODE_DESTROY:
+                        return b1_peer_recv_node_destroy(peer,
+                                                         &recv.node_destroy,
+                                                         messagep);
+        }
+
+        return -EIO;
 }
 
 /**
