@@ -345,6 +345,43 @@ void *b1_slot_get_userdata(B1Slot *slot)
         return NULL;
 }
 
+static int b1_message_new(B1Message **messagep, unsigned int type)
+{
+        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        int r;
+
+        message = malloc(sizeof(*message));
+        if (!message)
+                return -ENOMEM;
+
+        message->type = type;
+        message->destination = NULL;
+        message->reply_handle = NULL;
+        message->uid = -1;
+        message->gid = -1;
+        message->pid = -1;
+        message->tid = -1;
+        message->handles = NULL;
+        message->n_handles = 0;
+        message->fds = NULL;
+        message->n_fds = 0;
+        message->cv = NULL;
+
+        /* <type, header variant, payload variant> */
+        r = c_variant_new(&message->cv, "tvv", strlen("tvv"));
+        if (r < 0)
+                return r;
+
+        r = c_variant_write(message->cv, "t", type);
+        if (r < 0)
+                return r;
+
+        *messagep = message;
+        message = NULL;
+
+        return 0;
+}
+
 /**
  * b1_message_new_call() - create new method call
  * @messagep:           pointer to the new message object
@@ -368,37 +405,14 @@ int b1_message_new_call(B1Message **messagep,
                         void *userdata)
 {
         _cleanup_(b1_message_unrefp) B1Message *message = NULL;
-        const char *type;
         int r;
 
-        message = malloc(sizeof(*message));
-        if (!message)
-                return -ENOMEM;
-
-        message->type = B1_MESSAGE_TYPE_CALL;
-        message->destination = NULL;
-        message->reply_handle = NULL;
-        message->uid = -1;
-        message->gid = -1;
-        message->pid = -1;
-        message->tid = -1;
-        message->handles = NULL;
-        message->n_handles = 0;
-        message->fds = NULL;
-        message->n_fds = 0;
-        message->cv = NULL;
-
-        /* XXX: decide on some header format */
-        type = "ussuv";
-        r = c_variant_new(&message->cv, type, strlen(type));
+        r = b1_message_new(&message, B1_MESSAGE_TYPE_CALL);
         if (r < 0)
                 return r;
 
-        r = c_variant_write(message->cv, "ussu",
-                            message->type,
-                            interface,
-                            member,
-                            -1);
+        /* <interface, member, reply handle id> */
+        r = c_variant_write(message->cv, "v", "sst", interface, member, -1);
         if (r < 0)
                 return r;
 
@@ -427,32 +441,14 @@ int b1_message_new_reply(B1Message **messagep,
                          void *userdata)
 {
         _cleanup_(b1_message_unrefp) B1Message *message = NULL;
-        const char *type;
         int r;
 
-        message = malloc(sizeof(*message));
-        if (!message)
-                return -ENOMEM;
-
-        message->type = B1_MESSAGE_TYPE_REPLY;
-        message->destination = NULL;
-        message->reply_handle = NULL;
-        message->uid = -1;
-        message->gid = -1;
-        message->pid = -1;
-        message->tid = -1;
-        message->handles = NULL;
-        message->n_handles = 0;
-        message->fds = NULL;
-        message->n_fds = 0;
-        message->cv = NULL;
-
-        type = "ussuv";
-        r = c_variant_new(&message->cv, type, strlen(type));
+        r = b1_message_new(&message, B1_MESSAGE_TYPE_REPLY);
         if (r < 0)
                 return r;
 
-        r = c_variant_write(message->cv, "ussu", message->type, "", "", -1);
+        /* <reply handle id> */
+        r = c_variant_write(message->cv, "v", "t", -1);
         if (r < 0)
                 return r;
 
@@ -474,32 +470,14 @@ int b1_message_new_reply(B1Message **messagep,
 int b1_message_new_error(B1Message **messagep)
 {
         _cleanup_(b1_message_unrefp) B1Message *message = NULL;
-        const char *type;
         int r;
 
-        message = malloc(sizeof(*message));
-        if (!message)
-                return -ENOMEM;
-
-        message->type = B1_MESSAGE_TYPE_ERROR;
-        message->destination = NULL;
-        message->reply_handle = NULL;
-        message->uid = -1;
-        message->gid = -1;
-        message->pid = -1;
-        message->tid = -1;
-        message->handles = NULL;
-        message->n_handles = 0;
-        message->fds = NULL;
-        message->n_fds = 0;
-        message->cv = NULL;
-
-        type = "ussuv";
-        r = c_variant_new(&message->cv, type, strlen(type));
+        r = b1_message_new(&message, B1_MESSAGE_TYPE_ERROR);
         if (r < 0)
                 return r;
 
-        r = c_variant_write(message->cv, "ussu", message->type, "", "", -1);
+        /* <> */
+        r = c_variant_write(message->cv, "v", "");
         if (r < 0)
                 return r;
 
