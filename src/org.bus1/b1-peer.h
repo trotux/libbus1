@@ -91,7 +91,6 @@ unsigned int b1_message_get_type(B1Message *message);
 
 int b1_message_dispatch(B1Message *message);
 
-B1Node *b1_message_get_destination_node(B1Message *message);
 B1Handle *b1_message_get_reply_handle(B1Message *message);
 uid_t b1_message_get_uid(B1Message *message);
 gid_t b1_message_get_gid(B1Message *message);
@@ -110,6 +109,7 @@ int b1_message_end(B1Message *message, const char *containers);
 int b1_message_writev(B1Message *message, const char *signature, va_list args);
 int b1_message_seal(B1Message *message);
 
+int b1_message_append_handle(B1Message *message, B1Handle *handle);
 int b1_message_get_handle(B1Message *message, unsigned int index,
                           B1Handle **handlep);
 int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp);
@@ -148,7 +148,7 @@ int b1_interface_add_member(B1Interface *interface, const char *name, B1NodeFn f
 
 /* convenience */
 
-int b1_peer_reply(B1Peer *peer, B1Message *origin, B1Message *reply);
+int b1_peer_reply(B1Message *origin, B1Message *reply);
 
 /* inline helpers */
 
@@ -165,6 +165,16 @@ static inline void b1_message_unrefp(B1Message **message) {
 static inline void b1_node_freep(B1Node **node) {
         if (*node)
                 b1_node_free(*node);
+}
+
+static inline void b1_slot_freep(B1Slot **slot) {
+        if (*slot)
+                b1_slot_free(*slot);
+}
+
+static inline void b1_handle_unrefp(B1Handle **handle) {
+        if (*handle)
+                b1_handle_unref(*handle);
 }
 
 static inline void b1_interface_unrefp(B1Interface **interface) {

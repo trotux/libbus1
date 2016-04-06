@@ -39,7 +39,10 @@ struct B1Handle {
         unsigned n_ref;
 
         B1Peer *holder;
+        B1Node *node;
         uint64_t id;
+
+        CRBNode rb;
 };
 
 struct B1Interface {
@@ -54,7 +57,8 @@ struct B1Message {
         unsigned int n_ref;
         unsigned int type;
 
-        B1Node *destination;
+        uint64_t destination;
+        B1Peer *peer;
         union {
                 struct {
                         uid_t uid;
@@ -62,7 +66,10 @@ struct B1Message {
                         pid_t pid;
                         pid_t tid;
 
+                        void *slice;
+
                         B1Handle **handles;
+                        uint64_t *handle_ids;
                         size_t n_handles;
                         int *fds;
                         size_t n_fds;
@@ -92,16 +99,25 @@ struct B1Node {
         uint64_t id;
         void *userdata;
 
+        CRBNode rb;
+
         CRBTree implementations;
+        B1Slot *slot;
+        B1NodeFn destroy_fn;
 };
 
 struct B1Peer {
         unsigned n_ref;
 
         struct bus1_client *client;
+
+        CRBTree nodes;
+        CRBTree handles;
 };
 
 struct B1Slot {
+        B1SlotFn fn;
+        B1Node *reply_node;
 };
 
 #define BUS1_DEFAULT_POOL_SIZE (1024 * 1024 * 16)
@@ -128,6 +144,8 @@ int b1_peer_new(B1Peer **peerp, const char *path)
                 return -ENOMEM;
 
         peer->n_ref = 1;
+        peer->nodes = (CRBTree){};
+        peer->handles = (CRBTree){};
 
         r = bus1_client_new_from_path(&peer->client, path);
         if (r < 0)
@@ -169,6 +187,8 @@ int b1_peer_new_from_fd(B1Peer **peerp, int fd)
                 return -ENOMEM;
 
         peer->n_ref = 1;
+        peer->nodes = (CRBTree){};
+        peer->handles = (CRBTree){};
 
         r = bus1_client_new_from_fd(&peer->client, fd);
         if (r < 0)
@@ -235,6 +255,80 @@ int b1_peer_get_fd(B1Peer *peer)
         return bus1_client_get_fd(peer->client);
 }
 
+static int nodes_compare(CRBTree *t, void *k, CRBNode *n)
+{
+        B1Node *node = c_container_of(n, B1Node, rb);
+        uint64_t id = *(uint64_t*)k;
+
+        if (id < node->id)
+                return -1;
+        else if (id > node->id)
+                return 1;
+        else
+                return 0;
+}
+
+static int handles_compare(CRBTree *t, void *k, CRBNode *n)
+{
+        B1Handle *handle = c_container_of(n, B1Handle, rb);
+        uint64_t id = *(uint64_t*)k;
+
+        if (id < handle->id)
+                return -1;
+        else if (id > handle->id)
+                return 1;
+        else
+                return 0;
+}
+
+static int b1_node_link(B1Node *node, B1Peer *peer, uint64_t handle_id)
+{
+        CRBNode **slot, *p;
+
+        assert(node);
+        assert(peer);
+        assert(handle_id != BUS1_HANDLE_INVALID);
+
+        if (!node->owner)
+                node->owner = b1_peer_ref(peer);
+        else
+                assert(node->owner == peer);
+
+        slot = c_rbtree_find_slot(&peer->nodes,
+                                  nodes_compare, &handle_id, &p);
+        if (!slot)
+                return -ENOTUNIQ;
+
+        c_rbtree_add(&peer->nodes, p, slot, &node->rb);
+
+        return 0;
+
+}
+
+static int b1_handle_link(B1Handle *handle, B1Peer *peer, uint64_t handle_id)
+{
+        CRBNode **slot, *p;
+
+        assert(handle);
+        assert(peer);
+        assert(handle_id != BUS1_HANDLE_INVALID);
+
+        if (!handle->holder)
+                handle->holder = b1_peer_ref(peer);
+        else
+                assert(handle->holder == peer);
+
+        slot = c_rbtree_find_slot(&peer->handles,
+                                  handles_compare, &handle_id, &p);
+        if (!slot)
+                return -ENOTUNIQ;
+
+        c_rbtree_add(&peer->handles, p, slot, &handle->rb);
+
+        return 0;
+
+}
+
 /**
  * b1_peer_send() - send a message to the given handles
  * @peer                the sending peer
@@ -247,8 +341,9 @@ int b1_peer_get_fd(B1Peer *peer)
 int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
                  B1Message *message)
 {
-        /* XXX: limit number of handles, and support handle and fd passing */
+        /* limit number of destinations? */
         uint64_t destinations[n_handles];
+        uint64_t *handle_ids;
         const struct iovec *vecs;
         size_t n_vecs;
         int r;
@@ -257,6 +352,13 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
 
         if (!message || !b1_message_is_sealed(message))
                 return -EINVAL;
+
+        handle_ids = malloc(sizeof(uint64_t) * message->data.n_handles);
+        if (!handle_ids)
+                return -ENOMEM;
+
+        for (unsigned int i = 0; i < message->data.n_handles; i++)
+                handle_ids[i] = message->data.handles[i]->id;
 
         for (unsigned int i = 0; i < n_handles; i++)
                 destinations[i] = handles[i]->id;
@@ -268,13 +370,27 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
                              vecs, n_vecs,
                              NULL, 0,
                              NULL, 0);
-        if (r < 0)
+        if (r < 0) {
+                free(handle_ids);
                 return r;
+        }
+
+        for (unsigned int i = 0; i < message->data.n_handles; i++) {
+                B1Handle *handle = message->data.handles[i];
+
+                if (handle->id != BUS1_HANDLE_INVALID)
+                        continue;
+
+                assert(b1_handle_link(handle, peer, handle_ids[i]) >= 0);
+
+                if (handle->node)
+                        assert(b1_node_link(handle->node, peer, handle_ids[i]) >= 0);
+        }
 
         return 0;
 }
 
-static int b1_message_new_from_slice(B1Message **messagep,
+static int b1_message_new_from_slice(B1Message **messagep, B1Peer *peer,
                                      void *slice, size_t n_bytes)
 {
         _cleanup_(b1_message_unrefp) B1Message *message = NULL;
@@ -290,6 +406,10 @@ static int b1_message_new_from_slice(B1Message **messagep,
         if (!message)
                 return -ENOMEM;
 
+        message->n_ref = 1;
+        message->peer = b1_peer_ref(peer);
+        message->data.slice = slice;
+
         r = c_variant_new_from_vecs(&message->data.cv,
                                     "tvv", strlen("tvv"),
                                     &vec, 1);
@@ -302,22 +422,62 @@ static int b1_message_new_from_slice(B1Message **messagep,
         return 0;
 }
 
-static int b1_handle_new(B1Handle **handlep, B1Peer *peer, uint64_t handle_id)
+static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
 {
         B1Handle *handle;
 
         assert(handlep);
         assert(peer);
 
-        /* XXX: add handle map to the peer object */
-
         handle = malloc(sizeof(*handle));
         if (!handle)
                 return -ENOMEM;
 
         handle->n_ref = 1;
-        handle->holder = peer;
-        handle->id = handle_id;
+        handle->holder = b1_peer_ref(peer);
+        handle->node = NULL;
+        handle->id = BUS1_HANDLE_INVALID;
+
+        *handlep = handle;
+
+        return 0;
+}
+
+static void b1_handle_release(B1Handle *handle)
+{
+        if (!handle)
+                return;
+
+        if (handle->id == BUS1_HANDLE_INVALID)
+                return;
+
+        (void)bus1_client_handle_release(handle->holder->client, handle->id);
+}
+
+static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_id)
+{
+        B1Handle *handle;
+        CRBNode **slot, *p;
+        int r;
+
+        assert(handlep);
+        assert(peer);
+        assert(handle_id != BUS1_HANDLE_INVALID);
+
+        slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
+        if (!slot) {
+                r = b1_handle_new(&handle, peer);
+                if (r < 0)
+                        return r;
+
+                handle->id = handle_id;
+
+                c_rbtree_add(&peer->handles, p, slot, &handle->rb);
+        } else {
+                handle = c_container_of(p, B1Handle, rb);
+                b1_handle_ref(handle);
+                b1_handle_release(handle);
+        }
 
         *handlep = handle;
 
@@ -329,7 +489,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
 {
         _cleanup_(b1_message_unrefp) B1Message *message = NULL;
         void *slice;
-        uint64_t *handle_ids;
+        bool expects_reply;
         int r;
 
         assert(peer);
@@ -338,24 +498,28 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
 
         slice = bus1_client_slice_from_offset(peer->client, data->offset);
 
-        r = b1_message_new_from_slice(&message, slice, data->n_bytes);
+        r = b1_message_new_from_slice(&message, peer, slice, data->n_bytes);
         if (r < 0)
                 return r;
 
-        /* XXX: get destination node */
+        message->destination = data->destination;
         message->data.uid = data->uid;
         message->data.gid = data->gid;
         message->data.pid = data->pid;
         message->data.tid = data->tid;
-        handle_ids =
+        message->data.handle_ids =
                 (uint64_t*)((uint8_t*)slice + c_align_to(data->n_bytes, 8));
-        message->data.n_handles = data->n_handles;
-        message->data.fds = (int*)(handle_ids + data->n_handles);
+        message->data.fds = (int*)(message->data.handle_ids + data->n_handles);
         message->data.n_fds = data->n_fds;
+
+        message->data.n_handles = 0;
         message->data.handles = calloc(data->n_handles, sizeof(*message->data.handles));
+        if (!message->data.handles)
+                return -ENOMEM;
+        message->data.n_handles = data->n_handles;
 
         for (unsigned int i = 0; i < data->n_handles; i++) {
-                r = b1_handle_new(&message->data.handles[i], peer, handle_ids[i]);
+                r = b1_handle_acquire(&message->data.handles[i], peer, message->data.handle_ids[i]);
                 if (r < 0)
                         return r;
         }
@@ -364,6 +528,44 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
         if (r < 0)
                 return r;
 
+        switch (message->type) {
+        case B1_MESSAGE_TYPE_CALL:
+                r = c_variant_read(message->data.cv, "v", "ssb",
+                                   &message->data.call.interface,
+                                   &message->data.call.member,
+                                   &expects_reply);
+                if (r < 0)
+                        return r;
+
+                if (expects_reply) {
+                        if (data->n_handles < 1)
+                                return -EIO;
+
+                        message->data.call.reply_handle = message->data.handles[0];
+                }
+
+                break;
+        case B1_MESSAGE_TYPE_REPLY:
+                r = c_variant_read(message->data.cv, "v", "b", &expects_reply);
+                if (r < 0)
+                        return r;
+
+                if (expects_reply) {
+                        if (data->n_handles < 1)
+                                return -EIO;
+
+                        message->data.reply.reply_handle = message->data.handles[0];
+                }
+
+                break;
+        case B1_MESSAGE_TYPE_ERROR:
+                r = c_variant_read(message->data.cv, "v", "");
+                if (r < 0)
+                        return r;
+
+                break;
+        }
+
         return 0;
 }
 
@@ -371,7 +573,20 @@ static int b1_peer_recv_node_destroy(B1Peer *peer,
                                      struct bus1_msg_node_destroy *node_destroy,
                                      B1Message **messagep)
 {
-        /* XXX */
+        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+
+        message = malloc(sizeof(*message));
+        if (!message)
+                return NULL;
+
+        message->type = B1_MESSAGE_TYPE_NODE_DESTROY;
+        message->n_ref = 1;
+        message->node_destroy.handle_id = node_destroy->handle;
+        message->peer = b1_peer_ref(peer);
+
+        *messagep = message;
+        message = NULL;
+
         return 0;
 }
 
@@ -421,6 +636,47 @@ int b1_peer_recv(B1Peer *peer, B1Message **messagep)
  */
 int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
 {
+        _cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
+        _cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
+        _cleanup_(b1_node_freep) B1Node *node = NULL;
+        uint64_t handle_id;
+        int r, fd;
+
+        assert(peer);
+        assert(nodep);
+        assert(handlep);
+
+        r = bus1_client_clone(peer->client, &handle_id, &fd, BUS1_DEFAULT_POOL_SIZE);
+        if (r < 0)
+                return r;
+
+        r = b1_peer_new_from_fd(&clone, fd);
+        if (r < 0)
+                return r;
+
+        r = b1_handle_new(&handle, peer);
+        if (r < 0)
+                return r;
+
+        r = b1_handle_link(handle, peer, handle_id);
+        if (r < 0)
+                return r;
+
+        r = b1_node_new(&node, clone, NULL);
+        if (r < 0)
+                return r;
+
+        r = b1_node_link(node, clone, 1);
+        if (r < 0)
+                return r;
+
+        b1_peer_unref(clone);
+
+        *nodep = node;
+        node = NULL;
+        *handlep = handle;
+        handle = NULL;
+
         return 0;
 }
 
@@ -432,6 +688,9 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
  */
 B1Slot *b1_slot_free(B1Slot *slot)
 {
+        b1_node_free(slot->reply_node);
+        free(slot);
+
         return NULL;
 }
 
@@ -443,7 +702,51 @@ B1Slot *b1_slot_free(B1Slot *slot)
  */
 void *b1_slot_get_userdata(B1Slot *slot)
 {
-        return NULL;
+        if (!slot)
+                return NULL;
+
+        return b1_node_get_userdata(slot->reply_node);
+}
+
+static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, void *userdata)
+{
+        _cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+        int r;
+
+        assert(slotp);
+        assert(fn);
+
+        slot = malloc(sizeof(*slot));
+        if (!slot)
+                return -ENOMEM;
+
+        slot->fn = fn;
+        slot->reply_node = NULL;
+
+        r = b1_node_new(&slot->reply_node, NULL, userdata);
+        if (r < 0)
+                return r;
+
+        *slotp = slot;
+        slot = NULL;
+
+        return 0;
+}
+
+int b1_message_append_handle(B1Message *message, B1Handle *handle)
+{
+        B1Handle **handles;
+
+        handles = realloc(message->data.handles,
+                          sizeof(*handles) * message->data.n_handles + 1);
+        if (!handles)
+                return -ENOMEM;
+
+        handles[message->data.n_handles ++] = b1_handle_ref(handle);
+
+        message->data.handles = handles;
+
+        return message->data.n_handles - 1;
 }
 
 static int b1_message_new(B1Message **messagep, unsigned int type)
@@ -456,12 +759,15 @@ static int b1_message_new(B1Message **messagep, unsigned int type)
                 return -ENOMEM;
 
         message->type = type;
-        message->destination = NULL;
+        message->n_ref = 1;
+        message->destination = BUS1_HANDLE_INVALID;
+        message->peer = NULL;
 
         message->data.uid = -1;
         message->data.gid = -1;
         message->data.pid = -1;
         message->data.tid = -1;
+        message->data.slice = NULL;
         message->data.handles = NULL;
         message->data.n_handles = 0;
         message->data.fds = NULL;
@@ -512,10 +818,25 @@ int b1_message_new_call(B1Message **messagep,
         if (r < 0)
                 return r;
 
-        /* <interface, member, reply handle id> */
-        r = c_variant_write(message->data.cv, "v", "sst", interface, member, -1);
+        /* <interface, member, expects reply> */
+        r = c_variant_write(message->data.cv, "v", "ssb", interface, member, !!slotp);
         if (r < 0)
                 return r;
+
+        if (slotp) {
+                _cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+
+                r = b1_slot_new(&slot, fn, userdata);
+                if (r < 0)
+                        return r;
+
+                r = b1_message_append_handle(message, slot->reply_node->handle);
+                if (r < 0)
+                        return r;
+
+                *slotp = slot;
+                slot = NULL;
+        }
 
         *messagep = message;
         message = NULL;
@@ -548,10 +869,25 @@ int b1_message_new_reply(B1Message **messagep,
         if (r < 0)
                 return r;
 
-        /* <reply handle id> */
-        r = c_variant_write(message->data.cv, "v", "t", -1);
+        /* <expects reply> */
+        r = c_variant_write(message->data.cv, "v", "b", !!slotp);
         if (r < 0)
                 return r;
+
+        if (slotp) {
+                _cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+
+                r = b1_slot_new(&slot, fn, userdata);
+                if (r < 0)
+                        return r;
+
+                r = b1_message_append_handle(message, slot->reply_node->handle);
+                if (r < 0)
+                        return r;
+
+                *slotp = slot;
+                slot = NULL;
+        }
 
         *messagep = message;
         message = NULL;
@@ -620,14 +956,30 @@ B1Message *b1_message_unref(B1Message *message)
         if (--message->n_ref > 0)
                 return NULL;
 
-        for (unsigned int i = 0; i < message->data.n_handles; i++)
-                b1_handle_unref(message->data.handles[i]);
+        if (message->type != B1_MESSAGE_TYPE_NODE_DESTROY) {
+                c_variant_free(message->data.cv);
 
-        for (unsigned int i = 0; i < message->data.n_fds; i++)
-                close(message->data.fds[i]);
+                if (message->data.slice) {
+                        /* this was a received message, so we own
+                         * the resources and need to release them */
+                        for (unsigned int i = 0; i < message->data.n_handles; i++)
+                                b1_handle_unref(message->data.handles[i]);
 
-        c_variant_free(message->data.cv);
+                        for (unsigned int i = 0; i < message->data.n_fds; i++)
+                                close(message->data.fds[i]);
 
+                        free(message->data.handles);
+
+                        bus1_client_slice_release(message->peer->client,
+                                bus1_client_slice_to_offset(message->peer->client,
+                                                            message->data.slice));
+                } else {
+                        free(message->data.handle_ids);
+                        free(message->data.fds);
+                }
+        }
+
+        b1_peer_unref(message->peer);
         free(message);
 
         return NULL;
@@ -663,6 +1015,66 @@ unsigned int b1_message_get_type(B1Message *message)
         return message->type;
 }
 
+static B1Node *b1_message_get_destination_node(B1Message *message)
+{
+        CRBNode *n;
+
+        assert(message);
+        assert(message->peer);
+
+        n = c_rbtree_find_node(&message->peer->nodes, nodes_compare, &message->destination);
+        if (!n)
+                return NULL;
+
+        return c_container_of(n, B1Node, rb);
+}
+
+static int implementations_compare(CRBTree *t, void *k, CRBNode *n) {
+        B1Implementation *implementation = c_container_of(n, B1Implementation,
+                                                          rb);
+        const char *name = k;
+
+        return strcmp(name, implementation->interface->name);
+}
+
+static B1Interface *b1_node_get_interface(B1Node *node, const char *name)
+{
+        B1Implementation *implementation;
+        CRBNode *n;
+
+        assert(node);
+        assert(name);
+
+        n = c_rbtree_find_node(&node->implementations, implementations_compare, name);
+        if (!n)
+                return NULL;
+
+        implementation = c_container_of(n, B1Implementation, rb);
+
+        return implementation->interface;
+}
+
+static int members_compare(CRBTree *t, void *k, CRBNode *n) {
+        B1Member *member = c_container_of(n, B1Member, rb);
+        const char *name = k;
+
+        return strcmp(name, member->name);
+}
+
+static B1Member *b1_interface_get_member(B1Interface *interface, const char *name)
+{
+        CRBNode *n;
+
+        assert(interface);
+        assert(name);
+
+        n = c_rbtree_find_node(&interface->members, members_compare, name);
+        if (!n)
+                return NULL;
+
+        return c_container_of(n, B1Member, rb);
+}
+
 /**
  * b1_message_dispatch() - handle received message
  * @message:            the message to handle
@@ -674,24 +1086,38 @@ unsigned int b1_message_get_type(B1Message *message)
  */
 int b1_message_dispatch(B1Message *message)
 {
-        return 0;
-}
+        B1Node *node;
+        B1Interface *interface;
+        B1Member *member;
 
-/**
- * b1_message_get_destination_node() - get destination node of received message
- * @message:             the message
- *
- * Every message a peer receives is destined for a node. Determine the node for
- * a given message.
- *
- * Return: The node, or NULL.
- */
-B1Node *b1_message_get_destination_node(B1Message *message)
-{
-        if (!message)
-                return NULL;
+        node = b1_message_get_destination_node(message);
+        if (!node)
+                return -EIO;
 
-        return message->destination;
+        switch (message->type) {
+        case B1_MESSAGE_TYPE_CALL:
+                interface = b1_node_get_interface(node, message->data.call.interface);
+                if (!interface)
+                        return -EIO;
+
+                member = b1_interface_get_member(interface, message->data.call.member);
+                if (!member)
+                        return -EIO;
+
+                return member->fn(node, node->userdata, message);
+        case B1_MESSAGE_TYPE_REPLY:
+        case B1_MESSAGE_TYPE_ERROR:
+                if (!node->slot)
+                        return -EIO;
+
+                return node->slot->fn(node->slot, node->userdata, message);
+        case B1_MESSAGE_TYPE_NODE_DESTROY:
+                /* XXX */
+
+                return -ENOTSUP;
+        default:
+                return -EIO;
+        }
 }
 
 /**
@@ -971,12 +1397,14 @@ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp)
 /**
  * b1_node_new() - create a new node for a peer
  * @nodep:              pointer to the new node object
- * @peer:               the owning peer
+ * @peer:               the owning peer, or null
  * @userdata:           userdata to associate with the node
  *
- * A node is the recipient of messages, and are always associated with a peer.
- * Nodes are allocated lazily in the kernel, so it is not guaranteed to be a
- * kernel equivalent to the userspace object at all times.
+ * A node is the recipient of messages, and. Nodes are allocated lazily in the
+ * kernel, so it is not guaranteed to be a kernel equivalent to the userspace
+ * object at all times. A node is associated with at most one peer, and for a
+ * lazily created node it may not be associated with any peer until it is
+ * actually created, at which point it is associated with the creating peer.
  *
  * Return: 0 on success, and a negative error code on failure.
  */
@@ -986,22 +1414,24 @@ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata)
         int r;
 
         assert(nodep);
-        assert(peer);
-
-        /* XXX: add node map to the peer object */
 
         node = malloc(sizeof(*node));
         if (!node)
                 return -ENOMEM;
 
         node->id = BUS1_HANDLE_INVALID;
-        node->owner = peer;
+        node->owner = b1_peer_ref(peer);
         node->userdata = userdata;
+        node->implementations = (CRBTree){};
+        node->slot = NULL;
         node->handle = NULL;
+        node->destroy_fn = NULL;
 
-        r = b1_handle_new(&node->handle, peer, BUS1_HANDLE_INVALID);
+        r = b1_handle_new(&node->handle, peer);
         if (r < 0)
                 return r;
+
+        node->handle->node = node;
 
         *nodep = node;
         node = NULL;
@@ -1041,6 +1471,12 @@ B1Node *b1_node_free(B1Node *node)
                 free(implementation);
         }
 
+        if (node->id != BUS1_HANDLE_INVALID) {
+                assert(node->owner);
+                c_rbtree_remove(&node->owner->nodes, &node->rb);
+        }
+
+        b1_peer_unref(node->owner);
         free(node);
 
         return NULL;
@@ -1061,7 +1497,7 @@ B1Peer *b1_node_get_peer(B1Node *node)
 }
 
 /**
- * b1_node_get_peer() - get handle referring to node
+ * b1_node_get_handle() - get handle referring to node
  * @node:               the node
  *
  * The owner of a node, will typically hold a handle to that node, unless it has
@@ -1103,14 +1539,9 @@ void *b1_node_get_userdata(B1Node *node)
  */
 void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn)
 {
-}
+        assert(node);
 
-static int implementations_compare(CRBTree *t, void *k, CRBNode *n) {
-        B1Implementation *implementation = c_container_of(n, B1Implementation,
-                                                          rb);
-        const char *name = k;
-
-        return strcmp(name, implementation->interface->name);
+        node->destroy_fn = fn;
 }
 
 /**
@@ -1161,6 +1592,7 @@ void b1_node_release(B1Node *node)
         if (!node)
                 return;
 
+        node->handle->node = NULL;
         node->handle = b1_handle_unref(node->handle);
 }
 
@@ -1201,17 +1633,6 @@ B1Handle *b1_handle_ref(B1Handle *handle)
         return handle;
 }
 
-static void b1_handle_release(B1Handle *handle)
-{
-        if (!handle)
-                return;
-
-        if (handle->id == BUS1_HANDLE_INVALID)
-                return;
-
-        (void)bus1_client_handle_release(handle->holder->client, handle->id);
-}
-
 /**
  * b1_handle_unref() - release reference
  * @handle:             handle to release reference to, or NULL
@@ -1227,6 +1648,13 @@ B1Handle *b1_handle_unref(B1Handle *handle)
                 return NULL;
 
         b1_handle_release(handle);
+
+        if (handle->id != BUS1_HANDLE_INVALID) {
+                assert(handle->holder);
+                c_rbtree_remove(&handle->holder->handles, &handle->rb);
+        }
+
+        b1_peer_unref(handle->holder);
         free(handle);
 
         return NULL;
@@ -1264,7 +1692,9 @@ B1Peer *b1_handle_get_peer(B1Handle *handle)
 int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn,
                         void *userdata)
 {
-        return 0;
+        /* XXX */
+
+        return -ENOTSUP;
 }
 
 /**
@@ -1289,8 +1719,12 @@ int b1_interface_new(B1Interface **interfacep, const char *name)
         if (!interface)
                 return -ENOMEM;
 
-        interface->name = strdup(name);
+        interface->n_ref = 1;
         interface->members = (CRBTree){};
+
+        interface->name = strdup(name);
+        if (!interface->name)
+                return -ENOMEM;
 
         *interfacep = interface;
         interface = NULL;
@@ -1337,6 +1771,7 @@ B1Interface *b1_interface_unref(B1Interface *interface)
 
                 c_rbtree_remove(&interface->members, node);
 
+                free(member->name);
                 free(member);
         }
 
@@ -1344,13 +1779,6 @@ B1Interface *b1_interface_unref(B1Interface *interface)
         free(interface);
 
         return NULL;
-}
-
-static int members_compare(CRBTree *t, void *k, CRBNode *n) {
-        B1Member *member = c_container_of(n, B1Member, rb);
-        const char *name = k;
-
-        return strcmp(name, member->name);
 }
 
 /**
@@ -1393,7 +1821,6 @@ int b1_interface_add_member(B1Interface *interface, const char *name,
 
 /**
  * b1_peer_reply() - send message in reply to messag
- * @peer:               sending peer
  * @origin:             message to reply to
  * @reply:              the reply
  *
@@ -1402,7 +1829,13 @@ int b1_interface_add_member(B1Interface *interface, const char *name,
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-int b1_peer_reply(B1Peer *peer, B1Message *origin, B1Message *reply)
+int b1_peer_reply(B1Message *origin, B1Message *reply)
 {
-        return 0;
+        B1Handle *reply_handle;
+
+        reply_handle = b1_message_get_reply_handle(origin);
+        if (!reply_handle)
+                return -EINVAL;
+
+        return b1_peer_send(origin->peer, &reply_handle, 1, reply);
 }
