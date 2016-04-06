@@ -285,7 +285,7 @@ static int b1_message_new_from_slice(B1Message **messagep,
         return 0;
 }
 
-static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
+static int b1_handle_new(B1Handle **handlep, B1Peer *peer, uint64_t handle_id)
 {
         B1Handle *handle;
 
@@ -300,7 +300,7 @@ static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
 
         handle->n_ref = 1;
         handle->holder = peer;
-        handle->id = BUS1_HANDLE_INVALID;
+        handle->id = handle_id;
 
         *handlep = handle;
 
@@ -924,7 +924,7 @@ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata)
         node->userdata = userdata;
         node->handle = NULL;
 
-        r = b1_handle_new(&node->handle, peer);
+        r = b1_handle_new(&node->handle, peer, BUS1_HANDLE_INVALID);
         if (r < 0)
                 return r;
 
