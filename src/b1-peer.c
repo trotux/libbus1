@@ -55,18 +55,35 @@ struct B1Message {
         unsigned int type;
 
         B1Node *destination;
-        B1Handle *reply_handle;
-        uint32_t uid;
-        uint32_t gid;
-        uint32_t pid;
-        uint32_t tid;
+        union {
+                struct {
+                        uid_t uid;
+                        gid_t gid;
+                        pid_t pid;
+                        pid_t tid;
 
-        B1Handle **handles;
-        size_t n_handles;
-        int *fds;
-        size_t n_fds;
+                        B1Handle **handles;
+                        size_t n_handles;
+                        int *fds;
+                        size_t n_fds;
 
-        CVariant *cv;
+                        CVariant *cv;
+
+                        union {
+                                struct {
+                                        const char *interface;
+                                        const char *member;
+                                        B1Handle *reply_handle;
+                                } call;
+                                struct {
+                                        B1Handle *reply_handle;
+                                } reply;
+                        };
+                } data;
+                struct {
+                        uint64_t handle_id;
+                } node_destroy;
+        };
 };
 
 struct B1Node {
@@ -244,7 +261,7 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
         for (unsigned int i = 0; i < n_handles; i++)
                 destinations[i] = handles[i]->id;
 
-        vecs = c_variant_get_vecs(message->cv, &n_vecs);
+        vecs = c_variant_get_vecs(message->data.cv, &n_vecs);
 
         r = bus1_client_send(peer->client,
                              destinations, n_handles,
@@ -273,7 +290,7 @@ static int b1_message_new_from_slice(B1Message **messagep,
         if (!message)
                 return -ENOMEM;
 
-        r = c_variant_new_from_vecs(&message->cv,
+        r = c_variant_new_from_vecs(&message->data.cv,
                                     "tvv", strlen("tvv"),
                                     &vec, 1);
         if (r < 0)
@@ -326,26 +343,24 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
                 return r;
 
         /* XXX: get destination node */
-        message->uid = data->uid;
-        message->gid = data->gid;
-        message->pid = data->pid;
-        message->tid = data->tid;
+        message->data.uid = data->uid;
+        message->data.gid = data->gid;
+        message->data.pid = data->pid;
+        message->data.tid = data->tid;
         handle_ids =
                 (uint64_t*)((uint8_t*)slice + c_align_to(data->n_bytes, 8));
-        message->n_handles = data->n_handles;
-        message->fds = (int*)(handle_ids + message->n_handles);
-        message->n_fds = data->n_fds;
-        message->handles = calloc(data->n_handles, sizeof(*message->handles));
+        message->data.n_handles = data->n_handles;
+        message->data.fds = (int*)(handle_ids + data->n_handles);
+        message->data.n_fds = data->n_fds;
+        message->data.handles = calloc(data->n_handles, sizeof(*message->data.handles));
 
         for (unsigned int i = 0; i < data->n_handles; i++) {
-                r = b1_handle_new(&message->handles[i], peer);
+                r = b1_handle_new(&message->data.handles[i], peer, handle_ids[i]);
                 if (r < 0)
                         return r;
-
-                message->handles[i]->id = handle_ids[i];
         }
 
-        r = c_variant_read(message->cv, "t", message->type);
+        r = c_variant_read(message->data.cv, "t", message->type);
         if (r < 0)
                 return r;
 
@@ -442,23 +457,23 @@ static int b1_message_new(B1Message **messagep, unsigned int type)
 
         message->type = type;
         message->destination = NULL;
-        message->reply_handle = NULL;
-        message->uid = -1;
-        message->gid = -1;
-        message->pid = -1;
-        message->tid = -1;
-        message->handles = NULL;
-        message->n_handles = 0;
-        message->fds = NULL;
-        message->n_fds = 0;
-        message->cv = NULL;
+
+        message->data.uid = -1;
+        message->data.gid = -1;
+        message->data.pid = -1;
+        message->data.tid = -1;
+        message->data.handles = NULL;
+        message->data.n_handles = 0;
+        message->data.fds = NULL;
+        message->data.n_fds = 0;
+        message->data.cv = NULL;
 
         /* <type, header variant, payload variant> */
-        r = c_variant_new(&message->cv, "tvv", strlen("tvv"));
+        r = c_variant_new(&message->data.cv, "tvv", strlen("tvv"));
         if (r < 0)
                 return r;
 
-        r = c_variant_write(message->cv, "t", type);
+        r = c_variant_write(message->data.cv, "t", type);
         if (r < 0)
                 return r;
 
@@ -498,7 +513,7 @@ int b1_message_new_call(B1Message **messagep,
                 return r;
 
         /* <interface, member, reply handle id> */
-        r = c_variant_write(message->cv, "v", "sst", interface, member, -1);
+        r = c_variant_write(message->data.cv, "v", "sst", interface, member, -1);
         if (r < 0)
                 return r;
 
@@ -534,7 +549,7 @@ int b1_message_new_reply(B1Message **messagep,
                 return r;
 
         /* <reply handle id> */
-        r = c_variant_write(message->cv, "v", "t", -1);
+        r = c_variant_write(message->data.cv, "v", "t", -1);
         if (r < 0)
                 return r;
 
@@ -563,7 +578,7 @@ int b1_message_new_error(B1Message **messagep)
                 return r;
 
         /* <> */
-        r = c_variant_write(message->cv, "v", "");
+        r = c_variant_write(message->data.cv, "v", "");
         if (r < 0)
                 return r;
 
@@ -605,13 +620,13 @@ B1Message *b1_message_unref(B1Message *message)
         if (--message->n_ref > 0)
                 return NULL;
 
-        for (unsigned int i = 0; i < message->n_handles; i++)
-                b1_handle_unref(message->handles[i]);
+        for (unsigned int i = 0; i < message->data.n_handles; i++)
+                b1_handle_unref(message->data.handles[i]);
 
-        for (unsigned int i = 0; i < message->n_fds; i++)
-                close(message->fds[i]);
+        for (unsigned int i = 0; i < message->data.n_fds; i++)
+                close(message->data.fds[i]);
 
-        c_variant_free(message->cv);
+        c_variant_free(message->data.cv);
 
         free(message);
 
@@ -628,7 +643,7 @@ B1Message *b1_message_unref(B1Message *message)
  */
 bool b1_message_is_sealed(B1Message *message)
 {
-        return c_variant_is_sealed(message ? message->cv : NULL);
+        return c_variant_is_sealed(message ? message->data.cv : NULL);
 }
 
 /**
@@ -693,7 +708,14 @@ B1Handle *b1_message_get_reply_handle(B1Message *message)
         if (!message)
                 return NULL;
 
-        return message->reply_handle;
+        switch (message->type) {
+                case B1_MESSAGE_TYPE_CALL:
+                        return message->data.call.reply_handle;
+                case B1_MESSAGE_TYPE_REPLY:
+                        return message->data.reply.reply_handle;
+                default:
+                        return NULL;
+        }
 }
 
 /**
@@ -704,10 +726,10 @@ B1Handle *b1_message_get_reply_handle(B1Message *message)
  */
 uid_t b1_message_get_uid(B1Message *message)
 {
-        if (!message)
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -1;
 
-        return message->uid;
+        return message->data.uid;
 }
 
 /**
@@ -718,10 +740,10 @@ uid_t b1_message_get_uid(B1Message *message)
  */
 gid_t b1_message_get_gid(B1Message *message)
 {
-        if (!message)
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -1;
 
-        return message->gid;
+        return message->data.gid;
 }
 
 /**
@@ -732,10 +754,10 @@ gid_t b1_message_get_gid(B1Message *message)
  */
 pid_t b1_message_get_pid(B1Message *message)
 {
-        if (!message)
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -1;
 
-        return message->pid;
+        return message->data.pid;
 }
 
 /**
@@ -746,10 +768,10 @@ pid_t b1_message_get_pid(B1Message *message)
  */
 pid_t b1_message_get_tid(B1Message *message)
 {
-        if (!message)
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -1;
 
-        return message->tid;
+        return message->data.tid;
 }
 
 /**
@@ -757,7 +779,12 @@ pid_t b1_message_get_tid(B1Message *message)
  */
 size_t b1_message_peek_count(B1Message *message)
 {
-        return c_variant_peek_count(message ? message->cv : NULL);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_peek_count(cv);
 }
 
 /**
@@ -765,7 +792,12 @@ size_t b1_message_peek_count(B1Message *message)
  */
 const char *b1_message_peek_type(B1Message *message, size_t *sizep)
 {
-        return c_variant_peek_type(message ? message->cv : NULL, sizep);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_peek_type(cv, sizep);
 }
 
 /**
@@ -773,7 +805,12 @@ const char *b1_message_peek_type(B1Message *message, size_t *sizep)
  */
 int b1_message_enter(B1Message *message, const char *containers)
 {
-        return c_variant_enter(message ? message->cv : NULL, containers);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_enter(cv, containers);
 }
 
 /**
@@ -781,7 +818,12 @@ int b1_message_enter(B1Message *message, const char *containers)
  */
 int b1_message_exit(B1Message *message, const char *containers)
 {
-        return c_variant_exit(message ? message->cv : NULL, containers);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_exit(cv, containers);
 }
 
 /**
@@ -789,7 +831,12 @@ int b1_message_exit(B1Message *message, const char *containers)
  */
 int b1_message_readv(B1Message *message, const char *signature, va_list args)
 {
-        return c_variant_readv(message ? message->cv : NULL, signature, args);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_readv(cv, signature, args);
 }
 
 /**
@@ -797,7 +844,15 @@ int b1_message_readv(B1Message *message, const char *signature, va_list args)
  */
 void b1_message_rewind(B1Message *message)
 {
-        return c_variant_rewind(message ? message->cv : NULL);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        c_variant_rewind(cv);
+
+        assert(c_variant_read(cv, "tv", NULL, NULL) >= 0);
+        assert(c_variant_exit(cv, "v") >= 0);
 }
 
 /**
@@ -805,7 +860,12 @@ void b1_message_rewind(B1Message *message)
  */
 int b1_message_beginv(B1Message *message, const char *containers, va_list args)
 {
-        return c_variant_beginv(message ? message->cv : NULL, containers, args);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_beginv(cv, containers, args);
 }
 
 /**
@@ -813,7 +873,12 @@ int b1_message_beginv(B1Message *message, const char *containers, va_list args)
  */
 int b1_message_end(B1Message *message, const char *containers)
 {
-        return c_variant_end(message ? message->cv : NULL, containers);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_end(cv, containers);
 }
 
 /**
@@ -821,7 +886,12 @@ int b1_message_end(B1Message *message, const char *containers)
  */
 int b1_message_writev(B1Message *message, const char *signature, va_list args)
 {
-        return c_variant_writev(message ? message->cv : NULL, signature, args);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_writev(cv, signature, args);
 }
 
 /**
@@ -829,7 +899,12 @@ int b1_message_writev(B1Message *message, const char *signature, va_list args)
  */
 int b1_message_seal(B1Message *message)
 {
-        return c_variant_seal(message ? message->cv : NULL);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_seal(cv);
 }
 
 /**
@@ -852,13 +927,13 @@ int b1_message_get_handle(B1Message *message, unsigned int index,
 {
         assert(handlep);
 
-        if (!message)
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -EINVAL;
 
-        if (index >= message->n_handles)
+        if (index >= message->data.n_handles)
                 return -ERANGE;
 
-        *handlep = message->handles[index];
+        *handlep = message->data.handles[index];
 
         return 0;
 }
@@ -882,13 +957,13 @@ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp)
 {
         assert(fdp);
 
-        if (!message)
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -EINVAL;
 
-        if (index >= message->n_fds)
+        if (index >= message->data.n_fds)
                 return -ERANGE;
 
-        *fdp = message->fds[index];
+        *fdp = message->data.fds[index];
 
         return 0;
 }
