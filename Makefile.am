@@ -175,6 +175,23 @@ test_shared_LDADD = \
 	$(CRBTREEE_LIBS)
 
 # ------------------------------------------------------------------------------
+# test-peer
+
+default_tests += \
+	test-peer
+
+test_peer_SOURCES = \
+	src/test-peer.c
+
+test_peer_CFLAGS = \
+	$(AM_CFLAGS)
+
+test_peer_LDADD = \
+	libbus1.a \
+	$(CVARIANT_LIBS) \
+	$(CRBTREEE_LIBS)
+
+# ------------------------------------------------------------------------------
 # test suite
 
 AM_TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(abs_builddir)
