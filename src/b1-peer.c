@@ -577,7 +577,7 @@ static int b1_peer_recv_node_destroy(B1Peer *peer,
 
         message = malloc(sizeof(*message));
         if (!message)
-                return NULL;
+                return -ENOMEM;
 
         message->type = B1_MESSAGE_TYPE_NODE_DESTROY;
         message->n_ref = 1;
