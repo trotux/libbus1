@@ -429,7 +429,6 @@ static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
         B1Handle *handle;
 
         assert(handlep);
-        assert(peer);
 
         handle = malloc(sizeof(*handle));
         if (!handle)
