@@ -43,7 +43,7 @@ AM_CFLAGS = $(OUR_CFLAGS)
 AM_LDFLAGS = $(OUR_LDFLAGS)
 
 # ------------------------------------------------------------------------------
-# libbus1.a
+# library archive
 
 noinst_LIBRARIES += \
 	libbus1.a
@@ -67,7 +67,7 @@ libbus1_a_CFLAGS = \
 	$(CRBTREE_CFLAGS)
 
 # ------------------------------------------------------------------------------
-# libbus1.so.0
+# shared library built from archive
 
 all-local: libbus1.so.0
 

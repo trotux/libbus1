@@ -14,7 +14,7 @@
 #  along with bus1; If not, see <http://www.gnu.org/licenses/>.
 
 Name: libbus1
-Description: Bus1 System Library
+Description: Bus1 IPC Library
 Version: @VERSION@
 Libs: -L@libdir@ -lbus1
 Cflags: -I@includedir@
