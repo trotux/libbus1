@@ -465,7 +465,11 @@ static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_i
 
         assert(handlep);
         assert(peer);
-        assert(handle_id != BUS1_HANDLE_INVALID);
+
+        if (handle_id == BUS1_HANDLE_INVALID) {
+                *handlep = NULL;
+                return 0;
+        }
 
         slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
         if (!slot) {
