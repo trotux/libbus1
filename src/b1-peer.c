@@ -289,16 +289,17 @@ static int b1_node_link(B1Node *node, B1Peer *peer, uint64_t handle_id)
         assert(peer);
         assert(handle_id != BUS1_HANDLE_INVALID);
 
-        if (!node->owner)
-                node->owner = b1_peer_ref(peer);
-        else
-                assert(node->owner == peer);
-
         slot = c_rbtree_find_slot(&peer->nodes,
                                   nodes_compare, &handle_id, &p);
         if (!slot)
                 return -ENOTUNIQ;
 
+        if (!node->owner)
+                node->owner = b1_peer_ref(peer);
+        else
+                assert(node->owner == peer);
+
+        node->id = handle_id;
         c_rbtree_add(&peer->nodes, p, slot, &node->rb);
 
         return 0;
@@ -313,16 +314,17 @@ static int b1_handle_link(B1Handle *handle, B1Peer *peer, uint64_t handle_id)
         assert(peer);
         assert(handle_id != BUS1_HANDLE_INVALID);
 
-        if (!handle->holder)
-                handle->holder = b1_peer_ref(peer);
-        else
-                assert(handle->holder == peer);
-
         slot = c_rbtree_find_slot(&peer->handles,
                                   handles_compare, &handle_id, &p);
         if (!slot)
                 return -ENOTUNIQ;
 
+        if (!handle->holder)
+                handle->holder = b1_peer_ref(peer);
+        else
+                assert(handle->holder == peer);
+
+        handle->id = handle_id;
         c_rbtree_add(&peer->handles, p, slot, &handle->rb);
 
         return 0;
