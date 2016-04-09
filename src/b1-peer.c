@@ -575,6 +575,9 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
                 return -EIO;
         }
 
+        *messagep = message;
+        message = NULL;
+
         return 0;
 }
 
