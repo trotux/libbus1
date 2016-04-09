@@ -121,7 +121,7 @@ org_bus1_busctl_CFLAGS = \
 org_bus1_busctl_LDADD = \
 	libbus1.so.0 \
 	$(CVARIANT_LIBS) \
-	$(CRBTREEE_LIBS)
+	$(CRBTREE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-macro
@@ -138,7 +138,7 @@ test_macro_CFLAGS = \
 test_macro_LDADD = \
 	libbus1.a \
 	$(CVARIANT_LIBS) \
-	$(CRBTREEE_LIBS)
+	$(CRBTREE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-perf
@@ -155,7 +155,7 @@ test_perf_CFLAGS = \
 test_perf_LDADD = \
 	libbus1.a \
 	$(CVARIANT_LIBS) \
-	$(CRBTREEE_LIBS)
+	$(CRBTREE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-shared
@@ -172,7 +172,7 @@ test_shared_CFLAGS = \
 test_shared_LDADD = \
 	libbus1.a \
 	$(CVARIANT_LIBS) \
-	$(CRBTREEE_LIBS)
+	$(CRBTREE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-peer
@@ -189,7 +189,7 @@ test_peer_CFLAGS = \
 test_peer_LDADD = \
 	libbus1.a \
 	$(CVARIANT_LIBS) \
-	$(CRBTREEE_LIBS)
+	$(CRBTREE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test suite
