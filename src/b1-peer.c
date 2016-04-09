@@ -350,8 +350,10 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
 
         assert(peer);
 
-        if (!message || !b1_message_is_sealed(message))
+        if (!message)
                 return -EINVAL;
+
+        b1_message_seal(message);
 
         handle_ids = malloc(sizeof(uint64_t) * message->data.n_handles);
         if (!handle_ids)
