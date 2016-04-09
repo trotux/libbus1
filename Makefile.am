@@ -48,20 +48,18 @@ AM_LDFLAGS = $(OUR_LDFLAGS)
 noinst_LIBRARIES += \
 	libbus1.a
 
-pkginclude_HEADERS += \
-	src/org.bus1/b1.h \
-	src/org.bus1/b1-peer.h \
-	src/org.bus1/c-macro.h \
-	src/org.bus1/c-shared.h \
-	src/org.bus1/c-sys.h
-
 libbus1_a_SOURCES = \
 	src/b1-peer.c \
 	src/bus1-client.c \
 	src/bus1-client.h \
 	src/c-sys.c \
 	src/libbus1.sym \
-	src/linux/bus1.h
+	src/linux/bus1.h \
+	src/org.bus1/b1.h \
+	src/org.bus1/b1-peer.h \
+	src/org.bus1/c-macro.h \
+	src/org.bus1/c-shared.h \
+	src/org.bus1/c-sys.h
 
 libbus1_a_CFLAGS = \
 	$(AM_CFLAGS) \
@@ -71,26 +69,36 @@ libbus1_a_CFLAGS = \
 # ------------------------------------------------------------------------------
 # libbus1.so.0
 
+all-local: libbus1.so.0
+
+pkginclude_HEADERS += \
+	src/org.bus1/b1.h \
+	src/org.bus1/b1-peer.h \
+	src/org.bus1/c-macro.h \
+	src/org.bus1/c-shared.h \
+	src/org.bus1/c-sys.h
+
 libbus1.so.0: libbus1.a $(top_srcdir)/src/libbus1.sym
-	$(AM_V_CCLD)$(CCLD) $(AM_CFLAGS) $(AM_LDFLAGS) \
-	-shared \
+	$(AM_V_CCLD)$(LINK) -shared \
 	-Wl,-soname=$@ \
 	-Wl,--version-script=$(top_srcdir)/src/libbus1.sym \
-	-Wl,--whole-archive libbus1.a -Wl,--no-whole-archive \
-	-o $@
+	-Wl,--whole-archive libbus1.a -Wl,--no-whole-archive
 
 CLEANFILES += \
 	libbus1.so.0
 
-all-local: libbus1.so.0
+install-exec-local:
+	@echo " $(MKDIR_P) '$(DESTDIR)$(libdir)'"; \
+		$(MKDIR_P) "$(DESTDIR)$(libdir)" || exit 1
+	@echo " $(INSTALL) libbus1.so.0 '$(DESTDIR)$(libdir)'"; \
+		$(INSTALL) libbus1.so.0 "$(DESTDIR)$(libdir)" || exit $$?
+	@echo " $(LN_S) -f libbus1.so.0 '$(DESTDIR)$(libdir)/libbus1.so'"; \
+	$(LN_S) -f libbus1.so.0 "$(DESTDIR)$(libdir)/libbus1.so" || exit $$?
 
-install-exec-hook:
-	$(MKDIR_P) $(DESTDIR)$(libdir)
-	cp libbus1.so.0 $(DESTDIR)$(libdir)
-	$(AM_V_LN)ln -sf libbus1.so.0 $(DESTDIR)$(libdir)/libbus1.so
-
-uninstall-hook:
-	rm -f $(DESTDIR)$(libdir)/libbus1.so.0
+uninstall-local:
+	@test ! -d "$(DESTDIR)$(libdir)" || \
+		{ echo " ( cd '$(DESTDIR)$(libdir)' && rm -f libbus1.so.0 )"; \
+		  rm -f "$(DESTDIR)$(libdir)/libbus1.so.0"; }
 
 %.pc: %.pc.in
 	$(AM_V_GEN)$(SED) \
@@ -202,7 +210,7 @@ TESTS += $(default_tests)
 # check "make install" directory tree
 
 install-tree: all
-	rm -rf $(abs_srcdir)/install-tree
-	$(MAKE) install DESTDIR=$(abs_srcdir)/install-tree
-	tree $(abs_srcdir)/install-tree
+	rm -rf $(abs_builddir)/install-tree
+	$(MAKE) install DESTDIR=$(abs_builddir)/install-tree
+	tree $(abs_builddir)/install-tree
 .PHONY: install-tree
