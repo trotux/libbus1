@@ -16,5 +16,5 @@
 Name: libbus1
 Description: Bus1 System Library
 Version: @VERSION@
-Libs: -L$@libdir@ -lbus1
-Cflags: -I$@includedir@
+Libs: -L@libdir@ -lbus1
+Cflags: -I@includedir@

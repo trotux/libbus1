@@ -20,10 +20,10 @@ else
 fi
 
 if [[ "$1" == "b" ]]; then
-        $topdir/configure --prefix=/usr --libdir=/usr/lib/$ARCHITECTURE_TUPLE
+        $topdir/configure --enable-static --prefix=/usr --libdir=/usr/lib/$ARCHITECTURE_TUPLE
         make clean
 elif [[ "$1" = "c" ]]; then
-        $topdir/configure
+        $topdir/configure --enable-static
         make clean
 else
         echo

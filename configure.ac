@@ -17,7 +17,7 @@ AC_CONFIG_HEADERS([build/config.h])
 AC_CONFIG_AUX_DIR([build/build-aux])
 
 # AC_PROG_CC sets default CFLAGS which conflict with our own configuration
-CFLAGS_SAVE=$CFLAGS
+CFLAGS=${CFLAGS:-""}
 
 AC_USE_SYSTEM_EXTENSIONS
 AC_SYS_LARGEFILE
@@ -29,8 +29,6 @@ AC_DEFINE_UNQUOTED([CANONICAL_HOST], "$host", [Canonical host string.])
 AC_PROG_CC_C99
 AC_PROG_RANLIB
 AC_PROG_SED
-
-CFLAGS=$CFLAGS_SAVE
 
 m4_pattern_forbid([^_?PKG_[A-Z_]+$],[*** pkg.m4 missing, please install pkg-config])
 
@@ -103,16 +101,29 @@ AC_SUBST(OUR_CPPFLAGS)
 AC_SUBST(OUR_LDFLAGS)
 
 # ------------------------------------------------------------------------------
-# temporary hack until we do proper shared library linking
-CVARIANT_CFLAGS="-I../cvariant/src"
-CVARIANT_LIBS="-L../cvariant -lcvariant"
-AC_SUBST(CVARIANT_CFLAGS)
-AC_SUBST(CVARIANT_LIBS)
+AC_ARG_ENABLE(static, AS_HELP_STRING([--enable-static], [enable temporary static library linking]))
+AS_IF([test "$enable_static" = "yes"],
+        [
+                # temporary hack until we do proper shared library linking
+                CVARIANT_CFLAGS="-I../cvariant/src"
+                CVARIANT_LIBS="-L../cvariant -lcvariant"
+                AC_SUBST(CVARIANT_CFLAGS)
+                AC_SUBST(CVARIANT_LIBS)
 
-CRBTREE_CFLAGS="-I../crbtree/src"
-CRBTREE_LIBS="-L../crbtree -lcrbtree"
-AC_SUBST(CRBTREE_CFLAGS)
-AC_SUBST(CRBTREE_LIBS)
+                CRBTREE_CFLAGS="-I../crbtree/src"
+                        CRBTREE_LIBS="-L../crbtree -lcrbtree"
+                AC_SUBST(CRBTREE_CFLAGS)
+                AC_SUBST(CRBTREE_LIBS)
+        ], [
+                PKG_CHECK_MODULES(CRBTREE, [crbtree],
+                        [AC_DEFINE(HAVE_CRBTREE, 1, [Define if crbtree library is available])],
+                        AC_MSG_ERROR([*** crbtree library not found]))
+
+                PKG_CHECK_MODULES(CVARIANT, [cvariant],
+                        [AC_DEFINE(HAVE_CRBTREE, 1, [Define if cvariant library is available])],
+                        AC_MSG_ERROR([*** cvariant library not found]))
+        ]
+)
 
 # ------------------------------------------------------------------------------
 # report
