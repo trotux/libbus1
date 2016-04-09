@@ -27,6 +27,7 @@
 /org.bus1.busctl
 
 /test-macro
+/test-peer
 /test-perf
 /test-shared
 /src/libbus1.pc
