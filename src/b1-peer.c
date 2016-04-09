@@ -525,6 +525,10 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
                         return r;
         }
 
+        r = c_variant_enter(message->data.cv, "(");
+        if (r < 0)
+                return r;
+
         r = c_variant_read(message->data.cv, "t", message->type);
         if (r < 0)
                 return r;
@@ -776,7 +780,11 @@ static int b1_message_new(B1Message **messagep, unsigned int type)
         message->data.cv = NULL;
 
         /* <type, header variant, payload variant> */
-        r = c_variant_new(&message->data.cv, "tvv", strlen("tvv"));
+        r = c_variant_new(&message->data.cv, "(tvv)", strlen("(tvv)"));
+        if (r < 0)
+                return r;
+
+        r = c_variant_begin(message->data.cv, "(");
         if (r < 0)
                 return r;
 
