@@ -618,7 +618,7 @@ int b1_peer_recv(B1Peer *peer, B1Message **messagep)
 
         assert(peer);
 
-        r = bus1_client_ioctl(peer->client, BUS1_CMD_SEND, &recv);
+        r = bus1_client_ioctl(peer->client, BUS1_CMD_RECV, &recv);
         if (r < 0)
                 return r;
 
