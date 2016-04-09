@@ -372,8 +372,8 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
         r = bus1_client_send(peer->client,
                              destinations, n_handles,
                              vecs, n_vecs,
-                             NULL, 0,
-                             NULL, 0);
+                             handle_ids, message->data.n_handles,
+                             message->data.fds, message->data.n_fds);
         if (r < 0) {
                 free(handle_ids);
                 return r;
