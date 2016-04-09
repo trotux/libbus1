@@ -361,8 +361,15 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
         if (!handle_ids)
                 return -ENOMEM;
 
-        for (unsigned int i = 0; i < message->data.n_handles; i++)
-                handle_ids[i] = message->data.handles[i]->id;
+        for (unsigned int i = 0; i < message->data.n_handles; i++) {
+                uint64_t id = message->data.handles[i]->id;
+
+                if (id == BUS1_HANDLE_INVALID)
+                        handle_ids[i] = BUS1_NODE_FLAG_MANAGED |
+                                        BUS1_NODE_FLAG_ALLOCATE;
+                else
+                        handle_ids[i] = id;
+        }
 
         for (unsigned int i = 0; i < n_handles; i++)
                 destinations[i] = handles[i]->id;
