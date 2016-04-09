@@ -415,7 +415,7 @@ static int b1_message_new_from_slice(B1Message **messagep, B1Peer *peer,
         message->data.slice = slice;
 
         r = c_variant_new_from_vecs(&message->data.cv,
-                                    "tvv", strlen("tvv"),
+                                    "(tvv)", strlen("(tvv)"),
                                     &vec, 1);
         if (r < 0)
                 return r;
