@@ -678,7 +678,8 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
         if (r < 0)
                 return r;
 
-        r = b1_node_link(node, clone, 1);
+        /* XXX: this choice of number needs to be documented at least */
+        r = b1_node_link(node, clone, 5);
         if (r < 0)
                 return r;
 
