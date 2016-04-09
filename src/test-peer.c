@@ -49,7 +49,7 @@ static int slot_function(B1Slot *slot, void *userdata, B1Message *message)
 
 static void test_api(void)
 {
-        B1Peer *peer = NULL;
+        B1Peer *peer = NULL, *clone = NULL;
         B1Handle *handle = NULL;
         B1Interface *interface = NULL;
         B1Node *node = NULL;
@@ -67,6 +67,8 @@ static void test_api(void)
         assert(b1_peer_clone(peer, &node, &handle) >= 0);
         assert(node);
         assert(handle);
+        clone = b1_node_get_peer(node);
+        assert(clone);
 
         assert(b1_node_implement(node, interface) >= 0);
 
@@ -76,10 +78,12 @@ static void test_api(void)
 
         assert(b1_peer_send(peer, &handle, 1, message) >= 0);
 
-        assert(b1_peer_recv(peer, &request) >= 0);
+        assert(b1_peer_recv(clone, &request) >= 0);
+        assert(request);
         assert(b1_message_dispatch(request) >= 0);
 
         assert(b1_peer_recv(peer, &reply) >= 0);
+        assert(reply);
         assert(b1_message_dispatch(reply) >= 0);
 
         assert(!b1_message_unref(reply));
