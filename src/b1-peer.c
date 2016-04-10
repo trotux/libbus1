@@ -58,7 +58,7 @@ struct B1Interface {
 
 struct B1Message {
         unsigned int n_ref;
-        unsigned int type;
+        uint64_t type;
 
         uint64_t destination;
         B1Peer *peer;
@@ -567,7 +567,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
         if (r < 0)
                 return r;
 
-        r = c_variant_read(message->data.cv, "t", message->type);
+        r = c_variant_read(message->data.cv, "t", &message->type);
         if (r < 0)
                 return r;
 
