@@ -110,6 +110,7 @@ int b1_message_writev(B1Message *message, const char *signature, va_list args);
 int b1_message_seal(B1Message *message);
 
 int b1_message_append_handle(B1Message *message, B1Handle *handle);
+int b1_message_append_fd(B1Message *message, int fd);
 int b1_message_get_handle(B1Message *message, unsigned int index,
                           B1Handle **handlep);
 int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp);

@@ -779,6 +779,31 @@ int b1_message_append_handle(B1Message *message, B1Handle *handle)
         return message->data.n_handles - 1;
 }
 
+int b1_message_append_fd(B1Message *message, int fd)
+{
+        _c_cleanup_(c_closep) int new_fd = -1;
+        int *fds;
+
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+                return -EINVAL;
+
+        new_fd = fcntl(fd, F_DUPFD_CLOEXEC, 3);
+        if (new_fd == -1)
+                return -errno;
+
+        fds = realloc(message->data.fds,
+                      sizeof(*fds) * message->data.n_fds + 1);
+        if (!fds)
+                return -ENOMEM;
+
+        fds[message->data.n_fds ++] = new_fd;
+        new_fd = -1;
+
+        message->data.fds = fds;
+
+        return message->data.n_fds - 1;
+}
+
 static int b1_message_new(B1Message **messagep, unsigned int type)
 {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
