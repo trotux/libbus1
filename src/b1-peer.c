@@ -1304,7 +1304,7 @@ void b1_message_rewind(B1Message *message)
         c_variant_rewind(cv);
 
         assert(c_variant_read(cv, "tv", NULL, NULL) >= 0);
-        assert(c_variant_exit(cv, "v") >= 0);
+        assert(c_variant_enter(cv, "v") >= 0);
 }
 
 /**
