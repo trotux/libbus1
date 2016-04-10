@@ -23,8 +23,10 @@
 #undef NDEBUG
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include "org.bus1/b1-peer.h"
+#include "org.bus1/c-variant.h"
 
 static int node_function(B1Node *node, void *userdata, B1Message *message)
 {
@@ -45,6 +47,56 @@ static int slot_function(B1Slot *slot, void *userdata, B1Message *message)
         fprintf(stderr, "PONG!\n");
 
         return 0;
+}
+
+static void test_cvariant(void)
+{
+        CVariant *cv = NULL, *cv2;
+        const struct iovec *vecs;
+        size_t n_vecs;
+        uint64_t num = 0;
+        const char *str1 = NULL, *str2 = NULL;
+        bool b = false;
+
+        assert(c_variant_new(&cv, "(tvv)", strlen("(tvv)")) >= 0);
+        assert(cv);
+
+        assert(c_variant_begin(cv, "(") >= 0);
+        assert(c_variant_write(cv, "t", 1) >= 0);
+        assert(c_variant_write(cv, "v", "(ssb)", "foo", "bar", true) >= 0);
+
+        assert(c_variant_seal(cv) >= 0);
+
+        assert(c_variant_enter(cv, "(") >= 0);
+        assert(c_variant_read(cv, "t", &num) >= 0);
+        assert(num == 1);
+        assert(c_variant_read(cv, "v", "(ssb)", &str1, &str2, &b) >= 0);
+        assert(str1);
+        assert(!strcmp(str1, "foo"));
+        assert(str2);
+        assert(!strcmp(str2, "bar"));
+        assert(b);
+
+        vecs = c_variant_get_vecs(cv, &n_vecs);
+        assert(vecs);
+        assert(n_vecs == 1);
+
+        assert(c_variant_new_from_vecs(&cv2, "(tvv)", strlen("(tvv)"), vecs, 1) >= 0);
+
+        num = 0;
+        str1 = NULL;
+        str2 = NULL;
+        b = false;
+
+        assert(c_variant_enter(cv2, "(") >= 0);
+        assert(c_variant_read(cv2, "t", &num) >= 0);
+        assert(num == 1);
+        assert(c_variant_read(cv2, "v", "(ssb)", &str1, &str2, &b) >= 0);
+        assert(str1);
+        assert(!strcmp(str1, "foo"));
+        assert(str2);
+        assert(!strcmp(str2, "bar"));
+        assert(b);
 }
 
 static void test_api(void)
@@ -97,6 +149,7 @@ static void test_api(void)
 }
 
 int main(int argc, char **argv) {
+        test_cvariant();
         test_api();
 
         return 0;
