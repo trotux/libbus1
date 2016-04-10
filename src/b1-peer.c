@@ -759,6 +759,14 @@ int b1_message_append_handle(B1Message *message, B1Handle *handle)
 {
         B1Handle **handles;
 
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+                return -EINVAL;
+
+        for (unsigned int i = 0; i < message->data.n_handles; i++) {
+                if (message->data.handles[i] == handle)
+                        return i;
+        }
+
         handles = realloc(message->data.handles,
                           sizeof(*handles) * message->data.n_handles + 1);
         if (!handles)
