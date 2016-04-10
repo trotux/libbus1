@@ -573,7 +573,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
 
         switch (message->type) {
         case B1_MESSAGE_TYPE_CALL:
-                r = c_variant_read(message->data.cv, "v", "ssb",
+                r = c_variant_read(message->data.cv, "v", "(ssb)",
                                    &message->data.call.interface,
                                    &message->data.call.member,
                                    &expects_reply);
@@ -905,7 +905,7 @@ int b1_message_new_call(B1Message **messagep,
                 return r;
 
         /* <interface, member, expects reply> */
-        r = c_variant_write(message->data.cv, "v", "ssb", interface, member, !!slotp);
+        r = c_variant_write(message->data.cv, "v", "(ssb)", interface, member, !!slotp);
         if (r < 0)
                 return r;
 
