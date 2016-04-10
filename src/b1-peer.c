@@ -43,6 +43,8 @@ struct B1Handle {
         B1Node *node;
         uint64_t id;
 
+        bool marked; /* used for duplicate detection */
+
         CRBNode rb;
 };
 
@@ -359,13 +361,20 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
                 return -ENOMEM;
 
         for (unsigned int i = 0; i < message->data.n_handles; i++) {
-                uint64_t id = message->data.handles[i]->id;
+                B1Handle *handle = message->data.handles[i];
 
-                if (id == BUS1_HANDLE_INVALID)
+                if (handle->marked) {
+                        r = -ENOTUNIQ;
+                        goto error;
+                }
+
+                handle->marked = true;
+
+                if (handle->id == BUS1_HANDLE_INVALID)
                         handle_ids[i] = BUS1_NODE_FLAG_MANAGED |
                                         BUS1_NODE_FLAG_ALLOCATE;
                 else
-                        handle_ids[i] = id;
+                        handle_ids[i] = handle->id;
         }
 
         for (unsigned int i = 0; i < n_handles; i++)
@@ -378,13 +387,13 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
                              vecs, n_vecs,
                              handle_ids, message->data.n_handles,
                              message->data.fds, message->data.n_fds);
-        if (r < 0) {
-                free(handle_ids);
-                return r;
-        }
+        if (r < 0)
+                goto error;
 
         for (unsigned int i = 0; i < message->data.n_handles; i++) {
                 B1Handle *handle = message->data.handles[i];
+
+                handle->marked = false;
 
                 if (handle->id != BUS1_HANDLE_INVALID)
                         continue;
@@ -396,6 +405,22 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
         }
 
         free(handle_ids);
+
+        return 0;
+
+error:
+        free(handle_ids);
+
+        /* unmark handles */
+        for (unsigned int i = 0; i < message->data.n_handles; i++) {
+                B1Handle *handle = message->data.handles[i];
+
+                /* found a handle that was never marked, so must be done */
+                if (!handle->marked)
+                        break;
+                else
+                        handle->marked = false;
+        }
 
         return 0;
 }
@@ -446,6 +471,7 @@ static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
         handle->holder = b1_peer_ref(peer);
         handle->node = NULL;
         handle->id = BUS1_HANDLE_INVALID;
+        handle->marked = false;
 
         *handlep = handle;
 
