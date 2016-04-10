@@ -121,8 +121,6 @@ struct B1Slot {
         B1Node *reply_node;
 };
 
-#define BUS1_DEFAULT_POOL_SIZE (1024 * 1024 * 16)
-
 /**
  * b1_peer_new() - creates a new disconnected peer
  * @peerp:              the new peer object
@@ -151,7 +149,7 @@ int b1_peer_new(B1Peer **peerp, const char *path)
         if (r < 0)
                 return r;
 
-        r = bus1_client_init(peer->client, BUS1_DEFAULT_POOL_SIZE);
+        r = bus1_client_init(peer->client, BUS1_CLIENT_POOL_SIZE);
         if (r < 0)
                 return r;
 
@@ -669,7 +667,7 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
         assert(nodep);
         assert(handlep);
 
-        r = bus1_client_clone(peer->client, &handle_id, &fd, BUS1_DEFAULT_POOL_SIZE);
+        r = bus1_client_clone(peer->client, &handle_id, &fd, BUS1_CLIENT_POOL_SIZE);
         if (r < 0)
                 return r;
 
