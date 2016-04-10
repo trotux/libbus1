@@ -17,12 +17,13 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
+#include "bus1-client.h"
 #include "org.bus1/b1-peer.h"
+#include "org.bus1/c-macro.h"
 #include "org.bus1/c-rbtree.h"
 #include "org.bus1/c-variant.h"
-#include "org.bus1/c-macro.h"
-#include "bus1-client.h"
 
 typedef struct B1Member {
         CRBNode rb;
