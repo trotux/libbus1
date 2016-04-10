@@ -121,7 +121,6 @@ struct B1Slot {
 };
 
 #define BUS1_DEFAULT_POOL_SIZE (1024 * 1024 * 16)
-#define _cleanup_(_x) __attribute__((__cleanup__(_x)))
 
 /**
  * b1_peer_new() - creates a new disconnected peer
@@ -134,7 +133,7 @@ struct B1Slot {
  */
 int b1_peer_new(B1Peer **peerp, const char *path)
 {
-        _cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
         int r;
 
         assert(peerp);
@@ -177,7 +176,7 @@ int b1_peer_new(B1Peer **peerp, const char *path)
  */
 int b1_peer_new_from_fd(B1Peer **peerp, int fd)
 {
-        _cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
         int r;
 
         assert(peerp);
@@ -404,7 +403,7 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
 static int b1_message_new_from_slice(B1Message **messagep, B1Peer *peer,
                                      void *slice, size_t n_bytes)
 {
-        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         const struct iovec vec = {
                 .iov_base = slice,
                 .iov_len = n_bytes,
@@ -501,7 +500,7 @@ static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_i
 static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
                              B1Message **messagep)
 {
-        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         void *slice;
         bool expects_reply;
         int r;
@@ -596,7 +595,7 @@ static int b1_peer_recv_node_destroy(B1Peer *peer,
                                      struct bus1_msg_node_destroy *node_destroy,
                                      B1Message **messagep)
 {
-        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
 
         message = malloc(sizeof(*message));
         if (!message)
@@ -659,9 +658,9 @@ int b1_peer_recv(B1Peer *peer, B1Message **messagep)
  */
 int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
 {
-        _cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
-        _cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
-        _cleanup_(b1_node_freep) B1Node *node = NULL;
+        _c_cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
+        _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         uint64_t handle_id;
         int r, fd;
 
@@ -734,7 +733,7 @@ void *b1_slot_get_userdata(B1Slot *slot)
 
 static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, void *userdata)
 {
-        _cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+        _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
         int r;
 
         assert(slotp);
@@ -775,7 +774,7 @@ int b1_message_append_handle(B1Message *message, B1Handle *handle)
 
 static int b1_message_new(B1Message **messagep, unsigned int type)
 {
-        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
         message = malloc(sizeof(*message));
@@ -839,7 +838,7 @@ int b1_message_new_call(B1Message **messagep,
                         B1SlotFn fn,
                         void *userdata)
 {
-        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
         r = b1_message_new(&message, B1_MESSAGE_TYPE_CALL);
@@ -852,7 +851,7 @@ int b1_message_new_call(B1Message **messagep,
                 return r;
 
         if (slotp) {
-                _cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+                _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
 
                 r = b1_slot_new(&slot, fn, userdata);
                 if (r < 0)
@@ -890,7 +889,7 @@ int b1_message_new_reply(B1Message **messagep,
                          B1SlotFn fn,
                          void *userdata)
 {
-        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
         r = b1_message_new(&message, B1_MESSAGE_TYPE_REPLY);
@@ -903,7 +902,7 @@ int b1_message_new_reply(B1Message **messagep,
                 return r;
 
         if (slotp) {
-                _cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+                _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
 
                 r = b1_slot_new(&slot, fn, userdata);
                 if (r < 0)
@@ -934,7 +933,7 @@ int b1_message_new_reply(B1Message **messagep,
  */
 int b1_message_new_error(B1Message **messagep)
 {
-        _cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
         r = b1_message_new(&message, B1_MESSAGE_TYPE_ERROR);
@@ -1438,7 +1437,7 @@ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp)
  */
 int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata)
 {
-        _cleanup_(b1_node_freep) B1Node *node = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         int r;
 
         assert(nodep);
@@ -1738,7 +1737,7 @@ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn,
  */
 int b1_interface_new(B1Interface **interfacep, const char *name)
 {
-        _cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
+        _c_cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
 
         assert(interfacep);
         assert(name);
