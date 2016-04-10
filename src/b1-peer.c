@@ -1898,6 +1898,8 @@ int b1_interface_add_member(B1Interface *interface, const char *name,
                 return -ENOMEM;
         }
 
+        member->fn = fn;
+
         c_rbtree_add(&interface->members, p, slot, &member->rb);
 
         return 0;
