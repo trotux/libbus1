@@ -70,7 +70,6 @@ struct B1Message {
                         void *slice;
 
                         B1Handle **handles;
-                        uint64_t *handle_ids;
                         size_t n_handles;
                         int *fds;
                         size_t n_fds;
@@ -396,6 +395,8 @@ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
                         assert(b1_node_link(handle->node, peer, handle_ids[i]) >= 0);
         }
 
+        free(handle_ids);
+
         return 0;
 }
 
@@ -500,6 +501,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
                              B1Message **messagep)
 {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        const uint64_t *handle_ids;
         void *slice;
         bool expects_reply;
         int r;
@@ -519,9 +521,8 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
         message->data.gid = data->gid;
         message->data.pid = data->pid;
         message->data.tid = data->tid;
-        message->data.handle_ids =
-                (uint64_t*)((uint8_t*)slice + c_align_to(data->n_bytes, 8));
-        message->data.fds = (int*)(message->data.handle_ids + data->n_handles);
+        handle_ids = (uint64_t*)((uint8_t*)slice + c_align_to(data->n_bytes, 8));
+        message->data.fds = (int*)(handle_ids + data->n_handles);
         message->data.n_fds = data->n_fds;
 
         message->data.n_handles = 0;
@@ -531,7 +532,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
         message->data.n_handles = data->n_handles;
 
         for (unsigned int i = 0; i < data->n_handles; i++) {
-                r = b1_handle_acquire(&message->data.handles[i], peer, message->data.handle_ids[i]);
+                r = b1_handle_acquire(&message->data.handles[i], peer, handle_ids[i]);
                 if (r < 0)
                         return r;
         }
@@ -1018,24 +1019,22 @@ B1Message *b1_message_unref(B1Message *message)
         if (message->type != B1_MESSAGE_TYPE_NODE_DESTROY) {
                 c_variant_free(message->data.cv);
 
+                for (unsigned int i = 0; i < message->data.n_handles; i++)
+                        b1_handle_unref(message->data.handles[i]);
+
+                free(message->data.handles);
+
+                for (unsigned int i = 0; i < message->data.n_fds; i++)
+                        close(message->data.fds[i]);
+
                 if (message->data.slice) {
-                        /* this was a received message, so we own
-                         * the resources and need to release them */
-                        for (unsigned int i = 0; i < message->data.n_handles; i++)
-                                b1_handle_unref(message->data.handles[i]);
-
-                        for (unsigned int i = 0; i < message->data.n_fds; i++)
-                                close(message->data.fds[i]);
-
-                        free(message->data.handles);
+                        assert(message->peer);
 
                         bus1_client_slice_release(message->peer->client,
                                 bus1_client_slice_to_offset(message->peer->client,
                                                             message->data.slice));
-                } else {
-                        free(message->data.handle_ids);
+                } else
                         free(message->data.fds);
-                }
         }
 
         b1_peer_unref(message->peer);
