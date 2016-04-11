@@ -1100,7 +1100,12 @@ B1Message *b1_message_unref(B1Message *message)
  */
 bool b1_message_is_sealed(B1Message *message)
 {
-        return c_variant_is_sealed(message ? message->data.cv : NULL);
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_is_sealed(cv);
 }
 
 /**
