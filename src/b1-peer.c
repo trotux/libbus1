@@ -611,6 +611,10 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
                 return -EIO;
         }
 
+        r = c_variant_enter(message->data.cv, "v");
+        if (r < 0)
+                return r;
+
         *messagep = message;
         message = NULL;
 
@@ -880,6 +884,7 @@ static int b1_message_new(B1Message **messagep, unsigned int type)
  * @messagep:           pointer to the new message object
  * @interface:          the interface to call on
  * @member:             the member of the interface
+ * @type:               the type of the payload
  * @slotp:              pointer to a new reply object, or NULL
  * @fn:                 the reply handler, or NULL
  * @userdata:           the userdata to pass to the reply handler, or NULL
@@ -893,6 +898,7 @@ static int b1_message_new(B1Message **messagep, unsigned int type)
 int b1_message_new_call(B1Message **messagep,
                         const char *interface,
                         const char *member,
+                        const char *type,
                         B1Slot **slotp,
                         B1SlotFn fn,
                         void *userdata)
@@ -906,6 +912,10 @@ int b1_message_new_call(B1Message **messagep,
 
         /* <interface, member, expects reply> */
         r = c_variant_write(message->data.cv, "v", "(ssb)", interface, member, !!slotp);
+        if (r < 0)
+                return r;
+
+        r = c_variant_begin(message->data.cv, "v", type);
         if (r < 0)
                 return r;
 
@@ -933,6 +943,7 @@ int b1_message_new_call(B1Message **messagep,
 /**
  * b1_message_new_reply() - create a new method reply
  * @messagep:           the new message object
+ * @type:               the payload type
  * @slotp:              pointer to a new reply object, or NULL
  * @fn:                 the reply handler, or NULL
  * @userdata:           the userdata to pass to the reply handler, or NULL
@@ -944,6 +955,7 @@ int b1_message_new_call(B1Message **messagep,
  * Return: 0 on success, or a negative error code on failure.
  */
 int b1_message_new_reply(B1Message **messagep,
+                         const char *type,
                          B1Slot **slotp,
                          B1SlotFn fn,
                          void *userdata)
@@ -957,6 +969,10 @@ int b1_message_new_reply(B1Message **messagep,
 
         /* <expects reply> */
         r = c_variant_write(message->data.cv, "v", "b", !!slotp);
+        if (r < 0)
+                return r;
+
+        r = c_variant_begin(message->data.cv, "v", type);
         if (r < 0)
                 return r;
 
@@ -984,13 +1000,14 @@ int b1_message_new_reply(B1Message **messagep,
 /**
  * b1_message_new_error() - create a new method error reply
  * @messagep:           the new message object
+ * @type:               the payload type
  *
  * An error reply to a message can not receive a reply, otherwise it is exactly
  * like any other method reply.
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-int b1_message_new_error(B1Message **messagep)
+int b1_message_new_error(B1Message **messagep, const char *type)
 {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
@@ -1001,6 +1018,10 @@ int b1_message_new_error(B1Message **messagep)
 
         /* <> */
         r = c_variant_write(message->data.cv, "v", "");
+        if (r < 0)
+                return r;
+
+        r = c_variant_begin(message->data.cv, "v", type);
         if (r < 0)
                 return r;
 
@@ -1361,6 +1382,7 @@ void b1_message_rewind(B1Message *message)
 
         c_variant_rewind(cv);
 
+        assert(c_variant_enter(cv, "(") >= 0);
         assert(c_variant_read(cv, "tv", NULL, NULL) >= 0);
         assert(c_variant_enter(cv, "v") >= 0);
 }
@@ -1409,12 +1431,31 @@ int b1_message_writev(B1Message *message, const char *signature, va_list args)
  */
 int b1_message_seal(B1Message *message)
 {
-        CVariant *cv = NULL;
+        CVariant *cv;
+        int r;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
-                cv = message->data.cv;
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+                return 0;
 
-        return c_variant_seal(cv);
+        cv = message->data.cv;
+
+        r = c_variant_seal(cv);
+        if (r < 0)
+                return r;
+
+        r = c_variant_enter(cv, "(");
+        if (r < 0)
+                return r;
+
+        r = c_variant_read(cv, "tv", NULL, NULL);
+        if (r < 0)
+                return r;
+
+        r = c_variant_enter(cv, "v");
+        if (r < 0)
+                return r;
+
+        return 0;
 }
 
 /**

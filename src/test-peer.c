@@ -31,10 +31,23 @@
 static int node_function(B1Node *node, void *userdata, B1Message *message)
 {
         B1Message *reply = NULL;
+        uint64_t num1 = 0;
+        uint32_t num2 = 0;
 
         fprintf(stderr, "PING!\n");
 
-        assert(b1_message_new_reply(&reply, NULL, NULL, NULL) >= 0);
+        assert(b1_message_read(message, "(tu)", &num1, &num2) >= 0);
+        assert(num1 = 1);
+        assert(num2 = 2);
+
+        num1 = 0;
+        num2 = 0;
+        b1_message_rewind(message);
+        assert(b1_message_read(message, "(tu)", &num1, &num2) >= 0);
+        assert(num1 = 1);
+        assert(num2 = 2);
+
+        assert(b1_message_new_reply(&reply, "", NULL, NULL, NULL) >= 0);
         assert(message);
 
         assert(b1_peer_reply(message, reply) >= 0);
@@ -107,6 +120,8 @@ static void test_api(void)
         B1Node *node = NULL;
         B1Slot *slot = NULL;
         B1Message *message = NULL, *request = NULL, *reply = NULL;
+        uint64_t num1 = 0;
+        uint32_t num2 = 0;
 
         assert(b1_interface_new(&interface, "foo") >= 0);
         assert(interface);
@@ -127,6 +142,12 @@ static void test_api(void)
         assert(b1_message_new_call(&message, "foo", "bar", &slot, slot_function, NULL) >= 0);
         assert(message);
         assert(slot);
+
+        assert(b1_message_write(message, "(tu)", 1, 2) >= 0);
+        assert(b1_message_seal(message) >= 0);
+        assert(b1_message_read(message, "(tu)", &num1, &num2) >= 0);
+        assert(num1 == 1);
+        assert(num2 == 2);
 
         assert(b1_peer_send(peer, &handle, 1, message) >= 0);
 
