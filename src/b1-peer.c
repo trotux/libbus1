@@ -28,6 +28,7 @@
 typedef struct B1Member {
         CRBNode rb;
         char *name;
+        char *signature;
         B1NodeFn fn;
 } B1Member;
 
@@ -1199,6 +1200,8 @@ int b1_message_dispatch(B1Message *message)
         B1Node *node;
         B1Interface *interface;
         B1Member *member;
+        const char *signature;
+        size_t signature_len;
 
         node = b1_message_get_destination_node(message);
         if (!node)
@@ -1212,6 +1215,10 @@ int b1_message_dispatch(B1Message *message)
 
                 member = b1_interface_get_member(interface, message->data.call.member);
                 if (!member)
+                        return -EIO;
+
+                signature = b1_message_peek_type(message, &signature_len);
+                if (strncmp(member->signature, signature, signature_len) != 0)
                         return -EIO;
 
                 return member->fn(node, node->userdata, message);
@@ -1902,6 +1909,7 @@ B1Interface *b1_interface_unref(B1Interface *interface)
                 c_rbtree_remove(&interface->members, node);
 
                 free(member->name);
+                free(member->signature);
                 free(member);
         }
 
@@ -1915,18 +1923,20 @@ B1Interface *b1_interface_unref(B1Interface *interface)
  * b1_interface_add_member() - add member to interface
  * @interface:          interface to operate on
  * @name:               member name
+ * @signature:          the type of the input B1Message
  * @fn:                 function implmenting the member
  *
  * Return: 0 on succes, or a negative error code on failure.
  */
 int b1_interface_add_member(B1Interface *interface, const char *name,
-                            B1NodeFn fn)
+                            const char *signature, B1NodeFn fn)
 {
         B1Member *member;
         CRBNode **slot, *p;
 
         assert(interface);
         assert(name);
+        assert(signature);
         assert(fn);
 
         slot = c_rbtree_find_slot(&interface->members,
@@ -1940,6 +1950,13 @@ int b1_interface_add_member(B1Interface *interface, const char *name,
 
         member->name = strdup(name);
         if (!member->name) {
+                free(member);
+                return -ENOMEM;
+        }
+
+        member->signature = strdup(signature);
+        if (!member->signature) {
+                free(member->name);
                 free(member);
                 return -ENOMEM;
         }

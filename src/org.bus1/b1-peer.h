@@ -147,7 +147,7 @@ int b1_interface_new(B1Interface **interfacep, const char *name);
 B1Interface *b1_interface_ref(B1Interface *interface);
 B1Interface *b1_interface_unref(B1Interface *interface);
 
-int b1_interface_add_member(B1Interface *interface, const char *name, B1NodeFn fn);
+int b1_interface_add_member(B1Interface *interface, const char *name, const char *signature, B1NodeFn fn);
 
 /* convenience */
 

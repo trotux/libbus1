@@ -126,7 +126,7 @@ static void test_api(void)
         assert(b1_interface_new(&interface, "foo") >= 0);
         assert(interface);
 
-        assert(b1_interface_add_member(interface, "bar", node_function) >= 0);
+        assert(b1_interface_add_member(interface, "bar", "(tu)", node_function) >= 0);
 
         assert(b1_peer_new(&peer, NULL) >= 0);
         assert(peer);
@@ -139,7 +139,7 @@ static void test_api(void)
 
         assert(b1_node_implement(node, interface) >= 0);
 
-        assert(b1_message_new_call(&message, "foo", "bar", &slot, slot_function, NULL) >= 0);
+        assert(b1_message_new_call(&message, "foo", "bar", "(tu)", &slot, slot_function, NULL) >= 0);
         assert(message);
         assert(slot);
 
