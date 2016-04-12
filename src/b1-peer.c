@@ -1240,6 +1240,23 @@ static int b1_message_dispatch_node_destroy(B1Message *message)
         return r;
 }
 
+static int b1_peer_reply_error(B1Message *origin, const char *name)
+{
+        _c_cleanup_(b1_message_unrefp) B1Message *error = NULL;
+        B1Handle *reply_handle;
+        int r;
+
+        reply_handle = b1_message_get_reply_handle(origin);
+        if (!reply_handle)
+                return 0;
+
+        r = b1_message_new_error(&error, name, NULL);
+        if (r < 0)
+                return r;
+
+        return b1_peer_send(origin->peer, &reply_handle, 1, error);
+}
+
 static int b1_message_dispatch_data(B1Message *message)
 {
         B1Node *node;
@@ -1252,35 +1269,39 @@ static int b1_message_dispatch_data(B1Message *message)
 
         node = b1_peer_get_node(message->peer, message->data.destination);
         if (!node)
-                return -EIO;
+                return b1_peer_reply_error(message, "org.bus1.Error.NodeDestroyed");
 
         switch (message->type) {
         case B1_MESSAGE_TYPE_CALL:
                 interface = b1_node_get_interface(node, message->data.call.interface);
                 if (!interface)
-                        return -EIO;
+                        return b1_peer_reply_error(message, "org.bus1.Error.InvalidInterface");
 
                 member = b1_interface_get_member(interface, message->data.call.member);
                 if (!member)
-                        return -EIO;
+                        return b1_peer_reply_error(message, "org.bus1.Error.InvalidMember");
 
                 signature = b1_message_peek_type(message, &signature_len);
                 if (strncmp(member->signature_input, signature, signature_len) != 0)
-                        return -EIO;
+                        return b1_peer_reply_error(message, "org.bus1.Error.InvalidSignature");
 
                 return member->fn(node, node->userdata, message);
         case B1_MESSAGE_TYPE_REPLY:
-        case B1_MESSAGE_TYPE_ERROR:
                 if (!node->slot)
-                        return -EIO;
+                        return b1_peer_reply_error(message, "org.bus1.Error.InvalidNode");
 
                 signature = b1_message_peek_type(message, &signature_len);
                 if (strncmp(node->slot->signature, signature, signature_len) != 0)
-                        return -EIO;
+                        return b1_peer_reply_error(message, "org.bus1.Error.InvalidSignature");
+
+                return node->slot->fn(node->slot, node->userdata, message);
+        case B1_MESSAGE_TYPE_ERROR:
+                if (!node->slot)
+                        return b1_peer_reply_error(message, "org.bus1.Error.InvalidNode");
 
                 return node->slot->fn(node->slot, node->userdata, message);
         default:
-                return -EIO;
+                return b1_peer_reply_error(message, "org.bus1.Error.InvalidMessageType");
         }
 }
 
