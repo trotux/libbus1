@@ -88,6 +88,9 @@ struct B1Message {
                                 struct {
                                         B1Handle *reply_handle;
                                 } reply;
+                                struct {
+                                        const char *name;
+                                } error;
                         };
                 } data;
                 struct {
@@ -603,7 +606,8 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
 
                 break;
         case B1_MESSAGE_TYPE_ERROR:
-                r = c_variant_read(message->data.cv, "v", "");
+                r = c_variant_read(message->data.cv, "v", "s",
+                                   &message->data.error.name);
                 if (r < 0)
                         return r;
 
@@ -1008,7 +1012,8 @@ int b1_message_new_reply(B1Message **messagep,
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-int b1_message_new_error(B1Message **messagep, const char *type)
+int b1_message_new_error(B1Message **messagep, const char *name,
+                         const char *signature)
 {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
@@ -1018,11 +1023,11 @@ int b1_message_new_error(B1Message **messagep, const char *type)
                 return r;
 
         /* <> */
-        r = c_variant_write(message->data.cv, "v", "");
+        r = c_variant_write(message->data.cv, "v", "s", name);
         if (r < 0)
                 return r;
 
-        r = c_variant_begin(message->data.cv, "v", type);
+        r = c_variant_begin(message->data.cv, "v", signature);
         if (r < 0)
                 return r;
 

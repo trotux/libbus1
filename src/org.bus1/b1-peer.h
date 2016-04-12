@@ -84,7 +84,9 @@ int b1_message_new_reply(B1Message **messagep,
                          B1Slot **slotp,
                          B1SlotFn fn,
                          void *userdata);
-int b1_message_new_error(B1Message **messagep, const char *type);
+int b1_message_new_error(B1Message **messagep,
+                         const char *name,
+                         const char *signature);
 B1Message *b1_message_ref(B1Message *message);
 B1Message *b1_message_unref(B1Message *message);
 
