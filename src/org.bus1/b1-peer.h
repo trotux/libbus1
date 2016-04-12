@@ -75,12 +75,14 @@ enum {
 int b1_message_new_call(B1Message **messagep,
                         const char *interface,
                         const char *member,
-                        const char *type,
+                        const char *signature_input,
+                        const char *signature_output,
                         B1Slot **slotp,
                         B1SlotFn fn,
                         void *userdata);
 int b1_message_new_reply(B1Message **messagep,
-                         const char *type,
+                         const char *signature_input,
+                         const char *signature_output,
                          B1Slot **slotp,
                          B1SlotFn fn,
                          void *userdata);
@@ -149,7 +151,9 @@ int b1_interface_new(B1Interface **interfacep, const char *name);
 B1Interface *b1_interface_ref(B1Interface *interface);
 B1Interface *b1_interface_unref(B1Interface *interface);
 
-int b1_interface_add_member(B1Interface *interface, const char *name, const char *signature, B1NodeFn fn);
+int b1_interface_add_member(B1Interface *interface, const char *name,
+                            const char *signature_input,
+                            const char *signature_output, B1NodeFn fn);
 
 /* convenience */
 

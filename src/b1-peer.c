@@ -28,7 +28,8 @@
 typedef struct B1Member {
         CRBNode rb;
         char *name;
-        char *signature;
+        char *signature_input;
+        char *signature_output;
         B1NodeFn fn;
 } B1Member;
 
@@ -123,6 +124,7 @@ struct B1Peer {
 
 struct B1Slot {
         B1SlotFn fn;
+        char *signature;
         B1Node *reply_node;
 };
 
@@ -747,6 +749,7 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
 B1Slot *b1_slot_free(B1Slot *slot)
 {
         b1_node_free(slot->reply_node);
+        free(slot->signature);
         free(slot);
 
         return NULL;
@@ -766,7 +769,7 @@ void *b1_slot_get_userdata(B1Slot *slot)
         return b1_node_get_userdata(slot->reply_node);
 }
 
-static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, void *userdata)
+static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, const char *signature, void *userdata)
 {
         _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
         int r;
@@ -780,6 +783,11 @@ static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, void *userdata)
 
         slot->fn = fn;
         slot->reply_node = NULL;
+        slot->signature = NULL;
+
+        slot->signature = strdup(signature);
+        if (!slot->signature)
+                return -ENOMEM;
 
         r = b1_node_new(&slot->reply_node, NULL, userdata);
         if (r < 0)
@@ -903,7 +911,8 @@ static int b1_message_new(B1Message **messagep, unsigned int type)
 int b1_message_new_call(B1Message **messagep,
                         const char *interface,
                         const char *member,
-                        const char *type,
+                        const char *signature_input,
+                        const char *signature_output,
                         B1Slot **slotp,
                         B1SlotFn fn,
                         void *userdata)
@@ -920,14 +929,14 @@ int b1_message_new_call(B1Message **messagep,
         if (r < 0)
                 return r;
 
-        r = c_variant_begin(message->data.cv, "v", type);
+        r = c_variant_begin(message->data.cv, "v", signature_input);
         if (r < 0)
                 return r;
 
         if (slotp) {
                 _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
 
-                r = b1_slot_new(&slot, fn, userdata);
+                r = b1_slot_new(&slot, fn, signature_output, userdata);
                 if (r < 0)
                         return r;
 
@@ -960,7 +969,8 @@ int b1_message_new_call(B1Message **messagep,
  * Return: 0 on success, or a negative error code on failure.
  */
 int b1_message_new_reply(B1Message **messagep,
-                         const char *type,
+                         const char *signature_input,
+                         const char *signature_output,
                          B1Slot **slotp,
                          B1SlotFn fn,
                          void *userdata)
@@ -977,14 +987,14 @@ int b1_message_new_reply(B1Message **messagep,
         if (r < 0)
                 return r;
 
-        r = c_variant_begin(message->data.cv, "v", type);
+        r = c_variant_begin(message->data.cv, "v", signature_input);
         if (r < 0)
                 return r;
 
         if (slotp) {
                 _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
 
-                r = b1_slot_new(&slot, fn, userdata);
+                r = b1_slot_new(&slot, fn, signature_output, userdata);
                 if (r < 0)
                         return r;
 
@@ -1255,13 +1265,17 @@ static int b1_message_dispatch_data(B1Message *message)
                         return -EIO;
 
                 signature = b1_message_peek_type(message, &signature_len);
-                if (strncmp(member->signature, signature, signature_len) != 0)
+                if (strncmp(member->signature_input, signature, signature_len) != 0)
                         return -EIO;
 
                 return member->fn(node, node->userdata, message);
         case B1_MESSAGE_TYPE_REPLY:
         case B1_MESSAGE_TYPE_ERROR:
                 if (!node->slot)
+                        return -EIO;
+
+                signature = b1_message_peek_type(message, &signature_len);
+                if (strncmp(node->slot->signature, signature, signature_len) != 0)
                         return -EIO;
 
                 return node->slot->fn(node->slot, node->userdata, message);
@@ -1961,7 +1975,8 @@ B1Interface *b1_interface_unref(B1Interface *interface)
                 c_rbtree_remove(&interface->members, node);
 
                 free(member->name);
-                free(member->signature);
+                free(member->signature_input);
+                free(member->signature_output);
                 free(member);
         }
 
@@ -1981,14 +1996,16 @@ B1Interface *b1_interface_unref(B1Interface *interface)
  * Return: 0 on succes, or a negative error code on failure.
  */
 int b1_interface_add_member(B1Interface *interface, const char *name,
-                            const char *signature, B1NodeFn fn)
+                            const char *signature_input, const char *signature_output,
+                            B1NodeFn fn)
 {
         B1Member *member;
         CRBNode **slot, *p;
 
         assert(interface);
         assert(name);
-        assert(signature);
+        assert(signature_input);
+        assert(signature_output);
         assert(fn);
 
         slot = c_rbtree_find_slot(&interface->members,
@@ -2006,8 +2023,16 @@ int b1_interface_add_member(B1Interface *interface, const char *name,
                 return -ENOMEM;
         }
 
-        member->signature = strdup(signature);
-        if (!member->signature) {
+        member->signature_input = strdup(signature_input);
+        if (!member->signature_input) {
+                free(member->name);
+                free(member);
+                return -ENOMEM;
+        }
+
+        member->signature_output = strdup(signature_output);
+        if (!member->signature_output) {
+                free(member->signature_input);
                 free(member->name);
                 free(member);
                 return -ENOMEM;
