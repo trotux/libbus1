@@ -61,10 +61,10 @@ struct B1Message {
         unsigned int n_ref;
         uint64_t type;
 
-        uint64_t destination;
         B1Peer *peer;
         union {
                 struct {
+                        uint64_t destination;
                         uid_t uid;
                         gid_t gid;
                         pid_t pid;
@@ -543,7 +543,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
         if (r < 0)
                 return r;
 
-        message->destination = data->destination;
+        message->data.destination = data->destination;
         message->data.uid = data->uid;
         message->data.gid = data->gid;
         message->data.pid = data->pid;
@@ -847,9 +847,9 @@ static int b1_message_new(B1Message **messagep, unsigned int type)
 
         message->type = type;
         message->n_ref = 1;
-        message->destination = BUS1_HANDLE_INVALID;
         message->peer = NULL;
 
+        message->data.destination = BUS1_HANDLE_INVALID;
         message->data.uid = -1;
         message->data.gid = -1;
         message->data.pid = -1;
@@ -1126,18 +1126,30 @@ unsigned int b1_message_get_type(B1Message *message)
         return message->type;
 }
 
-static B1Node *b1_message_get_destination_node(B1Message *message)
+static B1Node *b1_peer_get_node(B1Peer *peer, uint64_t node_id)
 {
         CRBNode *n;
 
-        assert(message);
-        assert(message->peer);
+        assert(peer);
 
-        n = c_rbtree_find_node(&message->peer->nodes, nodes_compare, &message->destination);
+        n = c_rbtree_find_node(&peer->nodes, nodes_compare, &node_id);
         if (!n)
                 return NULL;
 
         return c_container_of(n, B1Node, rb);
+}
+
+static B1Handle *b1_peer_get_handle(B1Peer *peer, uint64_t handle_id)
+{
+        CRBNode *n;
+
+        assert(peer);
+
+        n = c_rbtree_find_node(&peer->handles, handles_compare, &handle_id);
+        if (!n)
+                return NULL;
+
+        return c_container_of(n, B1Handle, rb);
 }
 
 static int implementations_compare(CRBTree *t, void *k, CRBNode *n) {
@@ -1186,16 +1198,34 @@ static B1Member *b1_interface_get_member(B1Interface *interface, const char *nam
         return c_container_of(n, B1Member, rb);
 }
 
-/**
- * b1_message_dispatch() - handle received message
- * @message:            the message to handle
- *
- * Dispatch the incoming message by matching it with the correct node and
- * callback. The precis semantics depends on the message type.
- *
- * Return: 0 on success, or a negitave error code on failure.
- */
-int b1_message_dispatch(B1Message *message)
+static int b1_message_dispatch_node_destroy(B1Message *message)
+{
+        B1Node *node;
+        B1Handle *handle;
+        uint64_t handle_id;
+        int r = 0, k;
+
+        assert(message);
+
+        handle_id = message->node_destroy.handle_id;
+
+        handle = b1_peer_get_handle(message->peer, handle_id);
+        if (handle) {
+                /* XXX */
+                r = -ENOTSUP;
+        }
+
+        node = b1_peer_get_node(message->peer, handle_id);
+        if (node && node->destroy_fn) {
+                k = node->destroy_fn(node, node->userdata, message);
+                if (k < 0)
+                        r = k;
+        }
+
+        return r;
+}
+
+static int b1_message_dispatch_data(B1Message *message)
 {
         B1Node *node;
         B1Interface *interface;
@@ -1203,7 +1233,9 @@ int b1_message_dispatch(B1Message *message)
         const char *signature;
         size_t signature_len;
 
-        node = b1_message_get_destination_node(message);
+        assert(message);
+
+        node = b1_peer_get_node(message->peer, message->data.destination);
         if (!node)
                 return -EIO;
 
@@ -1228,13 +1260,28 @@ int b1_message_dispatch(B1Message *message)
                         return -EIO;
 
                 return node->slot->fn(node->slot, node->userdata, message);
-        case B1_MESSAGE_TYPE_NODE_DESTROY:
-                /* XXX */
-
-                return -ENOTSUP;
         default:
                 return -EIO;
         }
+}
+
+/**
+ * b1_message_dispatch() - handle received message
+ * @message:            the message to handle
+ *
+ * Dispatch the incoming message by matching it with the correct node and
+ * callback. The precis semantics depends on the message type.
+ *
+ * Return: 0 on success, or a negitave error code on failure.
+ */
+int b1_message_dispatch(B1Message *message)
+{
+        assert(message);
+
+        if (message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+                return b1_message_dispatch_node_destroy(message);
+        else
+                return b1_message_dispatch_data(message);
 }
 
 /**
