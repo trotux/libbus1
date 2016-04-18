@@ -47,6 +47,8 @@ struct B1Handle {
 
         bool marked; /* used for duplicate detection */
 
+        B1Slot *subscriptions;
+
         CRBNode rb;
 };
 
@@ -123,7 +125,9 @@ struct B1Peer {
 };
 
 struct B1Slot {
+        B1Slot *previous, *next;
         B1SlotFn fn;
+        void *userdata;
         char *signature;
         B1Node *reply_node;
 };
@@ -747,6 +751,11 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
  */
 B1Slot *b1_slot_free(B1Slot *slot)
 {
+        if (slot->previous)
+                slot->previous->next = slot->next;
+        if (slot->next)
+                slot->next->previous = slot->previous;
+
         b1_node_free(slot->reply_node);
         free(slot->signature);
         free(slot);
@@ -781,16 +790,23 @@ static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, const char *signature, void 
                 return -ENOMEM;
 
         slot->fn = fn;
+        slot->previous = NULL;
+        slot->next = NULL;
         slot->reply_node = NULL;
         slot->signature = NULL;
 
-        slot->signature = strdup(signature);
-        if (!slot->signature)
-                return -ENOMEM;
+        if (signature) {
+                slot->signature = strdup(signature);
+                if (!slot->signature)
+                        return -ENOMEM;
 
-        r = b1_node_new(&slot->reply_node, NULL, userdata);
-        if (r < 0)
-                return r;
+                r = b1_node_new(&slot->reply_node, NULL, userdata);
+                if (r < 0)
+                        return r;
+
+                slot->userdata = NULL;
+        } else
+                slot->userdata = userdata;
 
         *slotp = slot;
         slot = NULL;
@@ -1225,14 +1241,17 @@ static int b1_message_dispatch_node_destroy(B1Message *message)
 
         handle = b1_peer_get_handle(message->peer, handle_id);
         if (handle) {
-                /* XXX */
-                r = -ENOTSUP;
+                for (B1Slot *slot = handle->subscriptions; slot; slot = slot->next) {
+                        k = slot->fn(slot, slot->userdata, message);
+                        if (k < 0 && r == 0)
+                                r = k;
+                }
         }
 
         node = b1_peer_get_node(message->peer, handle_id);
         if (node && node->destroy_fn) {
                 k = node->destroy_fn(node, node->userdata, message);
-                if (k < 0)
+                if (k < 0 && r == 0)
                         r = k;
         }
 
@@ -1915,9 +1934,17 @@ B1Peer *b1_handle_get_peer(B1Handle *handle)
 int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn,
                         void *userdata)
 {
-        /* XXX */
+        _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+        int r;
 
-        return -ENOTSUP;
+        r = b1_slot_new(&slot, fn, NULL, userdata);
+        if (r < 0)
+                return r;
+
+        slot->next = handle->subscriptions;
+        handle->subscriptions = slot;
+
+        return 0;
 }
 
 /**
