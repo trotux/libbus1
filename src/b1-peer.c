@@ -698,14 +698,14 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
         _c_cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
-        uint64_t handle_id;
+        uint64_t handle_id, node_id;
         int r, fd;
 
         assert(peer);
         assert(nodep);
         assert(handlep);
 
-        r = bus1_client_clone(peer->client, &handle_id, &fd, BUS1_CLIENT_POOL_SIZE);
+        r = bus1_client_clone(peer->client, &node_id, &handle_id, &fd, BUS1_CLIENT_POOL_SIZE);
         if (r < 0)
                 return r;
 
@@ -725,8 +725,7 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
         if (r < 0)
                 return r;
 
-        /* XXX: this choice of number needs to be documented at least */
-        r = b1_node_link(node, clone, 5);
+        r = b1_node_link(node, clone, node_id);
         if (r < 0)
                 return r;
 

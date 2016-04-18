@@ -24,24 +24,23 @@
  * All operations performed on bus1 fds return negative error codes. The
  * following error codes are well-defined and used all over the place:
  *
+ *   EAGAIN:            no messages ready to be dequeued
+ *   EHOSTUNREACH:      destination node has been destroyed
+ *   EDQUOT:            quota exceeded
+ *   EXFULL:            target memory pool is full
+ *   ETOOMANYREFS:      user has too many in-flight file-descriptors
  *   ENOMEM:            out of kernel memory
- *   EFAULT:            cannot access ioctl parameters
- *   EINVAL:            invalid parameters
- *   EMSGSIZE:          ioctl parameters are too small/large
- *   ENOTTY:            unknown ioctl
- *   ENXIO:             destination handle does not exist
  *   ESHUTDOWN:         local peer was already disconnected
  *   ENOTCONN:          local peer is not initialized, yet
  *   EISCONN:           local peer is already initialized
- *   EXFULL:            target memory pool is full
- *   ESTALE:            referenced node has no local handles
- *   EINPROGRESS:       node destruction already in progress
- *   EDQUOT:            quota exceeded
+ *   ENXIO:             invalid handle or slice
  *   EBADF:             invalid file-descriptor
- *   EPERM:             permission denied
- *   EAGAIN:            no messages ready to be dequeued
- *   ETOOMANYREFS:      user has too many in-flight file-descriptors
+ *   EPERM:             permission denied to mmap pool as writable
  *   EOPNOTSUPP:        could not pass file-descriptor of unsupported type
+ *   EMSGSIZE:          ioctl parameters are too small/large
+ *   EINVAL:            invalid ioctl parameters
+ *   EFAULT:            cannot access ioctl parameters
+ *   ENOTTY:            unknown ioctl
  */
 
 #include <linux/ioctl.h>
@@ -66,12 +65,12 @@ struct bus1_cmd_peer_init {
 
 struct bus1_cmd_peer_reset {
 	__u64 flags;
-	__u64 handle;
 } __attribute__((__aligned__(8)));
 
 struct bus1_cmd_peer_clone {
 	__u64 flags;
 	__u64 pool_size;
+	__u64 node;
 	__u64 handle;
 	__u64 fd;
 } __attribute__((__aligned__(8)));
