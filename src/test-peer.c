@@ -25,8 +25,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <c-variant.h>
 #include "org.bus1/b1-peer.h"
-#include "org.bus1/c-variant.h"
 
 static int node_function(B1Node *node, void *userdata, B1Message *message)
 {

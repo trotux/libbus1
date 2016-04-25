@@ -108,23 +108,23 @@ AC_SUBST(OUR_LDFLAGS)
 AC_ARG_ENABLE(static, AS_HELP_STRING([--enable-static], [enable temporary static library linking]))
 AS_IF([test "$enable_static" = "yes"], [
         # temporary hack until we do proper shared library linking
-        CVARIANT_CFLAGS="-I../cvariant/src"
-        CVARIANT_LIBS="-L../cvariant -lcvariant"
+        CVARIANT_CFLAGS="-I../c-variant/src"
+        CVARIANT_LIBS="-L../c-variant -lcvariant"
         AC_SUBST(CVARIANT_CFLAGS)
         AC_SUBST(CVARIANT_LIBS)
 
-        CRBTREE_CFLAGS="-I../crbtree/src"
-                CRBTREE_LIBS="-L../crbtree -lcrbtree"
+        CRBTREE_CFLAGS="-I../c-rbtree/src"
+                CRBTREE_LIBS="-L../c-rbtree -lcrbtree"
         AC_SUBST(CRBTREE_CFLAGS)
         AC_SUBST(CRBTREE_LIBS)
 ], [
-        PKG_CHECK_MODULES(CRBTREE, [crbtree],
-                [AC_DEFINE(HAVE_CRBTREE, 1, [Define if crbtree library is available])],
-                AC_MSG_ERROR([*** crbtree library not found]))
+        PKG_CHECK_MODULES(CRBTREE, [c-rbtree],
+                [AC_DEFINE(HAVE_CRBTREE, 1, [Define if c-rbtree library is available])],
+                AC_MSG_ERROR([*** c-rbtree library not found]))
 
-        PKG_CHECK_MODULES(CVARIANT, [cvariant],
-                [AC_DEFINE(HAVE_CRBTREE, 1, [Define if cvariant library is available])],
-                AC_MSG_ERROR([*** cvariant library not found]))
+        PKG_CHECK_MODULES(CVARIANT, [c-variant],
+                [AC_DEFINE(HAVE_CRBTREE, 1, [Define if c-variant library is available])],
+                AC_MSG_ERROR([*** c-variant library not found]))
 ])
 
 # ------------------------------------------------------------------------------

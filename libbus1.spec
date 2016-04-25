@@ -6,8 +6,8 @@ License:        LGPL2+
 URL:            https://github.com/bus1/libbus1
 Source0:        %{name}.tar.xz
 BuildRequires:  autoconf automake pkgconfig
-BuildRequires:  crbtree-devel
-BuildRequires:  cvariant-devel
+BuildRequires:  c-rbtree-devel
+BuildRequires:  c-variant-devel
 
 %description
 bus1 IPC Library
@@ -47,5 +47,5 @@ make %{?_smp_mflags}
 %{_libdir}/pkgconfig/libbus1.pc
 
 %changelog
-* Sun Apr 24 2016 <kay@redhat.com> 1-1
+* Mon Apr 25 2016 <kay@redhat.com> 1-1
 - libbus1 1
