@@ -117,21 +117,6 @@ CLEANFILES += \
 	src/libbus1.pc
 
 # ------------------------------------------------------------------------------
-bin_PROGRAMS += \
-	org.bus1.busctl
-
-org_bus1_busctl_SOURCES = \
-	src/busctl.c
-
-org_bus1_busctl_CFLAGS = \
-	$(AM_CFLAGS)
-
-org_bus1_busctl_LDADD = \
-	libbus1.so.0 \
-	$(CVARIANT_LIBS) \
-	$(CRBTREE_LIBS)
-
-# ------------------------------------------------------------------------------
 # test-macro
 
 default_tests += \

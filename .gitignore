@@ -24,7 +24,6 @@
 /install-tree
 
 /libbus1.so.0
-/org.bus1.busctl
 /src/libbus1.pc
 
 /test-macro
