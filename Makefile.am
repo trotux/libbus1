@@ -126,12 +126,14 @@ test_macro_SOURCES = \
 	src/test-macro.c
 
 test_macro_CFLAGS = \
-	$(AM_CFLAGS)
+	$(AM_CFLAGS) \
+	$(CRBTREE_CFLAGS) \
+	$(CVARIANT_CFLAGS)
 
 test_macro_LDADD = \
 	libbus1.a \
-	$(CVARIANT_LIBS) \
-	$(CRBTREE_LIBS)
+	$(CRBTREE_LIBS) \
+	$(CVARIANT_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-perf
@@ -143,12 +145,14 @@ test_perf_SOURCES = \
 	src/test-perf.c
 
 test_perf_CFLAGS = \
-	$(AM_CFLAGS)
+	$(AM_CFLAGS) \
+	$(CRBTREE_CFLAGS) \
+	$(CVARIANT_CFLAGS)
 
 test_perf_LDADD = \
 	libbus1.a \
-	$(CVARIANT_LIBS) \
-	$(CRBTREE_LIBS)
+	$(CRBTREE_LIBS) \
+	$(CVARIANT_LIBS)
 
 # ------------------------------------------------------------------------------
 # test-shared
@@ -163,9 +167,7 @@ test_shared_CFLAGS = \
 	$(AM_CFLAGS)
 
 test_shared_LDADD = \
-	libbus1.a \
-	$(CVARIANT_LIBS) \
-	$(CRBTREE_LIBS)
+	libbus1.so.0
 
 # ------------------------------------------------------------------------------
 # test-peer
@@ -177,12 +179,14 @@ test_peer_SOURCES = \
 	src/test-peer.c
 
 test_peer_CFLAGS = \
-	$(AM_CFLAGS)
+	$(AM_CFLAGS) \
+	$(CRBTREE_CFLAGS) \
+	$(CVARIANT_CFLAGS)
 
 test_peer_LDADD = \
 	libbus1.a \
-	$(CVARIANT_LIBS) \
-	$(CRBTREE_LIBS)
+	$(CRBTREE_LIBS) \
+	$(CVARIANT_LIBS)
 
 # ------------------------------------------------------------------------------
 # test suite
