@@ -38,7 +38,6 @@ make %{?_smp_mflags}
 
 %files
 %doc COPYING
-%{_bindir}/org.bus1.busctl
 %{_libdir}/libbus1.so.*
 
 %files devel
