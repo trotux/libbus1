@@ -117,20 +117,20 @@ CLEANFILES += \
 	src/libbus1.pc
 
 # ------------------------------------------------------------------------------
-# test-macro
+# test-c-macro
 
 default_tests += \
-	test-macro
+	test-c-macro
 
-test_macro_SOURCES = \
-	src/test-macro.c
+test_c_macro_SOURCES = \
+	src/test-c-macro.c
 
-test_macro_CFLAGS = \
+test_c_macro_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(CRBTREE_CFLAGS) \
 	$(CVARIANT_CFLAGS)
 
-test_macro_LDADD = \
+test_c_macro_LDADD = \
 	libbus1.a \
 	$(CRBTREE_LIBS) \
 	$(CVARIANT_LIBS)
@@ -155,18 +155,18 @@ test_perf_LDADD = \
 	$(CVARIANT_LIBS)
 
 # ------------------------------------------------------------------------------
-# test-shared
+# test-c-shared
 
 default_tests += \
-	test-shared
+	test-c-shared
 
-test_shared_SOURCES = \
-	src/test-shared.c
+test_c_shared_SOURCES = \
+	src/test-c-shared.c
 
-test_shared_CFLAGS = \
+test_c_shared_CFLAGS = \
 	$(AM_CFLAGS)
 
-test_shared_LDADD = \
+test_c_shared_LDADD = \
 	libbus1.so.0
 
 # ------------------------------------------------------------------------------
