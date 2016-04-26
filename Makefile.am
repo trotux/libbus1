@@ -55,7 +55,6 @@ libbus1_a_SOURCES = \
 	src/c-sys.c \
 	src/libbus1.sym \
 	src/linux/bus1.h \
-	src/org.bus1/b1.h \
 	src/org.bus1/b1-peer.h \
 	src/org.bus1/c-macro.h \
 	src/org.bus1/c-shared.h \
@@ -72,7 +71,6 @@ libbus1_a_CFLAGS = \
 all-local: libbus1.so.0
 
 pkginclude_HEADERS += \
-	src/org.bus1/b1.h \
 	src/org.bus1/b1-peer.h \
 	src/org.bus1/c-macro.h \
 	src/org.bus1/c-shared.h \
