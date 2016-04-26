@@ -80,7 +80,9 @@ libbus1.so.0: libbus1.a $(top_srcdir)/src/libbus1.sym
 	$(AM_V_CCLD)$(LINK) -shared \
 	-Wl,-soname=$@ \
 	-Wl,--version-script=$(top_srcdir)/src/libbus1.sym \
-	-Wl,--whole-archive libbus1.a -Wl,--no-whole-archive
+	-Wl,--whole-archive libbus1.a -Wl,--no-whole-archive \
+	$(CRBTREE_LIBS) \
+	$(CVARIANT_LIBS)
 
 CLEANFILES += \
 	libbus1.so.0
