@@ -141,8 +141,7 @@ struct B1Slot {
  *
  * Return: 0 on success, a negative error code on failure.
  */
-_c_public_ int b1_peer_new(B1Peer **peerp, const char *path)
-{
+_c_public_ int b1_peer_new(B1Peer **peerp, const char *path) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
         int r;
 
@@ -184,8 +183,7 @@ _c_public_ int b1_peer_new(B1Peer **peerp, const char *path)
  *
  * Return: 0 on success, a negative error code on failure.
  */
-_c_public_ int b1_peer_new_from_fd(B1Peer **peerp, int fd)
-{
+_c_public_ int b1_peer_new_from_fd(B1Peer **peerp, int fd) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
         int r;
 
@@ -219,8 +217,7 @@ _c_public_ int b1_peer_new_from_fd(B1Peer **peerp, int fd)
  *
  * Return: @peer is returned.
  */
-_c_public_ B1Peer *b1_peer_ref(B1Peer *peer)
-{
+_c_public_ B1Peer *b1_peer_ref(B1Peer *peer) {
         if (!peer)
                 return NULL;
 
@@ -237,8 +234,7 @@ _c_public_ B1Peer *b1_peer_ref(B1Peer *peer)
  *
  * Return: NULL is returned.
  */
-_c_public_ B1Peer *b1_peer_unref(B1Peer *peer)
-{
+_c_public_ B1Peer *b1_peer_unref(B1Peer *peer) {
         if (!peer)
                 return NULL;
 
@@ -257,15 +253,13 @@ _c_public_ B1Peer *b1_peer_unref(B1Peer *peer)
  *
  * Return: the file descriptor.
  */
-_c_public_ int b1_peer_get_fd(B1Peer *peer)
-{
+_c_public_ int b1_peer_get_fd(B1Peer *peer) {
         assert(peer);
 
         return bus1_client_get_fd(peer->client);
 }
 
-static int nodes_compare(CRBTree *t, void *k, CRBNode *n)
-{
+static int nodes_compare(CRBTree *t, void *k, CRBNode *n) {
         B1Node *node = c_container_of(n, B1Node, rb);
         uint64_t id = *(uint64_t*)k;
 
@@ -277,8 +271,7 @@ static int nodes_compare(CRBTree *t, void *k, CRBNode *n)
                 return 0;
 }
 
-static int handles_compare(CRBTree *t, void *k, CRBNode *n)
-{
+static int handles_compare(CRBTree *t, void *k, CRBNode *n) {
         B1Handle *handle = c_container_of(n, B1Handle, rb);
         uint64_t id = *(uint64_t*)k;
 
@@ -290,8 +283,7 @@ static int handles_compare(CRBTree *t, void *k, CRBNode *n)
                 return 0;
 }
 
-static int b1_node_link(B1Node *node, B1Peer *peer, uint64_t handle_id)
-{
+static int b1_node_link(B1Node *node, B1Peer *peer, uint64_t handle_id) {
         CRBNode **slot, *p;
 
         assert(node);
@@ -315,8 +307,7 @@ static int b1_node_link(B1Node *node, B1Peer *peer, uint64_t handle_id)
 
 }
 
-static int b1_handle_link(B1Handle *handle, B1Peer *peer, uint64_t handle_id)
-{
+static int b1_handle_link(B1Handle *handle, B1Peer *peer, uint64_t handle_id) {
         CRBNode **slot, *p;
 
         assert(handle);
@@ -349,9 +340,10 @@ static int b1_handle_link(B1Handle *handle, B1Peer *peer, uint64_t handle_id)
  *
  * Return: 0 on succes, or a negative error code on failure.
  */
-_c_public_ int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles,
-                 B1Message *message)
-{
+_c_public_ int b1_peer_send(B1Peer *peer,
+                            B1Handle **handles,
+                            size_t n_handles,
+                            B1Message *message) {
         /* limit number of destinations? */
         uint64_t destinations[n_handles];
         uint64_t *handle_ids;
@@ -435,9 +427,10 @@ error:
         return 0;
 }
 
-static int b1_message_new_from_slice(B1Message **messagep, B1Peer *peer,
-                                     void *slice, size_t n_bytes)
-{
+static int b1_message_new_from_slice(B1Message **messagep,
+                                     B1Peer *peer,
+                                     void *slice,
+                                     size_t n_bytes) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         const struct iovec vec = {
                 .iov_base = slice,
@@ -467,8 +460,7 @@ static int b1_message_new_from_slice(B1Message **messagep, B1Peer *peer,
         return 0;
 }
 
-static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
-{
+static int b1_handle_new(B1Handle **handlep, B1Peer *peer) {
         B1Handle *handle;
 
         assert(handlep);
@@ -488,8 +480,7 @@ static int b1_handle_new(B1Handle **handlep, B1Peer *peer)
         return 0;
 }
 
-static void b1_handle_release(B1Handle *handle)
-{
+static void b1_handle_release(B1Handle *handle) {
         if (!handle)
                 return;
 
@@ -499,8 +490,7 @@ static void b1_handle_release(B1Handle *handle)
         (void)bus1_client_handle_release(handle->holder->client, handle->id);
 }
 
-static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_id)
-{
+static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_id) {
         B1Handle *handle;
         CRBNode **slot, *p;
         int r;
@@ -533,9 +523,7 @@ static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_i
         return 0;
 }
 
-static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
-                             B1Message **messagep)
-{
+static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message **messagep) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         const uint64_t *handle_ids;
         void *slice;
@@ -634,8 +622,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data,
 
 static int b1_peer_recv_node_destroy(B1Peer *peer,
                                      struct bus1_msg_node_destroy *node_destroy,
-                                     B1Message **messagep)
-{
+                                     B1Message **messagep) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
 
         message = malloc(sizeof(*message));
@@ -662,8 +649,7 @@ static int b1_peer_recv_node_destroy(B1Peer *peer,
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep)
-{
+_c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep) {
         struct bus1_cmd_recv recv = {};
         int r;
 
@@ -697,8 +683,7 @@ _c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep)
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
-{
+_c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
@@ -749,8 +734,7 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep)
  *
  * Return: NULL.
  */
-_c_public_ B1Slot *b1_slot_free(B1Slot *slot)
-{
+_c_public_ B1Slot *b1_slot_free(B1Slot *slot) {
         if (slot->previous)
                 slot->previous->next = slot->next;
         if (slot->next)
@@ -769,16 +753,14 @@ _c_public_ B1Slot *b1_slot_free(B1Slot *slot)
  *
  * Retrurn: the userdata.
  */
-_c_public_ void *b1_slot_get_userdata(B1Slot *slot)
-{
+_c_public_ void *b1_slot_get_userdata(B1Slot *slot) {
         if (!slot)
                 return NULL;
 
         return b1_node_get_userdata(slot->reply_node);
 }
 
-static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, const char *signature, void *userdata)
-{
+static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, const char *signature, void *userdata) {
         _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
         int r;
 
@@ -814,8 +796,7 @@ static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, const char *signature, void 
         return 0;
 }
 
-_c_public_ int b1_message_append_handle(B1Message *message, B1Handle *handle)
-{
+_c_public_ int b1_message_append_handle(B1Message *message, B1Handle *handle) {
         B1Handle **handles;
 
         if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -838,8 +819,7 @@ _c_public_ int b1_message_append_handle(B1Message *message, B1Handle *handle)
         return message->data.n_handles - 1;
 }
 
-_c_public_ int b1_message_append_fd(B1Message *message, int fd)
-{
+_c_public_ int b1_message_append_fd(B1Message *message, int fd) {
         _c_cleanup_(c_closep) int new_fd = -1;
         int *fds;
 
@@ -863,8 +843,7 @@ _c_public_ int b1_message_append_fd(B1Message *message, int fd)
         return message->data.n_fds - 1;
 }
 
-static int b1_message_new(B1Message **messagep, unsigned int type)
-{
+static int b1_message_new(B1Message **messagep, unsigned int type) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
@@ -924,14 +903,13 @@ static int b1_message_new(B1Message **messagep, unsigned int type)
  * Return: 0 on success, or a negative error code on failure.
  */
 _c_public_ int b1_message_new_call(B1Message **messagep,
-                        const char *interface,
-                        const char *member,
-                        const char *signature_input,
-                        const char *signature_output,
-                        B1Slot **slotp,
-                        B1SlotFn fn,
-                        void *userdata)
-{
+                                   const char *interface,
+                                   const char *member,
+                                   const char *signature_input,
+                                   const char *signature_output,
+                                   B1Slot **slotp,
+                                   B1SlotFn fn,
+                                   void *userdata) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
@@ -984,12 +962,11 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
  * Return: 0 on success, or a negative error code on failure.
  */
 _c_public_ int b1_message_new_reply(B1Message **messagep,
-                         const char *signature_input,
-                         const char *signature_output,
-                         B1Slot **slotp,
-                         B1SlotFn fn,
-                         void *userdata)
-{
+                                    const char *signature_input,
+                                    const char *signature_output,
+                                    B1Slot **slotp,
+                                    B1SlotFn fn,
+                                    void *userdata) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
@@ -1037,9 +1014,7 @@ _c_public_ int b1_message_new_reply(B1Message **messagep,
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_message_new_error(B1Message **messagep, const char *name,
-                         const char *signature)
-{
+_c_public_ int b1_message_new_error(B1Message **messagep, const char *name, const char *signature) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
@@ -1068,8 +1043,7 @@ _c_public_ int b1_message_new_error(B1Message **messagep, const char *name,
  *
  * Return: @message is returned.
  */
-_c_public_ B1Message *b1_message_ref(B1Message *message)
-{
+_c_public_ B1Message *b1_message_ref(B1Message *message) {
         if (!message)
                 return NULL;
 
@@ -1086,8 +1060,7 @@ _c_public_ B1Message *b1_message_ref(B1Message *message)
  *
  * Return: NULL is returned.
  */
-_c_public_ B1Message *b1_message_unref(B1Message *message)
-{
+_c_public_ B1Message *b1_message_unref(B1Message *message) {
         if (!message)
                 return NULL;
 
@@ -1129,8 +1102,7 @@ _c_public_ B1Message *b1_message_unref(B1Message *message)
  *
  * Return: true if @message is sealed, false otherwise.
  */
-_c_public_ bool b1_message_is_sealed(B1Message *message)
-{
+_c_public_ bool b1_message_is_sealed(B1Message *message) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1148,16 +1120,14 @@ _c_public_ bool b1_message_is_sealed(B1Message *message)
  *
  * Return: the message type.
  */
-_c_public_ unsigned int b1_message_get_type(B1Message *message)
-{
+_c_public_ unsigned int b1_message_get_type(B1Message *message) {
         if (!message)
                 return _B1_MESSAGE_TYPE_INVALID;
 
         return message->type;
 }
 
-static B1Node *b1_peer_get_node(B1Peer *peer, uint64_t node_id)
-{
+static B1Node *b1_peer_get_node(B1Peer *peer, uint64_t node_id) {
         CRBNode *n;
 
         assert(peer);
@@ -1169,8 +1139,7 @@ static B1Node *b1_peer_get_node(B1Peer *peer, uint64_t node_id)
         return c_container_of(n, B1Node, rb);
 }
 
-static B1Handle *b1_peer_get_handle(B1Peer *peer, uint64_t handle_id)
-{
+static B1Handle *b1_peer_get_handle(B1Peer *peer, uint64_t handle_id) {
         CRBNode *n;
 
         assert(peer);
@@ -1190,8 +1159,7 @@ static int implementations_compare(CRBTree *t, void *k, CRBNode *n) {
         return strcmp(name, implementation->interface->name);
 }
 
-static B1Interface *b1_node_get_interface(B1Node *node, const char *name)
-{
+static B1Interface *b1_node_get_interface(B1Node *node, const char *name) {
         B1Implementation *implementation;
         CRBNode *n;
 
@@ -1214,8 +1182,7 @@ static int members_compare(CRBTree *t, void *k, CRBNode *n) {
         return strcmp(name, member->name);
 }
 
-static B1Member *b1_interface_get_member(B1Interface *interface, const char *name)
-{
+static B1Member *b1_interface_get_member(B1Interface *interface, const char *name) {
         CRBNode *n;
 
         assert(interface);
@@ -1228,8 +1195,7 @@ static B1Member *b1_interface_get_member(B1Interface *interface, const char *nam
         return c_container_of(n, B1Member, rb);
 }
 
-static int b1_message_dispatch_node_destroy(B1Message *message)
-{
+static int b1_message_dispatch_node_destroy(B1Message *message) {
         B1Node *node;
         B1Handle *handle;
         uint64_t handle_id;
@@ -1258,8 +1224,7 @@ static int b1_message_dispatch_node_destroy(B1Message *message)
         return r;
 }
 
-static int b1_peer_reply_error(B1Message *origin, const char *name)
-{
+static int b1_peer_reply_error(B1Message *origin, const char *name) {
         _c_cleanup_(b1_message_unrefp) B1Message *error = NULL;
         B1Handle *reply_handle;
         int r;
@@ -1275,8 +1240,7 @@ static int b1_peer_reply_error(B1Message *origin, const char *name)
         return b1_peer_send(origin->peer, &reply_handle, 1, error);
 }
 
-static int b1_peer_reply_errno(B1Message *origin, unsigned int err)
-{
+static int b1_peer_reply_errno(B1Message *origin, unsigned int err) {
         _c_cleanup_(b1_message_unrefp) B1Message *error = NULL;
         B1Handle *reply_handle;
         int r;
@@ -1296,8 +1260,7 @@ static int b1_peer_reply_errno(B1Message *origin, unsigned int err)
         return b1_peer_send(origin->peer, &reply_handle, 1, error);
 }
 
-static int b1_message_dispatch_data(B1Message *message)
-{
+static int b1_message_dispatch_data(B1Message *message) {
         B1Node *node;
         B1Interface *interface;
         B1Member *member;
@@ -1368,8 +1331,7 @@ static int b1_message_dispatch_data(B1Message *message)
  *
  * Return: 0 on success, or a negitave error code on failure.
  */
-_c_public_ int b1_message_dispatch(B1Message *message)
-{
+_c_public_ int b1_message_dispatch(B1Message *message) {
         assert(message);
 
         if (message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1387,8 +1349,7 @@ _c_public_ int b1_message_dispatch(B1Message *message)
  *
  * Return: the handle.
  */
-_c_public_ B1Handle *b1_message_get_reply_handle(B1Message *message)
-{
+_c_public_ B1Handle *b1_message_get_reply_handle(B1Message *message) {
         if (!message)
                 return NULL;
 
@@ -1408,8 +1369,7 @@ _c_public_ B1Handle *b1_message_get_reply_handle(B1Message *message)
  *
  * Return: the uid
  */
-_c_public_ uid_t b1_message_get_uid(B1Message *message)
-{
+_c_public_ uid_t b1_message_get_uid(B1Message *message) {
         if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -1;
 
@@ -1422,8 +1382,7 @@ _c_public_ uid_t b1_message_get_uid(B1Message *message)
  *
  * Return: the gid
  */
-_c_public_ gid_t b1_message_get_gid(B1Message *message)
-{
+_c_public_ gid_t b1_message_get_gid(B1Message *message) {
         if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -1;
 
@@ -1436,8 +1395,7 @@ _c_public_ gid_t b1_message_get_gid(B1Message *message)
  *
  * Return: the uid
  */
-_c_public_ pid_t b1_message_get_pid(B1Message *message)
-{
+_c_public_ pid_t b1_message_get_pid(B1Message *message) {
         if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -1;
 
@@ -1450,8 +1408,7 @@ _c_public_ pid_t b1_message_get_pid(B1Message *message)
  *
  * Return: the uid
  */
-_c_public_ pid_t b1_message_get_tid(B1Message *message)
-{
+_c_public_ pid_t b1_message_get_tid(B1Message *message) {
         if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -1;
 
@@ -1461,8 +1418,7 @@ _c_public_ pid_t b1_message_get_tid(B1Message *message)
 /**
  * XXX: see CVariant
  */
-_c_public_ size_t b1_message_peek_count(B1Message *message)
-{
+_c_public_ size_t b1_message_peek_count(B1Message *message) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1474,8 +1430,7 @@ _c_public_ size_t b1_message_peek_count(B1Message *message)
 /**
  * XXX: see CVariant
  */
-_c_public_ const char *b1_message_peek_type(B1Message *message, size_t *sizep)
-{
+_c_public_ const char *b1_message_peek_type(B1Message *message, size_t *sizep) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1487,8 +1442,7 @@ _c_public_ const char *b1_message_peek_type(B1Message *message, size_t *sizep)
 /**
  * XXX: see CVariant
  */
-_c_public_ int b1_message_enter(B1Message *message, const char *containers)
-{
+_c_public_ int b1_message_enter(B1Message *message, const char *containers) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1500,8 +1454,7 @@ _c_public_ int b1_message_enter(B1Message *message, const char *containers)
 /**
  * XXX: see CVariant
  */
-_c_public_ int b1_message_exit(B1Message *message, const char *containers)
-{
+_c_public_ int b1_message_exit(B1Message *message, const char *containers) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1513,8 +1466,7 @@ _c_public_ int b1_message_exit(B1Message *message, const char *containers)
 /**
  * XXX: see CVariant
  */
-_c_public_ int b1_message_readv(B1Message *message, const char *signature, va_list args)
-{
+_c_public_ int b1_message_readv(B1Message *message, const char *signature, va_list args) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1526,8 +1478,7 @@ _c_public_ int b1_message_readv(B1Message *message, const char *signature, va_li
 /**
  * XXX: see CVariant
  */
-_c_public_ void b1_message_rewind(B1Message *message)
-{
+_c_public_ void b1_message_rewind(B1Message *message) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1543,8 +1494,7 @@ _c_public_ void b1_message_rewind(B1Message *message)
 /**
  * XXX: see CVariant
  */
-_c_public_ int b1_message_beginv(B1Message *message, const char *containers, va_list args)
-{
+_c_public_ int b1_message_beginv(B1Message *message, const char *containers, va_list args) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1556,8 +1506,7 @@ _c_public_ int b1_message_beginv(B1Message *message, const char *containers, va_
 /**
  * XXX: see CVariant
  */
-_c_public_ int b1_message_end(B1Message *message, const char *containers)
-{
+_c_public_ int b1_message_end(B1Message *message, const char *containers) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1569,8 +1518,7 @@ _c_public_ int b1_message_end(B1Message *message, const char *containers)
 /**
  * XXX: see CVariant
  */
-_c_public_ int b1_message_writev(B1Message *message, const char *signature, va_list args)
-{
+_c_public_ int b1_message_writev(B1Message *message, const char *signature, va_list args) {
         CVariant *cv = NULL;
 
         if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1582,8 +1530,7 @@ _c_public_ int b1_message_writev(B1Message *message, const char *signature, va_l
 /**
  * XXX: see CVariant
  */
-_c_public_ int b1_message_seal(B1Message *message)
-{
+_c_public_ int b1_message_seal(B1Message *message) {
         CVariant *cv;
         int r;
 
@@ -1626,9 +1573,7 @@ _c_public_ int b1_message_seal(B1Message *message)
  *
  * Returns: 0 on success, or a negitave error code on failure.
  */
-_c_public_ int b1_message_get_handle(B1Message *message, unsigned int index,
-                          B1Handle **handlep)
-{
+_c_public_ int b1_message_get_handle(B1Message *message, unsigned int index, B1Handle **handlep) {
         assert(handlep);
 
         if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1657,8 +1602,7 @@ _c_public_ int b1_message_get_handle(B1Message *message, unsigned int index,
  *
  * Returns: 0 on success, or a negitave error code on failure.
  */
-_c_public_ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp)
-{
+_c_public_ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp) {
         assert(fdp);
 
         if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
@@ -1686,8 +1630,7 @@ _c_public_ int b1_message_get_fd(B1Message *message, unsigned int index, int *fd
  *
  * Return: 0 on success, and a negative error code on failure.
  */
-_c_public_ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata)
-{
+_c_public_ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata) {
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         int r;
 
@@ -1729,8 +1672,7 @@ _c_public_ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata)
  *
  * Return: NULL.
  */
-_c_public_ B1Node *b1_node_free(B1Node *node)
-{
+_c_public_ B1Node *b1_node_free(B1Node *node) {
         CRBNode *n;
 
         if (!node)
@@ -1766,8 +1708,7 @@ _c_public_ B1Node *b1_node_free(B1Node *node)
  *
  * Return: the peer owning @node
  */
-_c_public_ B1Peer *b1_node_get_peer(B1Node *node)
-{
+_c_public_ B1Peer *b1_node_get_peer(B1Node *node) {
         if (!node)
                 return NULL;
 
@@ -1783,8 +1724,7 @@ _c_public_ B1Peer *b1_node_get_peer(B1Node *node)
  *
  * Return: the handle, or NULL if it has been released.
  */
-_c_public_ B1Handle *b1_node_get_handle(B1Node *node)
-{
+_c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
         if (!node)
                 return NULL;
 
@@ -1799,8 +1739,7 @@ _c_public_ B1Handle *b1_node_get_handle(B1Node *node)
  *
  * Return: the userdata.
  */
-_c_public_ void *b1_node_get_userdata(B1Node *node)
-{
+_c_public_ void *b1_node_get_userdata(B1Node *node) {
         if (!node)
                 return NULL;
 
@@ -1815,8 +1754,7 @@ _c_public_ void *b1_node_get_userdata(B1Node *node)
  * A node destruction notification is recevied when a node is destoryed, this
  * function is then called to allow resources to be cleaned up.
  */
-_c_public_ void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn)
-{
+_c_public_ void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn) {
         assert(node);
 
         node->destroy_fn = fn;
@@ -1832,8 +1770,7 @@ _c_public_ void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn)
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_node_implement(B1Node *node, B1Interface *interface)
-{
+_c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
         B1Implementation *implementation;
         CRBNode **slot, *p;
 
@@ -1865,8 +1802,7 @@ _c_public_ int b1_node_implement(B1Node *node, B1Interface *interface)
  * means that the owning peer can no longer hand out handles to the node to
  * other peers.
  */
-_c_public_ void b1_node_release(B1Node *node)
-{
+_c_public_ void b1_node_release(B1Node *node) {
         if (!node)
                 return;
 
@@ -1882,8 +1818,7 @@ _c_public_ void b1_node_release(B1Node *node)
  * peers. If any peers still hold handles, they will receive node destruction
  * notifications for this node.
  */
-_c_public_ void b1_node_destroy(B1Node *node)
-{
+_c_public_ void b1_node_destroy(B1Node *node) {
         if (!node)
                 return;
 
@@ -1899,8 +1834,7 @@ _c_public_ void b1_node_destroy(B1Node *node)
  *
  * Return: @handle is returned.
  */
-_c_public_ B1Handle *b1_handle_ref(B1Handle *handle)
-{
+_c_public_ B1Handle *b1_handle_ref(B1Handle *handle) {
         if (!handle)
                 return NULL;
 
@@ -1917,8 +1851,7 @@ _c_public_ B1Handle *b1_handle_ref(B1Handle *handle)
  *
  * Return: NULL is returned.
  */
-_c_public_ B1Handle *b1_handle_unref(B1Handle *handle)
-{
+_c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
         if (!handle)
                 return NULL;
 
@@ -1946,8 +1879,7 @@ _c_public_ B1Handle *b1_handle_unref(B1Handle *handle)
  *
  * Return: the peer.
  */
-_c_public_ B1Peer *b1_handle_get_peer(B1Handle *handle)
-{
+_c_public_ B1Peer *b1_handle_get_peer(B1Handle *handle) {
         if (!handle)
                 return NULL;
 
@@ -1967,9 +1899,7 @@ _c_public_ B1Peer *b1_handle_get_peer(B1Handle *handle)
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn,
-                        void *userdata)
-{
+_c_public_ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn, void *userdata) {
         _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
         int r;
 
@@ -1994,8 +1924,7 @@ _c_public_ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_interface_new(B1Interface **interfacep, const char *name)
-{
+_c_public_ int b1_interface_new(B1Interface **interfacep, const char *name) {
         _c_cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
 
         assert(interfacep);
@@ -2024,8 +1953,7 @@ _c_public_ int b1_interface_new(B1Interface **interfacep, const char *name)
  *
  * Return: @interface is returned.
  */
-_c_public_ B1Interface *b1_interface_ref(B1Interface *interface)
-{
+_c_public_ B1Interface *b1_interface_ref(B1Interface *interface) {
         if (!interface)
                 return NULL;
 
@@ -2042,8 +1970,7 @@ _c_public_ B1Interface *b1_interface_ref(B1Interface *interface)
  *
  * Return: NULL is returned.
  */
-_c_public_ B1Interface *b1_interface_unref(B1Interface *interface)
-{
+_c_public_ B1Interface *b1_interface_unref(B1Interface *interface) {
         CRBNode *node;
 
         if (!interface)
@@ -2078,10 +2005,11 @@ _c_public_ B1Interface *b1_interface_unref(B1Interface *interface)
  *
  * Return: 0 on succes, or a negative error code on failure.
  */
-_c_public_ int b1_interface_add_member(B1Interface *interface, const char *name,
-                            const char *signature_input, const char *signature_output,
-                            B1NodeFn fn)
-{
+_c_public_ int b1_interface_add_member(B1Interface *interface,
+                                       const char *name,
+                                       const char *signature_input,
+                                       const char *signature_output,
+                                       B1NodeFn fn) {
         B1Member *member;
         CRBNode **slot, *p;
 
@@ -2138,8 +2066,7 @@ _c_public_ int b1_interface_add_member(B1Interface *interface, const char *name,
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_peer_reply(B1Message *origin, B1Message *reply)
-{
+_c_public_ int b1_peer_reply(B1Message *origin, B1Message *reply) {
         B1Handle *reply_handle;
 
         reply_handle = b1_message_get_reply_handle(origin);
