@@ -766,8 +766,6 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
         if (r < 0)
                 return r;
 
-        b1_peer_unref(clone);
-
         *nodep = node;
         node = NULL;
         *handlep = handle;
