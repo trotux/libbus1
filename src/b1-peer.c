@@ -614,7 +614,8 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                                 return -EIO;
 
                         message->data.call.reply_handle = message->data.handles[reply_handle];
-                }
+                } else
+                        message->data.call.reply_handle = NULL;
 
                 r = c_variant_exit(message->data.cv, "m)v");
 
@@ -637,7 +638,8 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                                 return -EIO;
 
                         message->data.reply.reply_handle = message->data.handles[reply_handle];
-                }
+                } else
+                        message->data.reply.reply_handle = NULL;
 
                 r = c_variant_exit(message->data.cv, "mv");
 
