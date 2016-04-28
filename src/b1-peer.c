@@ -814,7 +814,7 @@ _c_public_ int b1_message_append_handle(B1Message *message, B1Handle *handle) {
         }
 
         handles = realloc(message->data.handles,
-                          sizeof(*handles) * message->data.n_handles + 1);
+                          sizeof(*handles) * (message->data.n_handles + 1));
         if (!handles)
                 return -ENOMEM;
 
@@ -837,7 +837,7 @@ _c_public_ int b1_message_append_fd(B1Message *message, int fd) {
                 return -errno;
 
         fds = realloc(message->data.fds,
-                      sizeof(*fds) * message->data.n_fds + 1);
+                      sizeof(*fds) * (message->data.n_fds + 1));
         if (!fds)
                 return -ENOMEM;
 
