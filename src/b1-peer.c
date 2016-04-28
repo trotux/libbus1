@@ -1838,16 +1838,18 @@ _c_public_ void b1_node_destroy(B1Node *node) {
  * b1_handle_ref() - acquire reference
  * @handle:             handle to acquire reference to, or NULL
  *
+ * Acquire a new reference to a handle. The caller must already own a reference
+ * themself.
+ *
+ * If NULL is passed, this is a no-op.
+ *
  * Return: @handle is returned.
  */
 _c_public_ B1Handle *b1_handle_ref(B1Handle *handle) {
-        if (!handle)
-                return NULL;
-
-        assert(handle->n_ref > 0);
-
-        ++handle->n_ref;
-
+        if (handle) {
+                assert(handle->n_ref > 0);
+                ++handle->n_ref;
+        }
         return handle;
 }
 
@@ -1855,13 +1857,15 @@ _c_public_ B1Handle *b1_handle_ref(B1Handle *handle) {
  * b1_handle_unref() - release reference
  * @handle:             handle to release reference to, or NULL
  *
+ * Release a single reference to an handle. If this is the last reference, the
+ * handle is freed.
+ *
+ * If NULL is passed, this is a no-op.
+ *
  * Return: NULL is returned.
  */
 _c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
-        if (!handle)
-                return NULL;
-
-        if (--handle->n_ref > 0)
+        if (!handle || --handle->n_ref > 0)
                 return NULL;
 
         b1_handle_release(handle);
@@ -1878,36 +1882,40 @@ _c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
 }
 
 /**
- * b1_handle_get_peer() - get holder of handle
- * @handle:             the handle
+ * b1_handle_get_peer() - get parent of a handle
+ * @handle:             handle to query
  *
- * Every handle has a holding peer.
+ * Query the parent peer of a handle.
  *
- * Return: the peer.
+ * Return: Pointer to parent peer of @handle.
  */
 _c_public_ B1Peer *b1_handle_get_peer(B1Handle *handle) {
-        if (!handle)
-                return NULL;
-
+        assert(handle);
         return handle->holder;
 }
 
 /**
  * b1_handle_subscribe() - subscribe to handle events
- * @handle:             the handle
- * @slotp:              pointer to handler object
- * @fn:                 handler function
- * @userdata:           userdata to be passed to the handler function
+ * @handle:             handle to operate on
+ * @slotp:              output argument for newly created slot
+ * @fn:                 slot callback function
+ * @userdata:           userdata to be passed to the callback function
  *
- * When a node is destroyed, any holder of handles to that node receive node
- * destruction notifications. This registers a handler for such notifications to
- * clean up any possible allocated resources.
+ * When a node is destroyed, all handle holders to that node receive a node
+ * destruction notification. This function registers a new handler for such
+ * notifications.
  *
- * Return: 0 on success, or a negative error code on failure.
+ * The handler will stay linked to the handle as long as the returned slot is
+ * valid. Once the slot is destroyed, the handler is unlinked as well.
+ *
+ * Return: 0 on success, negative error code on failure.
  */
 _c_public_ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn, void *userdata) {
         _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
         int r;
+
+        assert(handle);
+        assert(slotp);
 
         r = b1_slot_new(&slot, fn, NULL, userdata);
         if (r < 0)
@@ -2059,14 +2067,15 @@ _c_public_ int b1_interface_add_member(B1Interface *interface,
 }
 
 /**
- * b1_peer_reply() - send message in reply to messag
+ * b1_peer_reply() - send reply to a message
  * @origin:             message to reply to
- * @reply:              the reply
+ * @reply:              reply to send
  *
  * For convenience, this allows a reply to be sent directly to the reply handle
- * of another message.
+ * of another message. It is equivalent to requesting the reply handle via
+ * b1_message_get_reply_handle() and using it as destination via b1_peer_send().
  *
- * Return: 0 on success, or a negative error code on failure.
+ * Return: 0 on success, negative error code on failure.
  */
 _c_public_ int b1_peer_reply(B1Message *origin, B1Message *reply) {
         B1Handle *reply_handle;
