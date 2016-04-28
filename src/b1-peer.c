@@ -465,7 +465,7 @@ static int b1_message_new_from_slice(B1Message **messagep,
 }
 
 static int b1_handle_new(B1Handle **handlep, B1Peer *peer) {
-        B1Handle *handle;
+        _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
 
         assert(handlep);
 
@@ -478,9 +478,11 @@ static int b1_handle_new(B1Handle **handlep, B1Peer *peer) {
         handle->node = NULL;
         handle->id = BUS1_HANDLE_INVALID;
         handle->marked = false;
+        handle->subscriptions = NULL;
+        c_rbnode_init(&handle->rb);
 
         *handlep = handle;
-
+        handle = NULL;
         return 0;
 }
 
