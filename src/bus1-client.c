@@ -295,13 +295,13 @@ _public_ uint64_t bus1_client_slice_to_offset(struct bus1_client *client,
 }
 
 _public_ int bus1_client_send(struct bus1_client *client,
-			      const uint64_t *destinations, size_t n_destinations,
+			      uint64_t *destinations, size_t n_destinations,
 			      const struct iovec *vecs, size_t n_vecs,
-			      const uint64_t *handles, size_t n_handles,
+			      uint64_t *handles, size_t n_handles,
 			      const int *fds, size_t n_fds)
 {
 	struct bus1_cmd_send send = {
-		.flags = n_destinations > 1 ? BUS1_SEND_FLAG_CONTINUE : 0,
+		.flags = 0,
 		.ptr_destinations = (uintptr_t)destinations,
 		.n_destinations = n_destinations,
 		.ptr_vecs = (uintptr_t)vecs,

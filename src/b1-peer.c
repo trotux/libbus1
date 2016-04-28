@@ -586,6 +586,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                 }
 
                 break;
+
         case B1_MESSAGE_TYPE_REPLY:
                 r = c_variant_read(message->data.cv, "v", "b", &expects_reply);
                 if (r < 0)
@@ -599,13 +600,14 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                 }
 
                 break;
+
         case B1_MESSAGE_TYPE_ERROR:
-                r = c_variant_read(message->data.cv, "v", "s",
-                                   &message->data.error.name);
+                r = c_variant_read(message->data.cv, "v", "s", &message->data.error.name);
                 if (r < 0)
                         return r;
 
                 break;
+
         default:
                 return -EIO;
         }
