@@ -542,7 +542,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         const uint64_t *handle_ids;
         void *slice;
-        bool expects_reply;
+        unsigned int reply_handle;
         int r;
 
         assert(peer);
@@ -586,33 +586,58 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
 
         switch (message->type) {
         case B1_MESSAGE_TYPE_CALL:
-                r = c_variant_read(message->data.cv, "v", "(ssb)",
-                                   &message->data.call.interface,
-                                   &message->data.call.member,
-                                   &expects_reply);
+                r = c_variant_enter(message->data.cv, "v(");
                 if (r < 0)
                         return r;
 
-                if (expects_reply) {
-                        if (data->n_handles < 1)
+                r = c_variant_read(message->data.cv, "ss",
+                                   &message->data.call.interface,
+                                   &message->data.call.member);
+                if (r < 0)
+                        return r;
+
+                r = c_variant_enter(message->data.cv, "m");
+                if (r < 0)
+                        return r;
+
+                r = c_variant_peek_count(message->data.cv);
+                if (r < 0)
+                        return r;
+                else if (r == 1) {
+                        r = c_variant_read(message->data.cv, "u", &reply_handle);
+                        if (r < 0)
+                                return r;
+
+                        if (data->n_handles <= reply_handle)
                                 return -EIO;
 
-                        message->data.call.reply_handle = message->data.handles[0];
+                        message->data.call.reply_handle = message->data.handles[reply_handle];
                 }
+
+                r = c_variant_exit(message->data.cv, "m)v");
 
                 break;
 
         case B1_MESSAGE_TYPE_REPLY:
-                r = c_variant_read(message->data.cv, "v", "b", &expects_reply);
+                r = c_variant_enter(message->data.cv, "vm");
                 if (r < 0)
                         return r;
 
-                if (expects_reply) {
-                        if (data->n_handles < 1)
+                r = c_variant_peek_count(message->data.cv);
+                if (r < 0)
+                        return r;
+                else if (r == 1) {
+                        r = c_variant_read(message->data.cv, "u", &reply_handle);
+                        if (r < 0)
+                                return r;
+
+                        if (data->n_handles <= reply_handle)
                                 return -EIO;
 
-                        message->data.reply.reply_handle = message->data.handles[0];
+                        message->data.reply.reply_handle = message->data.handles[reply_handle];
                 }
+
+                r = c_variant_exit(message->data.cv, "mv");
 
                 break;
 
@@ -915,24 +940,14 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
                                    B1ReplySlotFn fn,
                                    void *userdata) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         int r;
 
         r = b1_message_new(&message, B1_MESSAGE_TYPE_CALL);
         if (r < 0)
                 return r;
 
-        /* <interface, member, expects reply> */
-        r = c_variant_write(message->data.cv, "v", "(ssb)", interface, member, !!slotp);
-        if (r < 0)
-                return r;
-
-        r = c_variant_begin(message->data.cv, "v", signature_input);
-        if (r < 0)
-                return r;
-
         if (slotp) {
-                _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
-
                 r = b1_reply_slot_new(&slot, signature_output, fn, userdata);
                 if (r < 0)
                         return r;
@@ -941,6 +956,22 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
                 if (r < 0)
                         return r;
 
+                /* <interface, member, reply handle> */
+                r = c_variant_write(message->data.cv, "v", "(ssmu)", interface, member, true, r);
+                if (r < 0)
+                        return r;
+        } else {
+                /* <interface, member, nothing> */
+                r = c_variant_write(message->data.cv, "v", "(ssmu)", interface, member, false);
+                if (r < 0)
+                        return r;
+        }
+
+        r = c_variant_begin(message->data.cv, "v", signature_input);
+        if (r < 0)
+                return r;
+
+        if (slotp) {
                 *slotp = slot;
                 slot = NULL;
         }
@@ -972,24 +1003,14 @@ _c_public_ int b1_message_new_reply(B1Message **messagep,
                                     B1ReplySlotFn fn,
                                     void *userdata) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         int r;
 
         r = b1_message_new(&message, B1_MESSAGE_TYPE_REPLY);
         if (r < 0)
                 return r;
 
-        /* <expects reply> */
-        r = c_variant_write(message->data.cv, "v", "b", !!slotp);
-        if (r < 0)
-                return r;
-
-        r = c_variant_begin(message->data.cv, "v", signature_input);
-        if (r < 0)
-                return r;
-
         if (slotp) {
-                _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
-
                 r = b1_reply_slot_new(&slot, signature_output, fn, userdata);
                 if (r < 0)
                         return r;
@@ -998,6 +1019,22 @@ _c_public_ int b1_message_new_reply(B1Message **messagep,
                 if (r < 0)
                         return r;
 
+                /* <reply handle> */
+                r = c_variant_write(message->data.cv, "v", "mu", true, r);
+                if (r < 0)
+                        return r;
+        } else {
+                /* <nothing> */
+                r = c_variant_write(message->data.cv, "v", "mu", false);
+                if (r < 0)
+                        return r;
+        }
+
+        r = c_variant_begin(message->data.cv, "v", signature_input);
+        if (r < 0)
+                return r;
+
+        if (slotp) {
                 *slotp = slot;
                 slot = NULL;
         }
