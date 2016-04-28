@@ -33,24 +33,29 @@ static int node_function(B1Node *node, void *userdata, B1Message *message)
         B1Message *reply = NULL;
         uint64_t num1 = 0;
         uint32_t num2 = 0;
+        int r;
 
         fprintf(stderr, "PING!\n");
 
-        assert(b1_message_read(message, "(tu)", &num1, &num2) >= 0);
+        r = b1_message_read(message, "(tu)", &num1, &num2);
+        assert(r >= 0);
         assert(num1 = 1);
         assert(num2 = 2);
 
         num1 = 0;
         num2 = 0;
         b1_message_rewind(message);
-        assert(b1_message_read(message, "(tu)", &num1, &num2) >= 0);
+        r = b1_message_read(message, "(tu)", &num1, &num2);
+        assert(r >= 0);
         assert(num1 = 1);
         assert(num2 = 2);
 
-        assert(b1_message_new_reply(&reply, "", "", NULL, NULL, NULL) >= 0);
+        r = b1_message_new_reply(&reply, "", "", NULL, NULL, NULL);
+        assert(r >= 0);
         assert(message);
 
-        assert(b1_peer_reply(message, reply) >= 0);
+        r = b1_peer_reply(message, reply);
+        assert(r >= 0);
 
         return 0;
 }
@@ -70,20 +75,29 @@ static void test_cvariant(void)
         uint64_t num = 0;
         const char *str1 = NULL, *str2 = NULL;
         bool b = false;
+        int r;
 
-        assert(c_variant_new(&cv, "(tvv)", strlen("(tvv)")) >= 0);
+        r = c_variant_new(&cv, "(tvv)", strlen("(tvv)"));
+        assert(r >= 0);
         assert(cv);
 
-        assert(c_variant_begin(cv, "(") >= 0);
-        assert(c_variant_write(cv, "t", 1) >= 0);
-        assert(c_variant_write(cv, "v", "(ssb)", "foo", "bar", true) >= 0);
+        r = c_variant_begin(cv, "(");
+        assert(r >= 0);
+        r = c_variant_write(cv, "t", 1);
+        assert(r >= 0);
+        r = c_variant_write(cv, "v", "(ssb)", "foo", "bar", true);
+        assert(r >= 0);
 
-        assert(c_variant_seal(cv) >= 0);
+        r = c_variant_seal(cv);
+        assert(r >= 0);
 
-        assert(c_variant_enter(cv, "(") >= 0);
-        assert(c_variant_read(cv, "t", &num) >= 0);
+        r = c_variant_enter(cv, "(");;
+        assert(r >= 0);
+        r = c_variant_read(cv, "t", &num);
+        assert(r >= 0);
         assert(num == 1);
-        assert(c_variant_read(cv, "v", "(ssb)", &str1, &str2, &b) >= 0);
+        r = c_variant_read(cv, "v", "(ssb)", &str1, &str2, &b);
+        assert(r >= 0);
         assert(str1);
         assert(!strcmp(str1, "foo"));
         assert(str2);
@@ -94,17 +108,21 @@ static void test_cvariant(void)
         assert(vecs);
         assert(n_vecs == 1);
 
-        assert(c_variant_new_from_vecs(&cv2, "(tvv)", strlen("(tvv)"), vecs, 1) >= 0);
+        r = c_variant_new_from_vecs(&cv2, "(tvv)", strlen("(tvv)"), vecs, 1);
+        assert(r >= 0);
 
         num = 0;
         str1 = NULL;
         str2 = NULL;
         b = false;
 
-        assert(c_variant_enter(cv2, "(") >= 0);
-        assert(c_variant_read(cv2, "t", &num) >= 0);
+        r = c_variant_enter(cv2, "(");
+        assert(r >= 0);
+        r = c_variant_read(cv2, "t", &num);
+        assert(r >= 0);
         assert(num == 1);
-        assert(c_variant_read(cv2, "v", "(ssb)", &str1, &str2, &b) >= 0);
+        r = c_variant_read(cv2, "v", "(ssb)", &str1, &str2, &b);
+        assert(r >= 0);
         assert(str1);
         assert(!strcmp(str1, "foo"));
         assert(str2);
@@ -122,42 +140,57 @@ static void test_api(void)
         B1Message *message = NULL, *request = NULL, *reply = NULL;
         uint64_t num1 = 0;
         uint32_t num2 = 0;
+        int r;
 
-        assert(b1_interface_new(&interface, "foo") >= 0);
+        r = b1_interface_new(&interface, "foo");
+        assert(r >= 0);
         assert(interface);
 
-        assert(b1_interface_add_member(interface, "bar", "(tu)", "", node_function) >= 0);
+        r = b1_interface_add_member(interface, "bar", "(tu)", "", node_function);
+        assert(r >= 0);
 
-        assert(b1_peer_new(&peer, NULL) >= 0);
+        r = b1_peer_new(&peer, NULL);
+        assert(r >= 0);
         assert(peer);
 
-        assert(b1_peer_clone(peer, &node, &handle) >= 0);
+        r = b1_peer_clone(peer, &node, &handle);
+        assert(r >= 0);
         assert(node);
         assert(handle);
         clone = b1_node_get_peer(node);
         assert(clone);
 
-        assert(b1_node_implement(node, interface) >= 0);
+        r = b1_node_implement(node, interface);
+        assert(r >= 0);
 
-        assert(b1_message_new_call(&message, "foo", "bar", "(tu)", "", &slot, slot_function, NULL) >= 0);
+        r = b1_message_new_call(&message, "foo", "bar", "(tu)", "", &slot, slot_function, NULL);
+        assert(r >= 0);
         assert(message);
         assert(slot);
 
-        assert(b1_message_write(message, "(tu)", 1, 2) >= 0);
-        assert(b1_message_seal(message) >= 0);
-        assert(b1_message_read(message, "(tu)", &num1, &num2) >= 0);
+        r = b1_message_write(message, "(tu)", 1, 2);
+        assert(r >= 0);
+        r = b1_message_seal(message);
+        assert(r >= 0);
+        r = b1_message_read(message, "(tu)", &num1, &num2);
+        assert(r >= 0);
         assert(num1 == 1);
         assert(num2 == 2);
 
-        assert(b1_peer_send(peer, &handle, 1, message) >= 0);
+        r = b1_peer_send(peer, &handle, 1, message);
+        assert(r >= 0);
 
-        assert(b1_peer_recv(clone, &request) >= 0);
+        r = b1_peer_recv(clone, &request);
+        assert(r >= 0);
         assert(request);
-        assert(b1_message_dispatch(request) >= 0);
+        r = b1_message_dispatch(request);
+        assert(r >= 0);
 
-        assert(b1_peer_recv(peer, &reply) >= 0);
+        r = b1_peer_recv(peer, &reply);
+        assert(r >= 0);
         assert(reply);
-        assert(b1_message_dispatch(reply) >= 0);
+        r = b1_message_dispatch(reply);
+        assert(r >= 0);
 
         assert(!b1_message_unref(reply));
         assert(!b1_message_unref(request));
