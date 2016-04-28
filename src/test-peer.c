@@ -26,11 +26,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <c-variant.h>
+#include "org.bus1/c-macro.h"
 #include "org.bus1/b1-peer.h"
 
 static int node_function(B1Node *node, void *userdata, B1Message *message)
 {
-        B1Message *reply = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *reply = NULL;
         B1Peer *peer = NULL;
         uint64_t num1 = 0;
         uint32_t num2 = 0;
@@ -73,7 +74,7 @@ static int slot_function(B1ReplySlot *slot, void *userdata, B1Message *message)
 
 static void test_cvariant(void)
 {
-        CVariant *cv = NULL, *cv2;
+        _c_cleanup_(c_variant_freep) CVariant *cv = NULL, *cv2;
         const struct iovec *vecs;
         size_t n_vecs;
         uint64_t num = 0;
@@ -136,12 +137,13 @@ static void test_cvariant(void)
 
 static void test_api(void)
 {
-        B1Peer *peer = NULL, *clone = NULL;
-        B1Handle *handle = NULL;
-        B1Interface *interface = NULL;
-        B1Node *node = NULL;
-        B1ReplySlot *slot = NULL;
-        B1Message *message = NULL, *request = NULL, *reply = NULL;
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        B1Peer *clone = NULL;
+        _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
+        _c_cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL, *request = NULL, *reply = NULL;
         uint64_t num1 = 0;
         uint32_t num2 = 0;
         int r;
@@ -195,15 +197,6 @@ static void test_api(void)
         assert(reply);
         r = b1_message_dispatch(reply);
         assert(r >= 0);
-
-        assert(!b1_message_unref(reply));
-        assert(!b1_message_unref(request));
-        assert(!b1_message_unref(message));
-        assert(!b1_reply_slot_free(slot));
-        assert(!b1_node_free(node));
-        assert(!b1_interface_unref(interface));
-        assert(!b1_handle_unref(handle));
-        assert(!b1_peer_unref(peer));
 }
 
 int main(int argc, char **argv) {
