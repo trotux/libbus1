@@ -347,10 +347,9 @@ _c_public_ int b1_peer_send(B1Peer *peer,
         /* limit number of destinations? */
         uint64_t destinations[n_handles];
         uint64_t *handle_ids;
-        const struct iovec *vecs;
         size_t n_vecs;
         struct bus1_cmd_send send = {
-                .ptr_destinations = destinations,
+                .ptr_destinations = (uintptr_t)destinations,
                 .n_destinations = n_handles,
         };
         int r;
@@ -366,10 +365,11 @@ _c_public_ int b1_peer_send(B1Peer *peer,
         if (!handle_ids)
                 return -ENOMEM;
 
-        send.ptr_vecs = c_variant_get_vecs(message->data.cv, &send.n_vecs);
-        send.ptr_handles = handle_ids;
+        send.ptr_vecs = (uintptr_t)c_variant_get_vecs(message->data.cv, &n_vecs);
+        send.n_vecs = n_vecs;
+        send.ptr_handles = (uintptr_t)handle_ids;
         send.n_handles = message->data.n_handles;
-        send.ptr_fds = message->data.fds;
+        send.ptr_fds = (uintptr_t)message->data.fds;
         send.n_fds = message->data.n_fds;
 
         for (unsigned int i = 0; i < message->data.n_handles; i++) {
