@@ -125,11 +125,12 @@ struct B1Peer {
 };
 
 struct B1Slot {
-        B1Slot *previous, *next;
+        B1Slot *previous;
+        B1Slot *next;
+        char *type_input;
+        B1Node *reply_node;
         B1SlotFn fn;
         void *userdata;
-        char *signature;
-        B1Node *reply_node;
 };
 
 /**
@@ -749,7 +750,6 @@ _c_public_ B1Slot *b1_slot_free(B1Slot *slot) {
                 slot->next->previous = slot->previous;
 
         b1_node_free(slot->reply_node);
-        free(slot->signature);
         free(slot);
 
         return NULL;
@@ -768,39 +768,39 @@ _c_public_ void *b1_slot_get_userdata(B1Slot *slot) {
         return b1_node_get_userdata(slot->reply_node);
 }
 
-static int b1_slot_new(B1Slot **slotp, B1SlotFn fn, const char *signature, void *userdata) {
+static int b1_slot_new(B1Slot **slotp, const char *type_input, B1SlotFn fn, void *userdata) {
         _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+        size_t n_type_input;
         int r;
 
         assert(slotp);
         assert(fn);
 
-        slot = malloc(sizeof(*slot));
+        n_type_input = type_input ? (strlen(type_input) + 1) : 0;
+        slot = malloc(sizeof(*slot) + n_type_input);
         if (!slot)
                 return -ENOMEM;
 
-        slot->fn = fn;
         slot->previous = NULL;
         slot->next = NULL;
+        slot->type_input = NULL;
         slot->reply_node = NULL;
-        slot->signature = NULL;
+        slot->fn = fn;
+        slot->userdata = userdata;
 
-        if (signature) {
-                slot->signature = strdup(signature);
-                if (!slot->signature)
-                        return -ENOMEM;
+        if (type_input) {
+                slot->type_input = (void *)(slot + 1);
+                memcpy(slot->type_input, type_input, n_type_input);
 
                 r = b1_node_new(&slot->reply_node, NULL, userdata);
                 if (r < 0)
                         return r;
 
                 slot->userdata = NULL;
-        } else
-                slot->userdata = userdata;
+        }
 
         *slotp = slot;
         slot = NULL;
-
         return 0;
 }
 
@@ -937,7 +937,7 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
         if (slotp) {
                 _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
 
-                r = b1_slot_new(&slot, fn, signature_output, userdata);
+                r = b1_slot_new(&slot, signature_output, fn, userdata);
                 if (r < 0)
                         return r;
 
@@ -994,7 +994,7 @@ _c_public_ int b1_message_new_reply(B1Message **messagep,
         if (slotp) {
                 _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
 
-                r = b1_slot_new(&slot, fn, signature_output, userdata);
+                r = b1_slot_new(&slot, signature_output, fn, userdata);
                 if (r < 0)
                         return r;
 
@@ -1306,7 +1306,7 @@ static int b1_message_dispatch_data(B1Message *message) {
                         return b1_peer_reply_error(message, "org.bus1.Error.InvalidNode");
 
                 signature = b1_message_peek_type(message, &signature_len);
-                if (strncmp(node->slot->signature, signature, signature_len) != 0)
+                if (strncmp(node->slot->type_input, signature, signature_len) != 0)
                         return b1_peer_reply_error(message, "org.bus1.Error.InvalidSignature");
 
                 r = node->slot->fn(node->slot, node->userdata, message);
@@ -1919,7 +1919,7 @@ _c_public_ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn
         assert(handle);
         assert(slotp);
 
-        r = b1_slot_new(&slot, fn, NULL, userdata);
+        r = b1_slot_new(&slot, NULL, fn, userdata);
         if (r < 0)
                 return r;
 
