@@ -34,10 +34,12 @@ typedef struct B1Handle B1Handle;
 typedef struct B1Interface B1Interface;
 typedef struct B1Message B1Message;
 typedef struct B1Node B1Node;
+typedef struct B1Subscription B1Subscription;
 typedef struct B1Peer B1Peer;
 typedef struct B1Slot B1Slot;
 
 typedef int (*B1NodeFn) (B1Node *node, void *userdata, B1Message *message);
+typedef int (*B1SubscriptionFn) (B1Subscription *subscription, void *userdata, B1Handle *handle);
 typedef int (*B1SlotFn) (B1Slot *slot, void *userdata, B1Message *message);
 
 /* peers */
@@ -57,6 +59,11 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep);
 
 B1Slot *b1_slot_free(B1Slot *slot);
 void *b1_slot_get_userdata(B1Slot *slot);
+
+/* subscriptions */
+
+B1Subscription *b1_subscription_free(B1Subscription *subscription);
+void *b1_subscription_get_userdata(B1Subscription *subscription);
 
 /* messages */
 
@@ -139,7 +146,7 @@ B1Handle *b1_handle_unref(B1Handle *handle);
 
 B1Peer *b1_handle_get_peer(B1Handle *handle);
 
-int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn, void *userdata);
+int b1_handle_subscribe(B1Handle *handle, B1Subscription **subscriptionp, B1SubscriptionFn fn, void *userdata);
 
 /* interfaces */
 
@@ -177,6 +184,11 @@ static inline void b1_node_freep(B1Node **node) {
 static inline void b1_slot_freep(B1Slot **slot) {
         if (*slot)
                 b1_slot_free(*slot);
+}
+
+static inline void b1_subscription_freep(B1Subscription **subscription) {
+        if (*subscription)
+                b1_subscription_free(*subscription);
 }
 
 static inline void b1_handle_unrefp(B1Handle **handle) {

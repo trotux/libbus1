@@ -47,7 +47,7 @@ struct B1Handle {
 
         bool marked; /* used for duplicate detection */
 
-        B1Slot *subscriptions;
+        B1Subscription *subscriptions;
 
         CRBNode rb;
 };
@@ -115,6 +115,16 @@ struct B1Node {
         B1NodeFn destroy_fn;
 };
 
+struct B1Subscription {
+        B1Subscription *previous;
+        B1Subscription *next;
+
+        B1Handle *handle;
+
+        B1SubscriptionFn fn;
+        void *userdata;
+};
+
 struct B1Peer {
         unsigned long n_ref;
 
@@ -125,8 +135,6 @@ struct B1Peer {
 };
 
 struct B1Slot {
-        B1Slot *previous;
-        B1Slot *next;
         char *type_input;
         B1Node *reply_node;
         B1SlotFn fn;
@@ -744,11 +752,6 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
  * Return: NULL.
  */
 _c_public_ B1Slot *b1_slot_free(B1Slot *slot) {
-        if (slot->previous)
-                slot->previous->next = slot->next;
-        if (slot->next)
-                slot->next->previous = slot->previous;
-
         b1_node_free(slot->reply_node);
         free(slot);
 
@@ -774,30 +777,23 @@ static int b1_slot_new(B1Slot **slotp, const char *type_input, B1SlotFn fn, void
         int r;
 
         assert(slotp);
+        assert(type_input);
         assert(fn);
 
-        n_type_input = type_input ? (strlen(type_input) + 1) : 0;
+        n_type_input = strlen(type_input) + 1;
         slot = malloc(sizeof(*slot) + n_type_input);
         if (!slot)
                 return -ENOMEM;
 
-        slot->previous = NULL;
-        slot->next = NULL;
         slot->type_input = NULL;
         slot->reply_node = NULL;
         slot->fn = fn;
-        slot->userdata = userdata;
+        slot->type_input = (void *)(slot + 1);
+        memcpy(slot->type_input, type_input, n_type_input);
 
-        if (type_input) {
-                slot->type_input = (void *)(slot + 1);
-                memcpy(slot->type_input, type_input, n_type_input);
-
-                r = b1_node_new(&slot->reply_node, NULL, userdata);
-                if (r < 0)
-                        return r;
-
-                slot->userdata = NULL;
-        }
+        r = b1_node_new(&slot->reply_node, NULL, userdata);
+        if (r < 0)
+                return r;
 
         *slotp = slot;
         slot = NULL;
@@ -1215,8 +1211,8 @@ static int b1_message_dispatch_node_destroy(B1Message *message) {
 
         handle = b1_peer_get_handle(message->peer, handle_id);
         if (handle) {
-                for (B1Slot *slot = handle->subscriptions; slot; slot = slot->next) {
-                        k = slot->fn(slot, slot->userdata, message);
+                for (B1Subscription *s = handle->subscriptions; s; s = s->next) {
+                        k = s->fn(s, s->userdata, handle);
                         if (k < 0 && r == 0)
                                 r = k;
                 }
@@ -1892,6 +1888,36 @@ _c_public_ B1Peer *b1_handle_get_peer(B1Handle *handle) {
 }
 
 /**
+ * b1_subscription_free() - unregister and free subscription
+ * @subscription:               a subscription, or NULL
+ *
+ * Return: NULL.
+ */
+_c_public_ B1Subscription *b1_subscription_free(B1Subscription *subscription) {
+        if (subscription->previous)
+                subscription->previous->next = subscription->next;
+        if (subscription->next)
+                subscription->next->previous = subscription->previous;
+
+        free(subscription);
+
+        return NULL;
+}
+
+/**
+ * b1_subscription_get_userdata() - get userdata from subscription
+ * @subscription:               a subscription
+ *
+ * Retrurn: the userdata.
+ */
+_c_public_ void *b1_subscription_get_userdata(B1Subscription *subscription) {
+        if (!subscription)
+                return NULL;
+
+        return subscription->userdata;
+}
+
+/**
  * b1_handle_subscribe() - subscribe to handle events
  * @handle:             handle to operate on
  * @slotp:              output argument for newly created slot
@@ -1907,22 +1933,27 @@ _c_public_ B1Peer *b1_handle_get_peer(B1Handle *handle) {
  *
  * Return: 0 on success, negative error code on failure.
  */
-_c_public_ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn, void *userdata) {
-        _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
-        int r;
+_c_public_ int b1_handle_subscribe(B1Handle *handle, B1Subscription **subscriptionp, B1SubscriptionFn fn, void *userdata) {
+        _c_cleanup_(b1_subscription_freep) B1Subscription *subscription = NULL;
 
-        assert(handle);
-        assert(slotp);
+        assert(subscriptionp);
+        assert(fn);
 
-        r = b1_slot_new(&slot, NULL, fn, userdata);
-        if (r < 0)
-                return r;
+        subscription = malloc(sizeof(*subscription));
+        if (!subscription)
+                return -ENOMEM;
 
-        slot->next = handle->subscriptions;
-        handle->subscriptions = slot;
+        subscription->fn = fn;
+        subscription->userdata = userdata;
 
-        *slotp = slot;
-        slot = NULL;
+        subscription->handle = handle;
+        subscription->previous = NULL;
+        subscription->next = handle->subscriptions;
+
+        handle->subscriptions = subscription;
+
+        *subscriptionp = subscription;
+        subscription = NULL;
         return 0;
 }
 
