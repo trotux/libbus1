@@ -25,8 +25,6 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C" {
