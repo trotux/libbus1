@@ -39,7 +39,7 @@ typedef struct B1Implementation {
 } B1Implementation;
 
 struct B1Handle {
-        unsigned n_ref;
+        unsigned long n_ref;
 
         B1Peer *holder;
         B1Node *node;
@@ -53,7 +53,7 @@ struct B1Handle {
 };
 
 struct B1Interface {
-        unsigned n_ref;
+        unsigned long n_ref;
 
         char *name;
 
@@ -61,7 +61,7 @@ struct B1Interface {
 };
 
 struct B1Message {
-        unsigned int n_ref;
+        unsigned long n_ref;
         uint64_t type;
 
         B1Peer *peer;
@@ -116,7 +116,7 @@ struct B1Node {
 };
 
 struct B1Peer {
-        unsigned n_ref;
+        unsigned long n_ref;
 
         struct bus1_client *client;
 
