@@ -111,7 +111,7 @@ struct B1Node {
         CRBNode rb;
 
         CRBTree implementations;
-        B1Slot *slot;
+        B1ReplySlot *slot;
         B1NodeFn destroy_fn;
 };
 
@@ -134,10 +134,10 @@ struct B1Peer {
         CRBTree handles;
 };
 
-struct B1Slot {
+struct B1ReplySlot {
         char *type_input;
         B1Node *reply_node;
-        B1SlotFn fn;
+        B1ReplySlotFn fn;
         void *userdata;
 };
 
@@ -746,12 +746,12 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
 }
 
 /**
- * b1_slot_free() - unregister and free slot
+ * b1_reply_slot_free() - unregister and free slot
  * @slot:               a slot, or NULL
  *
  * Return: NULL.
  */
-_c_public_ B1Slot *b1_slot_free(B1Slot *slot) {
+_c_public_ B1ReplySlot *b1_reply_slot_free(B1ReplySlot *slot) {
         b1_node_free(slot->reply_node);
         free(slot);
 
@@ -759,20 +759,20 @@ _c_public_ B1Slot *b1_slot_free(B1Slot *slot) {
 }
 
 /**
- * b1_slot_get_userdata() - get userdata from slot
+ * b1_reply_slot_get_userdata() - get userdata from slot
  * @slot:               a slot
  *
  * Retrurn: the userdata.
  */
-_c_public_ void *b1_slot_get_userdata(B1Slot *slot) {
+_c_public_ void *b1_reply_slot_get_userdata(B1ReplySlot *slot) {
         if (!slot)
                 return NULL;
 
         return b1_node_get_userdata(slot->reply_node);
 }
 
-static int b1_slot_new(B1Slot **slotp, const char *type_input, B1SlotFn fn, void *userdata) {
-        _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+static int b1_reply_slot_new(B1ReplySlot **slotp, const char *type_input, B1ReplySlotFn fn, void *userdata) {
+        _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         size_t n_type_input;
         int r;
 
@@ -901,7 +901,7 @@ static int b1_message_new(B1Message **messagep, unsigned int type) {
  * @userdata:           the userdata to pass to the reply handler, or NULL
  *
  * All methods are namespaced by an interface name, and may optionally expect a 
- * response. If a response is expected, a new B1Slot object is created and @fn
+ * response. If a response is expected, a new B1ReplySlot object is created and @fn
  * is called on @userdata when the response is received.
  *
  * Return: 0 on success, or a negative error code on failure.
@@ -911,8 +911,8 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
                                    const char *member,
                                    const char *signature_input,
                                    const char *signature_output,
-                                   B1Slot **slotp,
-                                   B1SlotFn fn,
+                                   B1ReplySlot **slotp,
+                                   B1ReplySlotFn fn,
                                    void *userdata) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
@@ -931,9 +931,9 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
                 return r;
 
         if (slotp) {
-                _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+                _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
 
-                r = b1_slot_new(&slot, signature_output, fn, userdata);
+                r = b1_reply_slot_new(&slot, signature_output, fn, userdata);
                 if (r < 0)
                         return r;
 
@@ -968,8 +968,8 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
 _c_public_ int b1_message_new_reply(B1Message **messagep,
                                     const char *signature_input,
                                     const char *signature_output,
-                                    B1Slot **slotp,
-                                    B1SlotFn fn,
+                                    B1ReplySlot **slotp,
+                                    B1ReplySlotFn fn,
                                     void *userdata) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
@@ -988,9 +988,9 @@ _c_public_ int b1_message_new_reply(B1Message **messagep,
                 return r;
 
         if (slotp) {
-                _c_cleanup_(b1_slot_freep) B1Slot *slot = NULL;
+                _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
 
-                r = b1_slot_new(&slot, signature_output, fn, userdata);
+                r = b1_reply_slot_new(&slot, signature_output, fn, userdata);
                 if (r < 0)
                         return r;
 

@@ -60,7 +60,7 @@ static int node_function(B1Node *node, void *userdata, B1Message *message)
         return 0;
 }
 
-static int slot_function(B1Slot *slot, void *userdata, B1Message *message)
+static int slot_function(B1ReplySlot *slot, void *userdata, B1Message *message)
 {
         fprintf(stderr, "PONG!\n");
 
@@ -136,7 +136,7 @@ static void test_api(void)
         B1Handle *handle = NULL;
         B1Interface *interface = NULL;
         B1Node *node = NULL;
-        B1Slot *slot = NULL;
+        B1ReplySlot *slot = NULL;
         B1Message *message = NULL, *request = NULL, *reply = NULL;
         uint64_t num1 = 0;
         uint32_t num2 = 0;
@@ -195,7 +195,7 @@ static void test_api(void)
         assert(!b1_message_unref(reply));
         assert(!b1_message_unref(request));
         assert(!b1_message_unref(message));
-        assert(!b1_slot_free(slot));
+        assert(!b1_reply_slot_free(slot));
         assert(!b1_node_free(node));
         assert(!b1_interface_unref(interface));
         assert(!b1_handle_unref(handle));

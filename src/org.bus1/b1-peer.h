@@ -36,11 +36,11 @@ typedef struct B1Message B1Message;
 typedef struct B1Node B1Node;
 typedef struct B1Subscription B1Subscription;
 typedef struct B1Peer B1Peer;
-typedef struct B1Slot B1Slot;
+typedef struct B1ReplySlot B1ReplySlot;
 
 typedef int (*B1NodeFn) (B1Node *node, void *userdata, B1Message *message);
 typedef int (*B1SubscriptionFn) (B1Subscription *subscription, void *userdata, B1Handle *handle);
-typedef int (*B1SlotFn) (B1Slot *slot, void *userdata, B1Message *message);
+typedef int (*B1ReplySlotFn) (B1ReplySlot *slot, void *userdata, B1Message *message);
 
 /* peers */
 
@@ -57,8 +57,8 @@ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep);
 
 /* slots */
 
-B1Slot *b1_slot_free(B1Slot *slot);
-void *b1_slot_get_userdata(B1Slot *slot);
+B1ReplySlot *b1_reply_slot_free(B1ReplySlot *slot);
+void *b1_reply_slot_get_userdata(B1ReplySlot *slot);
 
 /* subscriptions */
 
@@ -81,14 +81,14 @@ int b1_message_new_call(B1Message **messagep,
                         const char *member,
                         const char *signature_input,
                         const char *signature_output,
-                        B1Slot **slotp,
-                        B1SlotFn fn,
+                        B1ReplySlot **slotp,
+                        B1ReplySlotFn fn,
                         void *userdata);
 int b1_message_new_reply(B1Message **messagep,
                          const char *signature_input,
                          const char *signature_output,
-                         B1Slot **slotp,
-                         B1SlotFn fn,
+                         B1ReplySlot **slotp,
+                         B1ReplySlotFn fn,
                          void *userdata);
 int b1_message_new_error(B1Message **messagep,
                          const char *name,
@@ -181,9 +181,9 @@ static inline void b1_node_freep(B1Node **node) {
                 b1_node_free(*node);
 }
 
-static inline void b1_slot_freep(B1Slot **slot) {
+static inline void b1_reply_slot_freep(B1ReplySlot **slot) {
         if (*slot)
-                b1_slot_free(*slot);
+                b1_reply_slot_free(*slot);
 }
 
 static inline void b1_subscription_freep(B1Subscription **subscription) {
