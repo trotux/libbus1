@@ -349,6 +349,10 @@ _c_public_ int b1_peer_send(B1Peer *peer,
         uint64_t *handle_ids;
         const struct iovec *vecs;
         size_t n_vecs;
+        struct bus1_cmd_send send = {
+                .ptr_destinations = destinations,
+                .n_destinations = n_handles,
+        };
         int r;
 
         assert(peer);
@@ -361,6 +365,12 @@ _c_public_ int b1_peer_send(B1Peer *peer,
         handle_ids = malloc(sizeof(uint64_t) * message->data.n_handles);
         if (!handle_ids)
                 return -ENOMEM;
+
+        send.ptr_vecs = c_variant_get_vecs(message->data.cv, &send.n_vecs);
+        send.ptr_handles = handle_ids;
+        send.n_handles = message->data.n_handles;
+        send.ptr_fds = message->data.fds;
+        send.n_fds = message->data.n_fds;
 
         for (unsigned int i = 0; i < message->data.n_handles; i++) {
                 B1Handle *handle = message->data.handles[i];
@@ -382,13 +392,7 @@ _c_public_ int b1_peer_send(B1Peer *peer,
         for (unsigned int i = 0; i < n_handles; i++)
                 destinations[i] = handles[i]->id;
 
-        vecs = c_variant_get_vecs(message->data.cv, &n_vecs);
-
-        r = bus1_client_send(peer->client,
-                             destinations, n_handles,
-                             vecs, n_vecs,
-                             handle_ids, message->data.n_handles,
-                             message->data.fds, message->data.n_fds);
+        r = bus1_client_send(peer->client, &send);
         if (r < 0)
                 goto error;
 
@@ -657,7 +661,7 @@ _c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep) {
 
         assert(peer);
 
-        r = bus1_client_ioctl(peer->client, BUS1_CMD_RECV, &recv);
+        r = bus1_client_recv(peer->client, &recv);
         if (r < 0)
                 return r;
 
