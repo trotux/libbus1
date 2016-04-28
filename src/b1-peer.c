@@ -508,7 +508,7 @@ static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_i
         }
 
         slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
-        if (!slot) {
+        if (slot) {
                 r = b1_handle_new(&handle, peer);
                 if (r < 0)
                         return r;
