@@ -31,6 +31,7 @@
 static int node_function(B1Node *node, void *userdata, B1Message *message)
 {
         B1Message *reply = NULL;
+        B1Peer *peer = NULL;
         uint64_t num1 = 0;
         uint32_t num2 = 0;
         int r;
@@ -50,7 +51,10 @@ static int node_function(B1Node *node, void *userdata, B1Message *message)
         assert(num1 = 1);
         assert(num2 = 2);
 
-        r = b1_message_new_reply(&reply, "", "", NULL, NULL, NULL);
+        peer = b1_node_get_peer(node);
+        assert(peer);
+
+        r = b1_message_new_reply(peer, &reply, "", "", NULL, NULL, NULL);
         assert(r >= 0);
         assert(message);
 
@@ -163,7 +167,7 @@ static void test_api(void)
         r = b1_node_implement(node, interface);
         assert(r >= 0);
 
-        r = b1_message_new_call(&message, "foo", "bar", "(tu)", "", &slot, slot_function, NULL);
+        r = b1_message_new_call(peer, &message, "foo", "bar", "(tu)", "", &slot, slot_function, NULL);
         assert(r >= 0);
         assert(message);
         assert(slot);

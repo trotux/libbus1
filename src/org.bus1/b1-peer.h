@@ -76,7 +76,8 @@ enum {
         _B1_MESSAGE_TYPE_INVALID = -1,
 };
 
-int b1_message_new_call(B1Message **messagep,
+int b1_message_new_call(B1Peer *peer,
+                        B1Message **messagep,
                         const char *interface,
                         const char *member,
                         const char *signature_input,
@@ -84,13 +85,15 @@ int b1_message_new_call(B1Message **messagep,
                         B1ReplySlot **slotp,
                         B1ReplySlotFn fn,
                         void *userdata);
-int b1_message_new_reply(B1Message **messagep,
+int b1_message_new_reply(B1Peer *peer,
+                         B1Message **messagep,
                          const char *signature_input,
                          const char *signature_output,
                          B1ReplySlot **slotp,
                          B1ReplySlotFn fn,
                          void *userdata);
-int b1_message_new_error(B1Message **messagep,
+int b1_message_new_error(B1Peer *peer,
+                         B1Message **messagep,
                          const char *name,
                          const char *signature);
 B1Message *b1_message_ref(B1Message *message);
@@ -126,7 +129,7 @@ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp);
 
 /* nodes */
 
-int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata);
+int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata);
 B1Node *b1_node_free(B1Node *node);
 
 B1Peer *b1_node_get_peer(B1Node *node);

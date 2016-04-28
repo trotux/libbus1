@@ -473,7 +473,7 @@ static int b1_message_new_from_slice(B1Message **messagep,
         return 0;
 }
 
-static int b1_handle_new(B1Handle **handlep, B1Peer *peer) {
+static int b1_handle_new(B1Peer *peer, B1Handle **handlep) {
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
 
         assert(handlep);
@@ -520,7 +520,7 @@ static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_i
 
         slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
         if (slot) {
-                r = b1_handle_new(&handle, peer);
+                r = b1_handle_new(peer, &handle);
                 if (r < 0)
                         return r;
 
@@ -744,7 +744,7 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
         if (r < 0)
                 return r;
 
-        r = b1_handle_new(&handle, peer);
+        r = b1_handle_new(peer, &handle);
         if (r < 0)
                 return r;
 
@@ -752,7 +752,7 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
         if (r < 0)
                 return r;
 
-        r = b1_node_new(&node, clone, NULL);
+        r = b1_node_new(clone, &node, clone);
         if (r < 0)
                 return r;
 
@@ -796,7 +796,7 @@ _c_public_ void *b1_reply_slot_get_userdata(B1ReplySlot *slot) {
         return b1_node_get_userdata(slot->reply_node);
 }
 
-static int b1_reply_slot_new(B1ReplySlot **slotp, const char *type_input, B1ReplySlotFn fn, void *userdata) {
+static int b1_reply_slot_new(B1Peer *peer, B1ReplySlot **slotp, const char *type_input, B1ReplySlotFn fn, void *userdata) {
         _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         size_t n_type_input;
         int r;
@@ -816,7 +816,7 @@ static int b1_reply_slot_new(B1ReplySlot **slotp, const char *type_input, B1Repl
         slot->type_input = (void *)(slot + 1);
         memcpy(slot->type_input, type_input, n_type_input);
 
-        r = b1_node_new(&slot->reply_node, NULL, userdata);
+        r = b1_node_new(peer, &slot->reply_node, userdata);
         if (r < 0)
                 return r;
 
@@ -872,7 +872,7 @@ _c_public_ int b1_message_append_fd(B1Message *message, int fd) {
         return message->data.n_fds - 1;
 }
 
-static int b1_message_new(B1Message **messagep, unsigned int type) {
+static int b1_message_new(B1Peer *peer, B1Message **messagep, unsigned int type) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
@@ -882,7 +882,7 @@ static int b1_message_new(B1Message **messagep, unsigned int type) {
 
         message->type = type;
         message->n_ref = 1;
-        message->peer = NULL;
+        message->peer = b1_peer_ref(peer);
 
         message->data.destination = BUS1_HANDLE_INVALID;
         message->data.uid = -1;
@@ -931,7 +931,8 @@ static int b1_message_new(B1Message **messagep, unsigned int type) {
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_message_new_call(B1Message **messagep,
+_c_public_ int b1_message_new_call(B1Peer *peer,
+                                   B1Message **messagep,
                                    const char *interface,
                                    const char *member,
                                    const char *signature_input,
@@ -943,12 +944,12 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
         _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         int r;
 
-        r = b1_message_new(&message, B1_MESSAGE_TYPE_CALL);
+        r = b1_message_new(peer, &message, B1_MESSAGE_TYPE_CALL);
         if (r < 0)
                 return r;
 
         if (slotp) {
-                r = b1_reply_slot_new(&slot, signature_output, fn, userdata);
+                r = b1_reply_slot_new(peer, &slot, signature_output, fn, userdata);
                 if (r < 0)
                         return r;
 
@@ -996,7 +997,8 @@ _c_public_ int b1_message_new_call(B1Message **messagep,
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_message_new_reply(B1Message **messagep,
+_c_public_ int b1_message_new_reply(B1Peer *peer,
+                                    B1Message **messagep,
                                     const char *signature_input,
                                     const char *signature_output,
                                     B1ReplySlot **slotp,
@@ -1006,12 +1008,12 @@ _c_public_ int b1_message_new_reply(B1Message **messagep,
         _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         int r;
 
-        r = b1_message_new(&message, B1_MESSAGE_TYPE_REPLY);
+        r = b1_message_new(peer, &message, B1_MESSAGE_TYPE_REPLY);
         if (r < 0)
                 return r;
 
         if (slotp) {
-                r = b1_reply_slot_new(&slot, signature_output, fn, userdata);
+                r = b1_reply_slot_new(peer, &slot, signature_output, fn, userdata);
                 if (r < 0)
                         return r;
 
@@ -1055,11 +1057,11 @@ _c_public_ int b1_message_new_reply(B1Message **messagep,
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_message_new_error(B1Message **messagep, const char *name, const char *signature) {
+_c_public_ int b1_message_new_error(B1Peer *peer, B1Message **messagep, const char *name, const char *signature) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
-        r = b1_message_new(&message, B1_MESSAGE_TYPE_ERROR);
+        r = b1_message_new(peer, &message, B1_MESSAGE_TYPE_ERROR);
         if (r < 0)
                 return r;
 
@@ -1120,8 +1122,6 @@ _c_public_ B1Message *b1_message_unref(B1Message *message) {
                         close(message->data.fds[i]);
 
                 if (message->data.slice) {
-                        assert(message->peer);
-
                         bus1_client_slice_release(message->peer->client,
                                 bus1_client_slice_to_offset(message->peer->client,
                                                             message->data.slice));
@@ -1274,7 +1274,7 @@ static int b1_peer_reply_error(B1Message *origin, const char *name) {
         if (!reply_handle)
                 return 0;
 
-        r = b1_message_new_error(&error, name, NULL);
+        r = b1_message_new_error(origin->peer, &error, name, NULL);
         if (r < 0)
                 return r;
 
@@ -1290,7 +1290,7 @@ static int b1_peer_reply_errno(B1Message *origin, unsigned int err) {
         if (!reply_handle)
                 return 0;
 
-        r = b1_message_new_error(&error, "org.bus1.Error.Errno", "u");
+        r = b1_message_new_error(origin->peer, &error, "org.bus1.Error.Errno", "u");
         if (r < 0)
                 return r;
 
@@ -1659,8 +1659,8 @@ _c_public_ int b1_message_get_fd(B1Message *message, unsigned int index, int *fd
 
 /**
  * b1_node_new() - create a new node for a peer
- * @nodep:              pointer to the new node object
  * @peer:               the owning peer, or null
+ * @nodep:              pointer to the new node object
  * @userdata:           userdata to associate with the node
  *
  * A node is the recipient of messages, and. Nodes are allocated lazily in the
@@ -1671,7 +1671,7 @@ _c_public_ int b1_message_get_fd(B1Message *message, unsigned int index, int *fd
  *
  * Return: 0 on success, and a negative error code on failure.
  */
-_c_public_ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata) {
+_c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         int r;
 
@@ -1689,7 +1689,7 @@ _c_public_ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata) {
         node->handle = NULL;
         node->destroy_fn = NULL;
 
-        r = b1_handle_new(&node->handle, peer);
+        r = b1_handle_new(peer, &node->handle);
         if (r < 0)
                 return r;
 
