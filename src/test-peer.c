@@ -58,7 +58,7 @@ static int node_function(B1Node *node, void *userdata, B1Message *message)
         assert(r >= 0);
         assert(message);
 
-        r = b1_peer_reply(message, reply);
+        r = b1_message_reply(message, reply);
         assert(r >= 0);
 
         return 0;
@@ -181,7 +181,7 @@ static void test_api(void)
         assert(num1 == 1);
         assert(num2 == 2);
 
-        r = b1_peer_send(peer, &handle, 1, message);
+        r = b1_message_send(message, &handle, 1);
         assert(r >= 0);
 
         r = b1_peer_recv(clone, &request);

@@ -341,18 +341,16 @@ static int b1_handle_link(B1Handle *handle, B1Peer *peer, uint64_t handle_id) {
 }
 
 /**
- * b1_peer_send() - send a message to the given handles
- * @peer                the sending peer
+ * b1_message_send() - send a message to the given handles
+ * @message             the message to be sent
  * @handles             the destination handles
  * @n_handles           the number of handles
- * @message             the message to be sent
  *
  * Return: 0 on succes, or a negative error code on failure.
  */
-_c_public_ int b1_peer_send(B1Peer *peer,
-                            B1Handle **handles,
-                            size_t n_handles,
-                            B1Message *message) {
+_c_public_ int b1_message_send(B1Message *message,
+                               B1Handle **handles,
+                               size_t n_handles) {
         /* limit number of destinations? */
         uint64_t destinations[n_handles];
         uint64_t *handle_ids;
@@ -362,8 +360,6 @@ _c_public_ int b1_peer_send(B1Peer *peer,
                 .n_destinations = n_handles,
         };
         int r;
-
-        assert(peer);
 
         if (!message)
                 return -EINVAL;
@@ -398,10 +394,16 @@ _c_public_ int b1_peer_send(B1Peer *peer,
                         handle_ids[i] = handle->id;
         }
 
-        for (unsigned int i = 0; i < n_handles; i++)
-                destinations[i] = handles[i]->id;
+        for (unsigned int i = 0; i < n_handles; i++) {
+                if (handles[i]->holder != message->peer) {
+                        r = -EINVAL;
+                        goto error;
+                }
 
-        r = bus1_client_send(peer->client, &send);
+                destinations[i] = handles[i]->id;
+        }
+
+        r = bus1_client_send(message->peer->client, &send);
         if (r < 0)
                 goto error;
 
@@ -413,10 +415,10 @@ _c_public_ int b1_peer_send(B1Peer *peer,
                 if (handle->id != BUS1_HANDLE_INVALID)
                         continue;
 
-                assert(b1_handle_link(handle, peer, handle_ids[i]) >= 0);
+                assert(b1_handle_link(handle, message->peer, handle_ids[i]) >= 0);
 
                 if (handle->node)
-                        assert(b1_node_link(handle->node, peer, handle_ids[i]) >= 0);
+                        assert(b1_node_link(handle->node, message->peer, handle_ids[i]) >= 0);
         }
 
         free(handle_ids);
@@ -829,6 +831,9 @@ _c_public_ int b1_message_append_handle(B1Message *message, B1Handle *handle) {
         B1Handle **handles;
 
         if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+                return -EINVAL;
+
+        if (message->peer != handle->holder)
                 return -EINVAL;
 
         for (unsigned int i = 0; i < message->data.n_handles; i++) {
@@ -1278,7 +1283,7 @@ static int b1_peer_reply_error(B1Message *origin, const char *name) {
         if (r < 0)
                 return r;
 
-        return b1_peer_send(origin->peer, &reply_handle, 1, error);
+        return b1_message_send(error, &reply_handle, 1);
 }
 
 static int b1_peer_reply_errno(B1Message *origin, unsigned int err) {
@@ -1298,7 +1303,7 @@ static int b1_peer_reply_errno(B1Message *origin, unsigned int err) {
         if (r < 0)
                 return r;
 
-        return b1_peer_send(origin->peer, &reply_handle, 1, error);
+        return b1_message_send(error, &reply_handle, 1);
 }
 
 static int b1_message_dispatch_data(B1Message *message) {
@@ -2134,22 +2139,22 @@ _c_public_ int b1_interface_add_member(B1Interface *interface,
 }
 
 /**
- * b1_peer_reply() - send reply to a message
+ * b1_message_reply() - send reply to a message
  * @origin:             message to reply to
  * @reply:              reply to send
  *
  * For convenience, this allows a reply to be sent directly to the reply handle
  * of another message. It is equivalent to requesting the reply handle via
- * b1_message_get_reply_handle() and using it as destination via b1_peer_send().
+ * b1_message_get_reply_handle() and using it as destination via b1_message_send().
  *
  * Return: 0 on success, negative error code on failure.
  */
-_c_public_ int b1_peer_reply(B1Message *origin, B1Message *reply) {
+_c_public_ int b1_message_reply(B1Message *origin, B1Message *reply) {
         B1Handle *reply_handle;
 
         reply_handle = b1_message_get_reply_handle(origin);
         if (!reply_handle)
                 return -EINVAL;
 
-        return b1_peer_send(origin->peer, &reply_handle, 1, reply);
+        return b1_message_send(reply, &reply_handle, 1);
 }

@@ -51,7 +51,6 @@ B1Peer *b1_peer_unref(B1Peer *peer);
 
 int b1_peer_get_fd(B1Peer *peer);
 
-int b1_peer_send(B1Peer *peer, B1Handle **handles, size_t n_handles, B1Message *message);
 int b1_peer_recv(B1Peer *peer, B1Message **messagep);
 int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep);
 
@@ -103,6 +102,7 @@ bool b1_message_is_sealed(B1Message *message);
 unsigned int b1_message_get_type(B1Message *message);
 
 int b1_message_dispatch(B1Message *message);
+int b1_message_send(B1Message *message, B1Handle **handles, size_t n_handles);
 
 B1Handle *b1_message_get_reply_handle(B1Message *message);
 uid_t b1_message_get_uid(B1Message *message);
@@ -165,7 +165,7 @@ int b1_interface_add_member(B1Interface *interface,
 
 /* convenience */
 
-int b1_peer_reply(B1Message *origin, B1Message *reply);
+int b1_message_reply(B1Message *origin, B1Message *reply);
 
 /* inline helpers */
 
