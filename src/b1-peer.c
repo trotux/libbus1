@@ -1664,21 +1664,17 @@ _c_public_ int b1_node_new(B1Node **nodep, B1Peer *peer, void *userdata) {
 
         *nodep = node;
         node = NULL;
-
         return 0;
 }
 
 /**
- * b1_node_free() - unregister the node and free the associated resources
- * @node:               the node to operate on
+ * b1_node_free() - destroy a node
+ * @node:               node to destroy
  *
- * This is typically called when a node destruction notification has been
- * receied from the kernel, indicating that the node can not be used any more.
- * However, if this is called when the node is still in use, it is dropped from
- * the kernel, and any future messages destined for the node are silently
- * discarded.
+ * This destroys the given node and releases all linked resources. This implies
+ * a call to b1_node_destroy(), if not already done by the caller.
  *
- * Return: NULL.
+ * Return: NULL is returned.
  */
 _c_public_ B1Node *b1_node_free(B1Node *node) {
         CRBNode *n;
@@ -1686,15 +1682,13 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
         if (!node)
                 return NULL;
 
-        b1_handle_unref(node->handle);
+        b1_node_release(node);
         b1_node_destroy(node);
 
         while ((n = c_rbtree_first(&node->implementations))) {
-                B1Implementation *implementation =
-                                c_container_of(n, B1Implementation, rb);
+                B1Implementation *implementation = c_container_of(n, B1Implementation, rb);
 
                 c_rbtree_remove(&node->implementations, n);
-
                 b1_interface_unref(implementation->interface);
                 free(implementation);
         }
@@ -1711,56 +1705,55 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
 }
 
 /**
- * b1_node_get_peer() - get owning peer
- * @node:               the node
+ * b1_node_get_peer() - get parent peer of a node
+ * @node:               node to query
  *
- * Return: the peer owning @node
+ * Return a pointer to the parent peer of a node. This is the peer the node was
+ * created on. It is constant and will never change.
+ *
+ * Return: Pointer to parent peer of @node.
  */
 _c_public_ B1Peer *b1_node_get_peer(B1Node *node) {
-        if (!node)
-                return NULL;
-
+        assert(node);
         return node->owner;
 }
 
 /**
- * b1_node_get_handle() - get handle referring to node
- * @node:               the node
+ * b1_node_get_handle() - get owner handle of a node
+ * @node:               node to query
  *
- * The owner of a node, will typically hold a handle to that node, unless it has
- * been released.
+ * This returns the owner's handle of a node. For each create node, the owner
+ * gets a handle themself initially. Unless released via b1_node_release(), an
+ * owner can query this handle at any time.
  *
- * Return: the handle, or NULL if it has been released.
+ * Return: Pointer to owner's handle, or NULL if already released.
  */
 _c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
-        if (!node)
-                return NULL;
-
+        assert(node);
         return node->handle;
 }
 
 /**
  * b1_node_get_userdata() - get userdata associatde with a node
- * @node:               the node
+ * @node:               node to query
  *
- * Every node may have userdata associated with it.
+ * Return the userdata associated with @node. If it was not set explicitly, it
+ * will be set to NULL.
  *
- * Return: the userdata.
+ * Return: Userdata of the given node.
  */
 _c_public_ void *b1_node_get_userdata(B1Node *node) {
-        if (!node)
-                return NULL;
-
+        assert(node);
         return node->userdata;
 }
 
 /**
  * b1_node_set_destroy_fn() - set function to call when node is destroyed
- * @node:               the node
- * @fn:                 the function to call
+ * @node:               node to operate on
+ * @fn:                 function callback to set, or NULL
  *
- * A node destruction notification is recevied when a node is destoryed, this
- * function is then called to allow resources to be cleaned up.
+ * This changes the function callback used for destruction notifications on
+ * @node. If NULL, the functionality is disabled.
  */
 _c_public_ void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn) {
         assert(node);
@@ -1770,13 +1763,15 @@ _c_public_ void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn) {
 
 /**
  * b1_node_implement() - implement interface on node
- * @node:               the node
- * @interface:          an interface to implement
+ * @node:               node to operate on
+ * @interface:          interface to implement
  *
- * A node can handle method calls by implementing an interface. This associates
- * an interface with a node.
+ * Extend @node to support the interface given as @interface. From then on, the
+ * node will dispatch incoming method calls on this interface.
  *
- * Return: 0 on success, or a negative error code on failure.
+ * This fails, if the given interface is already implemented by @node.
+ *
+ * Return: 0 on success, negative error code on failure.
  */
 _c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
         B1Implementation *implementation;
@@ -1785,8 +1780,7 @@ _c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
         assert(node);
         assert(interface);
 
-        slot = c_rbtree_find_slot(&node->implementations,
-                                  implementations_compare, interface->name, &p);
+        slot = c_rbtree_find_slot(&node->implementations, implementations_compare, interface->name, &p);
         if (!slot)
                 return -ENOTUNIQ;
 
@@ -1794,24 +1788,26 @@ _c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
         if (!implementation)
                 return -ENOMEM;
 
+        c_rbnode_init(&implementation->rb);
         implementation->interface = b1_interface_ref(interface);
 
         c_rbtree_add(&node->implementations, p, slot, &implementation->rb);
-
         return 0;
 }
 
 /**
  * b1_node_release() - release handle to node
- * @node:               node to release
+ * @node:               node to release, or NULL
  *
  * When the owner of a node releases its handle to it, it means that the node
  * will be released as soon as no other peer is pinning a handle to it. It also
  * means that the owning peer can no longer hand out handles to the node to
  * other peers.
+ *
+ * If NULL is passed, this is a no-op.
  */
 _c_public_ void b1_node_release(B1Node *node) {
-        if (!node)
+        if (!node || !node->handle)
                 return;
 
         node->handle->node = NULL;
@@ -1820,17 +1816,16 @@ _c_public_ void b1_node_release(B1Node *node) {
 
 /**
  * b1_node_destroy() - destroy node
- * @node:               node to destroy
+ * @node:               node to destroy, or NULL
  *
  * Destroy the node in the kernel, regardless of any handles held by other
  * peers. If any peers still hold handles, they will receive node destruction
  * notifications for this node.
+ *
+ * If NULL is passed, this is a no-op.
  */
 _c_public_ void b1_node_destroy(B1Node *node) {
-        if (!node)
-                return;
-
-        if (node->id == BUS1_HANDLE_INVALID)
+        if (!node || node->id == BUS1_HANDLE_INVALID)
                 return;
 
         (void)bus1_client_node_destroy(node->owner->client, node->id);
