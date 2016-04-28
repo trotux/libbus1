@@ -16,11 +16,11 @@
 ***/
 
 #include <assert.h>
+#include <c-rbtree.h>
+#include <c-variant.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <c-rbtree.h>
-#include <c-variant.h>
 #include "bus1-client.h"
 #include "org.bus1/b1-peer.h"
 #include "org.bus1/c-macro.h"
