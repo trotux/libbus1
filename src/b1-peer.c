@@ -1924,6 +1924,8 @@ _c_public_ int b1_handle_subscribe(B1Handle *handle, B1Slot **slotp, B1SlotFn fn
         slot->next = handle->subscriptions;
         handle->subscriptions = slot;
 
+        *slotp = slot;
+        slot = NULL;
         return 0;
 }
 
