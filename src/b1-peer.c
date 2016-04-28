@@ -2054,7 +2054,7 @@ _c_public_ int b1_interface_add_member(B1Interface *interface,
         if (!member)
                 return -ENOMEM;
 
-        member->rb = (CRBNode){};
+        c_rbnode_init(&member->rb);
         member->name = (void *)(member + 1);
         member->type_input = member->name + n_name;
         member->type_output = member->type_input + n_type_input;
