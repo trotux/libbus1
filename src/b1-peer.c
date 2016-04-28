@@ -247,6 +247,8 @@ _c_public_ B1Peer *b1_peer_unref(B1Peer *peer) {
         if (!peer)
                 return NULL;
 
+        assert(peer->n_ref > 0);
+
         if (--peer->n_ref > 0)
                 return NULL;
 
@@ -1114,6 +1116,8 @@ _c_public_ B1Message *b1_message_unref(B1Message *message) {
         if (!message)
                 return NULL;
 
+        assert(message->n_ref > 0);
+
         if (--message->n_ref > 0)
                 return NULL;
 
@@ -1902,7 +1906,12 @@ _c_public_ B1Handle *b1_handle_ref(B1Handle *handle) {
  * Return: NULL is returned.
  */
 _c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
-        if (!handle || --handle->n_ref > 0)
+        if (!handle)
+                return NULL;
+
+        assert(handle->n_ref > 0);
+
+        if (--handle->n_ref > 0)
                 return NULL;
 
         b1_handle_release(handle);
@@ -2067,7 +2076,12 @@ _c_public_ B1Interface *b1_interface_ref(B1Interface *interface) {
 _c_public_ B1Interface *b1_interface_unref(B1Interface *interface) {
         CRBNode *node;
 
-        if (!interface || --interface->n_ref > 0)
+        if (!interface)
+                return NULL;
+
+        assert(interface->n_ref > 0);
+
+        if (--interface->n_ref > 0)
                 return NULL;
 
         while ((node = c_rbtree_first(&interface->members))) {
