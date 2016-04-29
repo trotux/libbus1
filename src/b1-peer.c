@@ -1830,7 +1830,7 @@ _c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
         assert(node);
         assert(interface);
 
-        if (node->live)
+        if (node->live || node->slot)
                 return -EBUSY;
 
         slot = c_rbtree_find_slot(&node->implementations, implementations_compare, interface->name, &p);
