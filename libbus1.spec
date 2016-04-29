@@ -1,6 +1,6 @@
 Name:           libbus1
 Version:        1
-Release:        2
+Release:        3
 Summary:        Bus1 IPC Library
 License:        LGPL2+
 URL:            https://github.com/bus1/libbus1
@@ -46,6 +46,9 @@ make %{?_smp_mflags}
 %{_libdir}/pkgconfig/libbus1.pc
 
 %changelog
+Fri Apr 29 2016 <kay@redhat.com> 1-3
+* bug fixes
+
 * Tue Apr 26 2016 <kay@redhat.com> 1-2
 - fix symbol export
 
