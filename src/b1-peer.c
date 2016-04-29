@@ -824,6 +824,8 @@ static int b1_reply_slot_new(B1Peer *peer, B1ReplySlot **slotp, const char *type
         if (r < 0)
                 return r;
 
+        slot->reply_node->slot = slot;
+
         *slotp = slot;
         slot = NULL;
         return 0;
