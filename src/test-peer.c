@@ -29,6 +29,8 @@
 #include "org.bus1/c-macro.h"
 #include "org.bus1/b1-peer.h"
 
+static bool done = false;
+
 static int node_function(B1Node *node, void *userdata, B1Message *message)
 {
         _c_cleanup_(b1_message_unrefp) B1Message *reply = NULL;
@@ -68,6 +70,8 @@ static int node_function(B1Node *node, void *userdata, B1Message *message)
 static int slot_function(B1ReplySlot *slot, void *userdata, B1Message *message)
 {
         fprintf(stderr, "PONG!\n");
+
+        done = true;
 
         return 0;
 }
@@ -197,6 +201,8 @@ static void test_api(void)
         assert(reply);
         r = b1_message_dispatch(reply);
         assert(r >= 0);
+
+        assert(done);
 }
 
 int main(int argc, char **argv) {
