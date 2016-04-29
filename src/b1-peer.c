@@ -54,6 +54,7 @@ struct B1Handle {
 
 struct B1Interface {
         unsigned long n_ref;
+        bool implemented;
 
         char *name;
 
@@ -107,6 +108,8 @@ struct B1Node {
         B1Handle *handle;
         uint64_t id;
         void *userdata;
+
+        bool live;
 
         CRBNode rb;
 
@@ -1326,6 +1329,8 @@ static int b1_message_dispatch_data(B1Message *message) {
         if (!node)
                 return b1_peer_reply_error(message, "org.bus1.Error.NodeDestroyed");
 
+        node->live = true;
+
         switch (message->type) {
         case B1_MESSAGE_TYPE_CALL:
                 interface = b1_node_get_interface(node, message->data.call.interface);
@@ -1695,6 +1700,7 @@ _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
         node->id = BUS1_HANDLE_INVALID;
         node->owner = b1_peer_ref(peer);
         node->userdata = userdata;
+        node->live = false;
         node->implementations = (CRBTree){};
         node->slot = NULL;
         node->handle = NULL;
@@ -1824,6 +1830,9 @@ _c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
         assert(node);
         assert(interface);
 
+        if (node->live)
+                return -EBUSY;
+
         slot = c_rbtree_find_slot(&node->implementations, implementations_compare, interface->name, &p);
         if (!slot)
                 return -ENOTUNIQ;
@@ -1834,6 +1843,7 @@ _c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
 
         c_rbnode_init(&implementation->rb);
         implementation->interface = b1_interface_ref(interface);
+        interface->implemented = true;
 
         c_rbtree_add(&node->implementations, p, slot, &implementation->rb);
         return 0;
@@ -2034,6 +2044,7 @@ _c_public_ int b1_interface_new(B1Interface **interfacep, const char *name) {
                 return -ENOMEM;
 
         interface->n_ref = 1;
+        interface->implemented = false;
         interface->name = (void *)(interface + 1);
         interface->members = (CRBTree){};
         memcpy(interface->name, name, n_name);
@@ -2128,6 +2139,9 @@ _c_public_ int b1_interface_add_member(B1Interface *interface,
         assert(type_input);
         assert(type_output);
         assert(fn);
+
+        if (interface->implemented)
+                return -EBUSY;
 
         slot = c_rbtree_find_slot(&interface->members, members_compare, name, &p);
         if (!slot)
