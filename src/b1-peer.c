@@ -166,6 +166,7 @@ _c_public_ int b1_peer_new(B1Peer **peerp, const char *path) {
         peer->n_ref = 1;
         peer->nodes = (CRBTree){};
         peer->handles = (CRBTree){};
+        peer->client = NULL;
 
         r = bus1_client_new_from_path(&peer->client, path);
         if (r < 0)
