@@ -114,7 +114,7 @@ AS_IF([test "$enable_static" = "yes"], [
         AC_SUBST(CVARIANT_LIBS)
 
         CRBTREE_CFLAGS="-I${srcdir}/../c-rbtree/src"
-                CRBTREE_LIBS="-L${srcdir}/../c-rbtree -lcrbtree"
+        CRBTREE_LIBS="-L${srcdir}/../c-rbtree -lcrbtree"
         AC_SUBST(CRBTREE_CFLAGS)
         AC_SUBST(CRBTREE_LIBS)
 ], [
@@ -123,7 +123,7 @@ AS_IF([test "$enable_static" = "yes"], [
                 AC_MSG_ERROR([*** c-rbtree library not found]))
 
         PKG_CHECK_MODULES(CVARIANT, [c-variant],
-                [AC_DEFINE(HAVE_CRBTREE, 1, [Define if c-variant library is available])],
+                [AC_DEFINE(HAVE_VARIANT, 1, [Define if c-variant library is available])],
                 AC_MSG_ERROR([*** c-variant library not found]))
 ])
 

@@ -1587,6 +1587,18 @@ _c_public_ int b1_message_writev(B1Message *message, const char *signature, va_l
 /**
  * XXX: see CVariant
  */
+_c_public_ int b1_message_insert(B1Message *message, const char *type, const struct iovec *vecs, size_t n_vecs) {
+        CVariant *cv = NULL;
+
+        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+                cv = message->data.cv;
+
+        return c_variant_insert(cv, type, vecs, n_vecs);
+}
+
+/**
+ * XXX: see CVariant
+ */
 _c_public_ int b1_message_seal(B1Message *message) {
         CVariant *cv;
         int r;

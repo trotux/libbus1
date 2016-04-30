@@ -120,6 +120,7 @@ void b1_message_rewind(B1Message *message);
 int b1_message_beginv(B1Message *message, const char *containers, va_list args);
 int b1_message_end(B1Message *message, const char *containers);
 int b1_message_writev(B1Message *message, const char *signature, va_list args);
+int b1_message_insert(B1Message *message, const char *type, const struct iovec *vecs, size_t n_vecs);
 int b1_message_seal(B1Message *message);
 
 int b1_message_append_handle(B1Message *message, B1Handle *handle);
