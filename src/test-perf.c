@@ -23,6 +23,7 @@
 
 #undef NDEBUG
 #include <c-macro.h>
+#include <c-usec.h>
 #include <fcntl.h>
 #include <linux/memfd.h>
 #include <stdio.h>
@@ -31,7 +32,6 @@
 #include <sys/mman.h>
 #include <sys/uio.h>
 #include <unistd.h>
-#include "org.bus1/c-shared.h"
 #include "org.bus1/c-sys.h"
 
 #define TEST_BUFSIZE (4096LL * 4096LL) /* 4096 pages */

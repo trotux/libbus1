@@ -56,7 +56,6 @@ libbus1_a_SOURCES = \
 	src/libbus1.sym \
 	src/linux/bus1.h \
 	src/org.bus1/b1-peer.h \
-	src/org.bus1/c-shared.h \
 	src/org.bus1/c-sys.h
 
 libbus1_a_CFLAGS = \
@@ -72,7 +71,6 @@ all-local: libbus1.so.0
 
 pkginclude_HEADERS += \
 	src/org.bus1/b1-peer.h \
-	src/org.bus1/c-shared.h \
 	src/org.bus1/c-sys.h
 
 libbus1.so.0: libbus1.a $(top_srcdir)/src/libbus1.sym
@@ -134,22 +132,6 @@ test_perf_LDADD = \
 	libbus1.a \
 	$(CRBTREE_LIBS) \
 	$(CVARIANT_LIBS)
-
-# ------------------------------------------------------------------------------
-# test-c-shared
-
-default_tests += \
-	test-c-shared
-
-test_c_shared_SOURCES = \
-	src/test-c-shared.c
-
-test_c_shared_CFLAGS = \
-	$(AM_CFLAGS) \
-	$(CSUNDRY_CFLAGS)
-
-test_c_shared_LDADD = \
-	libbus1.so.0
 
 # ------------------------------------------------------------------------------
 # test-peer
