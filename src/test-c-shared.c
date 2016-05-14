@@ -21,10 +21,10 @@
  */
 
 #undef NDEBUG
+#include <c-macro.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "org.bus1/c-macro.h"
 #include "org.bus1/c-shared.h"
 
 /* test c_bitmap_* helpers */

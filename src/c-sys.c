@@ -15,13 +15,13 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
+#include <c-macro.h>
 #include <linux/memfd.h>
 #include <stdlib.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include "org.bus1/c-macro.h"
 #include "org.bus1/c-sys.h"
 
 _c_public_ int c_sys_clone(unsigned long flags, void *child_stack) {

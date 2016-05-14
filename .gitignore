@@ -26,7 +26,6 @@
 /libbus1.so.0
 /src/libbus1.pc
 
-/test-c-macro
 /test-c-shared
 /test-peer
 /test-perf

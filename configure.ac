@@ -11,7 +11,7 @@ AC_INIT([libbus1],
 # ------------------------------------------------------------------------------
 # autotools
 
-AC_CONFIG_SRCDIR([src/org.bus1/c-macro.h])
+AC_CONFIG_SRCDIR([src/org.bus1/b1-peer.h])
 AC_CONFIG_MACRO_DIR([build/m4])
 AC_CONFIG_HEADERS([build/config.h])
 AC_CONFIG_AUX_DIR([build/build-aux])
@@ -108,19 +108,26 @@ AC_SUBST(OUR_LDFLAGS)
 AC_ARG_ENABLE(static, AS_HELP_STRING([--enable-static], [enable temporary static library linking]))
 AS_IF([test "$enable_static" = "yes"], [
         # temporary hack until we do proper shared library linking
-        CVARIANT_CFLAGS="-I${srcdir}/../c-variant/src"
-        CVARIANT_LIBS="-L${srcdir}/../c-variant -lcvariant"
-        AC_SUBST(CVARIANT_CFLAGS)
-        AC_SUBST(CVARIANT_LIBS)
-
         CRBTREE_CFLAGS="-I${srcdir}/../c-rbtree/src"
         CRBTREE_LIBS="-L${srcdir}/../c-rbtree -lcrbtree"
         AC_SUBST(CRBTREE_CFLAGS)
         AC_SUBST(CRBTREE_LIBS)
+
+        CSUNDRY_CFLAGS="-I${srcdir}/../c-sundry/src"
+        AC_SUBST(CSUNDRY_CFLAGS)
+
+        CVARIANT_CFLAGS="-I${srcdir}/../c-variant/src"
+        CVARIANT_LIBS="-L${srcdir}/../c-variant -lcvariant"
+        AC_SUBST(CVARIANT_CFLAGS)
+        AC_SUBST(CVARIANT_LIBS)
 ], [
         PKG_CHECK_MODULES(CRBTREE, [c-rbtree],
                 [AC_DEFINE(HAVE_CRBTREE, 1, [Define if c-rbtree library is available])],
                 AC_MSG_ERROR([*** c-rbtree library not found]))
+
+        PKG_CHECK_MODULES(CSUNDRY, [c-sundry],
+                [AC_DEFINE(HAVE_SUNDRY, 1, [Define if c-sundry library is available])],
+                AC_MSG_ERROR([*** c-sundry library not found]))
 
         PKG_CHECK_MODULES(CVARIANT, [c-variant],
                 [AC_DEFINE(HAVE_VARIANT, 1, [Define if c-variant library is available])],

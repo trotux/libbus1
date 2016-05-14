@@ -22,11 +22,11 @@
 
 #undef NDEBUG
 #include <assert.h>
+#include <c-macro.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <c-variant.h>
-#include "org.bus1/c-macro.h"
 #include "org.bus1/b1-peer.h"
 
 static bool done = false;

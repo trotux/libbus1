@@ -27,13 +27,13 @@
  * own headers/sources to not cause mass updates.
  */
 
+#include <c-macro.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-#include "c-macro.h"
 
 #ifdef __cplusplus
 extern "C" {

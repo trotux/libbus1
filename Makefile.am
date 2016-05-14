@@ -56,14 +56,14 @@ libbus1_a_SOURCES = \
 	src/libbus1.sym \
 	src/linux/bus1.h \
 	src/org.bus1/b1-peer.h \
-	src/org.bus1/c-macro.h \
 	src/org.bus1/c-shared.h \
 	src/org.bus1/c-sys.h
 
 libbus1_a_CFLAGS = \
 	$(AM_CFLAGS) \
-	$(CVARIANT_CFLAGS) \
-	$(CRBTREE_CFLAGS)
+	$(CRBTREE_CFLAGS) \
+	$(CSUNDRY_CFLAGS) \
+	$(CVARIANT_CFLAGS)
 
 # ------------------------------------------------------------------------------
 # shared library built from archive
@@ -72,7 +72,6 @@ all-local: libbus1.so.0
 
 pkginclude_HEADERS += \
 	src/org.bus1/b1-peer.h \
-	src/org.bus1/c-macro.h \
 	src/org.bus1/c-shared.h \
 	src/org.bus1/c-sys.h
 
@@ -117,25 +116,6 @@ CLEANFILES += \
 	src/libbus1.pc
 
 # ------------------------------------------------------------------------------
-# test-c-macro
-
-default_tests += \
-	test-c-macro
-
-test_c_macro_SOURCES = \
-	src/test-c-macro.c
-
-test_c_macro_CFLAGS = \
-	$(AM_CFLAGS) \
-	$(CRBTREE_CFLAGS) \
-	$(CVARIANT_CFLAGS)
-
-test_c_macro_LDADD = \
-	libbus1.a \
-	$(CRBTREE_LIBS) \
-	$(CVARIANT_LIBS)
-
-# ------------------------------------------------------------------------------
 # test-perf
 
 default_tests += \
@@ -147,6 +127,7 @@ test_perf_SOURCES = \
 test_perf_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(CRBTREE_CFLAGS) \
+	$(CSUNDRY_CFLAGS) \
 	$(CVARIANT_CFLAGS)
 
 test_perf_LDADD = \
@@ -164,7 +145,8 @@ test_c_shared_SOURCES = \
 	src/test-c-shared.c
 
 test_c_shared_CFLAGS = \
-	$(AM_CFLAGS)
+	$(AM_CFLAGS) \
+	$(CSUNDRY_CFLAGS)
 
 test_c_shared_LDADD = \
 	libbus1.so.0
@@ -181,6 +163,7 @@ test_peer_SOURCES = \
 test_peer_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(CRBTREE_CFLAGS) \
+	$(CSUNDRY_CFLAGS) \
 	$(CVARIANT_CFLAGS)
 
 test_peer_LDADD = \
