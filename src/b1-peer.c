@@ -2201,3 +2201,56 @@ _c_public_ int b1_message_reply(B1Message *origin, B1Message *reply) {
 
         return b1_message_send(reply, &reply_handle, 1);
 }
+
+/**
+ * b1_peer_export_to_environment() - set a bus1 peer fd in the environment
+ * @peer:               peer to export
+ *
+ * For convenience, this allows a bus1 peer to be exported to the environment
+ * so its file descriptor can be passed to a child process. The environment
+ * variable BUS1_PEER_FD is set to the file descriptor number of the underlying
+ * bus1 fd, in decimal.
+ */
+_c_public_ int b1_peer_export_to_environment(B1Peer *peer) {
+        char fdnum[C_DECIMAL_MAX(int)];
+        int r;
+
+        r = b1_peer_get_fd(peer);
+        if (r < 0)
+                return r;
+
+        r = sprintf(fdnum, "%d", r);
+        if (r < 0)
+                return -EINVAL;
+
+        r = setenv("BUS1_PEER_FD", fdnum, 1);
+        if (r < 0)
+                return -errno;
+
+        return 0;
+}
+
+/**
+ * b1_peer_new_from_environment() - get a passed in bus1 peer fd from the environment
+ * @peerp:              pointer to new peer object
+ *
+ * For convenience, this allows a peer to be created from a passed in file
+ * descriptor. The filedescriptor number to use is given by the environment
+ * variable BUS1_PEER_FD.
+ */
+_c_public_ int b1_peer_new_from_environment(B1Peer **peerp) {
+        char *fd_var, *endptr;
+        int fd;
+
+        fd_var = secure_getenv("BUS1_PEER_FD");
+        if (!fd_var)
+                return -ENOENT;
+        else if (*fd_var == '\0')
+                return -EINVAL;
+
+        fd = strtol(fd_var, &endptr, 10);
+        if (*endptr != '\0')
+                return -EINVAL;
+
+        return b1_peer_new_from_fd(peerp, fd);
+}

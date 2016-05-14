@@ -166,6 +166,8 @@ int b1_interface_add_member(B1Interface *interface,
 
 /* convenience */
 
+int b1_peer_export_to_environment(B1Peer *peer);
+int b1_peer_new_from_environment(B1Peer **peerp);
 int b1_message_reply(B1Message *origin, B1Message *reply);
 
 /* inline helpers */
