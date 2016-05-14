@@ -15,12 +15,6 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
-C_PRIVATE_1 {
-        /* c-sys */
-        c_sys_clone;
-        c_sys_memfd_create;
-};
-
 LIBBUS1_1 {
 global:
         b1_peer_new;

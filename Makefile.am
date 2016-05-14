@@ -52,11 +52,9 @@ libbus1_a_SOURCES = \
 	src/b1-peer.c \
 	src/bus1-client.c \
 	src/bus1-client.h \
-	src/c-sys.c \
 	src/libbus1.sym \
 	src/linux/bus1.h \
-	src/org.bus1/b1-peer.h \
-	src/org.bus1/c-sys.h
+	src/org.bus1/b1-peer.h
 
 libbus1_a_CFLAGS = \
 	$(AM_CFLAGS) \
@@ -70,8 +68,7 @@ libbus1_a_CFLAGS = \
 all-local: libbus1.so.0
 
 pkginclude_HEADERS += \
-	src/org.bus1/b1-peer.h \
-	src/org.bus1/c-sys.h
+	src/org.bus1/b1-peer.h
 
 libbus1.so.0: libbus1.a $(top_srcdir)/src/libbus1.sym
 	$(AM_V_CCLD)$(LINK) -shared \
