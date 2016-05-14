@@ -23,7 +23,7 @@
 
 #undef NDEBUG
 #include <c-macro.h>
-#include <c-sys.h>
+#include <c-syscall.h>
 #include <c-usec.h>
 #include <fcntl.h>
 #include <linux/memfd.h>
@@ -199,7 +199,7 @@ static void test_transaction(unsigned int xmitter) {
         long i;
 
         /* create memfd and pre-allocate buffer space */
-        memfd = c_sys_memfd_create("test-file", MFD_CLOEXEC);
+        memfd = c_syscall_memfd_create("test-file", MFD_CLOEXEC);
         assert(memfd >= 0);
 
         r = fallocate(memfd, 0, 0, TEST_BUFSIZE);
