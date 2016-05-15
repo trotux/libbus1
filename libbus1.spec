@@ -1,12 +1,13 @@
 Name:           libbus1
 Version:        1
-Release:        3
+Release:        4
 Summary:        Bus1 IPC Library
 License:        LGPL2+
 URL:            https://github.com/bus1/libbus1
 Source0:        %{name}.tar.xz
 BuildRequires:  autoconf automake pkgconfig
 BuildRequires:  c-rbtree-devel
+BuildRequires:  c-sundry-devel
 BuildRequires:  c-variant-devel
 
 %description
@@ -46,6 +47,9 @@ make %{?_smp_mflags}
 %{_libdir}/pkgconfig/libbus1.pc
 
 %changelog
+* Sun May 15 2016 <kay@redhat.com> 1-4
+- use c-sundry
+
 * Fri Apr 29 2016 <kay@redhat.com> 1-3
 - bug fixes
 
