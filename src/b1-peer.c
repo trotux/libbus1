@@ -112,7 +112,7 @@ struct B1Node {
 
         bool live;
 
-        CRBNode rb;
+        CRBNode rb; /* used either to link into nodes map or root_nodes map */
 
         CRBTree implementations;
         B1ReplySlot *slot;
@@ -136,6 +136,7 @@ struct B1Peer {
 
         CRBTree nodes;
         CRBTree handles;
+        CRBTree root_nodes;
 };
 
 struct B1ReplySlot {
@@ -167,6 +168,7 @@ _c_public_ int b1_peer_new(B1Peer **peerp, const char *path) {
         peer->n_ref = 1;
         peer->nodes = (CRBTree){};
         peer->handles = (CRBTree){};
+        peer->root_nodes = (CRBTree){};
         peer->client = NULL;
 
         r = bus1_client_new_from_path(&peer->client, path);
@@ -285,6 +287,13 @@ static int nodes_compare(CRBTree *t, void *k, CRBNode *n) {
                 return 1;
         else
                 return 0;
+}
+
+static int root_nodes_compare(CRBTree *t, void *k, CRBNode *n) {
+        B1Node *node = c_container_of(n, B1Node, rb);
+        const char *name = k;
+
+        return strcmp(node->name, name);
 }
 
 static int handles_compare(CRBTree *t, void *k, CRBNode *n) {
@@ -1243,6 +1252,18 @@ _c_public_ unsigned int b1_message_get_type(B1Message *message) {
         return message->type;
 }
 
+static B1Node *b1_peer_get_root_node(B1Peer *peer, const char *name) {
+        CRBNode *n;
+
+        assert(peer);
+
+        n = c_rbtree_find_node(&peer->root_nodes, root_nodes_compare, name);
+        if (!n)
+                return NULL;
+
+        return c_container_of(n, B1Node, rb);
+}
+
 static B1Node *b1_peer_get_node(B1Peer *peer, uint64_t node_id) {
         CRBNode *n;
 
@@ -1395,8 +1416,11 @@ static int b1_message_dispatch_data(B1Message *message) {
         switch (message->type) {
         case B1_MESSAGE_TYPE_CALL:
                 interface = b1_node_get_interface(node, message->data.call.interface);
-                if (!interface)
+                if (!interface) {
+                        if (b1_peer_get_root_node(message->peer, message->data.call.interface))
+                                return b1_peer_reply_error(message, "org.bus1.Error.InterfaceNotImplemented");
                         return b1_peer_reply_error(message, "org.bus1.Error.InvalidInterface");
+                }
 
                 member = b1_interface_get_member(interface, message->data.call.member);
                 if (!member)
