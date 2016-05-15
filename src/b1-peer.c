@@ -1264,6 +1264,44 @@ static B1Node *b1_peer_get_root_node(B1Peer *peer, const char *name) {
         return c_container_of(n, B1Node, rb);
 }
 
+/**
+ * b1_peer_implement() - implement an interface on the corresponding root node
+ * @peer:               peer holding the root node
+ * @nodep:              pointer to root node
+ * @userdata:           userdata to associate with root node
+ * @interface:          interface to implement on root node
+ *
+ * A peer may contain a set of named, unused root nodes. In order to make use of
+ * these nodes they must be associated with an interface. This takes an
+ * interface and implements it on the root node with the corresponding name,
+ * returning the node. The caller then becomes the owner of the node and it is
+ * removed from the root-node map.
+ *
+ * Return: 0 on success, or a negitave error code on failure.
+ */
+_c_public_ int b1_peer_implement(B1Peer *peer, B1Node **nodep, void *userdata, B1Interface *interface) {
+        B1Node *node;
+        int r;
+
+        assert(peer);
+        assert(interface);
+
+        node = b1_peer_get_root_node(peer, interface->name);
+        if (!node)
+                return -ENOENT;
+
+        r = b1_node_implement(node, interface);
+        if (r < 0)
+                return r;
+
+        node->userdata = userdata;
+        c_rbtree_remove(&peer->root_nodes, &node->rb);
+
+        *nodep = node;
+
+        return 0;
+}
+
 static B1Node *b1_peer_get_node(B1Peer *peer, uint64_t node_id) {
         CRBNode *n;
 

@@ -54,6 +54,8 @@ int b1_peer_get_fd(B1Peer *peer);
 int b1_peer_recv(B1Peer *peer, B1Message **messagep);
 int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep);
 
+int b1_peer_implement(B1Peer *peer, B1Node **nodep, void *userdata, B1Interface *interface);
+
 /* slots */
 
 B1ReplySlot *b1_reply_slot_free(B1ReplySlot *slot);
