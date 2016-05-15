@@ -95,6 +95,9 @@ struct B1Message {
                                 struct {
                                         const char *name;
                                 } error;
+                                struct {
+                                        CRBTree root_nodes;
+                                } seed;
                         };
                 } data;
                 struct {
@@ -251,6 +254,8 @@ _c_public_ B1Peer *b1_peer_ref(B1Peer *peer) {
  * Return: NULL is returned.
  */
 _c_public_ B1Peer *b1_peer_unref(B1Peer *peer) {
+        CRBNode *n;
+
         if (!peer)
                 return NULL;
 
@@ -259,6 +264,15 @@ _c_public_ B1Peer *b1_peer_unref(B1Peer *peer) {
         if (--peer->n_ref > 0)
                 return NULL;
 
+        while ((n = c_rbtree_first(&peer->root_nodes))) {
+                B1Node *node = c_container_of(n, B1Node, rb);
+
+                c_rbtree_remove(&peer->root_nodes, n);
+                b1_node_free(node);
+        }
+
+        assert(!c_rbtree_first(&peer->handles));
+        assert(!c_rbtree_first(&peer->nodes));
         bus1_client_free(peer->client);
         free(peer);
 
@@ -697,6 +711,46 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
 
                 break;
 
+        case B1_MESSAGE_TYPE_SEED:
+                r = c_variant_enter(message->data.cv, "va");
+                if (r < 0)
+                        return r;
+
+                r = c_variant_peek_count(message->data.cv);
+                if (r < 0)
+                        return r;
+
+                message->data.seed.root_nodes = (CRBTree){};
+
+                for (unsigned i = 0, n = r; i < n; i ++) {
+                        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+                        const char *name;
+                        unsigned int offset;
+                        CRBNode **slot, *p;
+
+                        r = c_variant_read(message->data.cv, "(su)", &name, &offset);
+                        if (r < 0)
+                                return r;
+
+                        slot = c_rbtree_find_slot(&message->data.seed.root_nodes,
+                                                  root_nodes_compare, name, &p);
+                        if (!slot)
+                                return -EIO;
+
+                        r = b1_node_new_internal(peer, &node, NULL,
+                                                 message->data.handles[offset]->id, name);
+                        if (r < 0)
+                                return r;
+
+                        node->handle = b1_handle_ref(message->data.handles[offset]);
+
+                        c_rbtree_add(&message->data.seed.root_nodes, p, slot, &node->rb);
+
+                        node = NULL;
+                }
+
+                break;
+
         default:
                 return -EIO;
         }
@@ -760,6 +814,33 @@ _c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep) {
         }
 
         return -EIO;
+}
+
+/**
+ * b1_peer_recv_seed() - receive the seed message
+ * @peer:               the receiving peer
+ * @messagep:           the received seed
+ *
+ * Receives the seed message if available and returns it.
+ *
+ * Return: 0 on success, or a negative error code on failure.
+ */
+_c_public_ int b1_peer_recv_seed(B1Peer *peer, B1Message **seedp) {
+        struct bus1_cmd_recv recv = {
+                .flags = BUS1_RECV_FLAG_PEEK | BUS1_RECV_FLAG_SEED,
+        };
+        int r;
+
+        assert(peer);
+
+        r = bus1_client_recv(peer->client, &recv);
+        if (r < 0)
+                return r;
+
+        if (recv.type != BUS1_MSG_DATA)
+                return -EIO;
+
+        return b1_peer_recv_data(peer, &recv.data, seedp);
 }
 
 /**
@@ -1263,6 +1344,17 @@ _c_public_ B1Message *b1_message_unref(B1Message *message) {
                         free(message->data.fds);
         }
 
+        if (message->type == B1_MESSAGE_TYPE_SEED) {
+                CRBNode *n;
+
+                while ((n = c_rbtree_first(&message->data.seed.root_nodes))) {
+                        B1Node *node = c_container_of(n, B1Node, rb);
+
+                        c_rbtree_remove(&message->data.seed.root_nodes, n);
+                        b1_node_free(node);
+                }
+        }
+
         b1_peer_unref(message->peer);
         free(message);
 
@@ -1346,6 +1438,7 @@ _c_public_ int b1_peer_implement(B1Peer *peer, B1Node **nodep, void *userdata, B
 
         node->userdata = userdata;
         c_rbtree_remove(&peer->root_nodes, &node->rb);
+        node->name = NULL;
 
         *nodep = node;
 
@@ -1906,8 +1999,9 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
         if (!node)
                 return NULL;
 
+        assert(node->owner);
+
         b1_node_release(node);
-        b1_node_destroy(node);
 
         while ((n = c_rbtree_first(&node->implementations))) {
                 B1Implementation *implementation = c_container_of(n, B1Implementation, rb);
@@ -1917,8 +2011,10 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
                 free(implementation);
         }
 
-        if (node->id != BUS1_HANDLE_INVALID) {
-                assert(node->owner);
+        /* if the node name is set, it means this node is owned by a message or
+         * peer object, which will be responsibly for cleaning it up */
+        if (!node->name && node->id != BUS1_HANDLE_INVALID) {
+                b1_node_destroy(node);
                 c_rbtree_remove(&node->owner->nodes, &node->rb);
         }
 
