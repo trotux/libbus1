@@ -1641,6 +1641,22 @@ static int b1_message_dispatch_data(B1Message *message) {
         return 0;
 }
 
+static int b1_message_dispatch_seed(B1Message *message) {
+        CRBNode *n;
+
+        while ((n = c_rbtree_first(&message->peer->root_nodes))) {
+                B1Node *node = c_container_of(n, B1Node, rb);
+
+                c_rbtree_remove(&message->peer->root_nodes, n);
+                b1_node_free(node);
+        }
+
+        message->peer->root_nodes = message->data.seed.root_nodes;
+        message->data.seed.root_nodes = (CRBTree){};
+
+        return 0;
+}
+
 /**
  * b1_message_dispatch() - handle received message
  * @message:            the message to handle
@@ -1655,6 +1671,8 @@ _c_public_ int b1_message_dispatch(B1Message *message) {
 
         if (message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return b1_message_dispatch_node_destroy(message);
+        else if (message->type == B1_MESSAGE_TYPE_SEED)
+                return b1_message_dispatch_seed(message);
         else
                 return b1_message_dispatch_data(message);
 }
