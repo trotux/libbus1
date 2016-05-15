@@ -107,6 +107,7 @@ struct B1Node {
         B1Peer *owner;
         B1Handle *handle;
         uint64_t id;
+        const char *name;
         void *userdata;
 
         bool live;
@@ -1745,29 +1746,21 @@ _c_public_ int b1_message_get_fd(B1Message *message, unsigned int index, int *fd
         return 0;
 }
 
-/**
- * b1_node_new() - create a new node for a peer
- * @peer:               the owning peer, or null
- * @nodep:              pointer to the new node object
- * @userdata:           userdata to associate with the node
- *
- * A node is the recipient of messages, and. Nodes are allocated lazily in the
- * kernel, so it is not guaranteed to be a kernel equivalent to the userspace
- * object at all times. A node is associated with at most one peer, and for a
- * lazily created node it may not be associated with any peer until it is
- * actually created, at which point it is associated with the creating peer.
- *
- * Return: 0 on success, and a negative error code on failure.
- */
-_c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
+static int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, const char *name) {
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        size_t n_name;
         int r;
 
         assert(nodep);
 
-        node = malloc(sizeof(*node));
+        n_name = name ? strlen(name) + 1 : 0;
+        node = malloc(sizeof(*node) + n_name);
         if (!node)
                 return -ENOMEM;
+        if (name)
+                node->name = memcpy((void*)(node + 1), name, n_name);
+        else
+                node->name = NULL;
 
         node->id = BUS1_HANDLE_INVALID;
         node->owner = b1_peer_ref(peer);
@@ -1787,6 +1780,24 @@ _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
         *nodep = node;
         node = NULL;
         return 0;
+}
+
+/**
+ * b1_node_new() - create a new node for a peer
+ * @peer:               the owning peer, or null
+ * @nodep:              pointer to the new node object
+ * @userdata:           userdata to associate with the node
+ *
+ * A node is the recipient of messages, and. Nodes are allocated lazily in the
+ * kernel, so it is not guaranteed to be a kernel equivalent to the userspace
+ * object at all times. A node is associated with at most one peer, and for a
+ * lazily created node it may not be associated with any peer until it is
+ * actually created, at which point it is associated with the creating peer.
+ *
+ * Return: 0 on success, and a negative error code on failure.
+ */
+_c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
+        return b1_node_new_internal(peer, nodep, userdata, NULL);
 }
 
 /**
