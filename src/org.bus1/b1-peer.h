@@ -71,6 +71,7 @@ enum {
         B1_MESSAGE_TYPE_CALL,
         B1_MESSAGE_TYPE_REPLY,
         B1_MESSAGE_TYPE_ERROR,
+        B1_MESSAGE_TYPE_SEED,
         _B1_MESSAGE_TYPE_N,
         _B1_MESSAGE_TYPE_INVALID = -1,
 };
@@ -95,6 +96,12 @@ int b1_message_new_error(B1Peer *peer,
                          B1Message **messagep,
                          const char *name,
                          const char *signature);
+int b1_message_new_seed(B1Peer *peer,
+                        B1Message **messagep,
+                        B1Node **nodes,
+                        const char **node_names,
+                        size_t n_nodes,
+                        const char *signature);
 B1Message *b1_message_ref(B1Message *message);
 B1Message *b1_message_unref(B1Message *message);
 

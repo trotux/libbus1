@@ -1093,6 +1093,57 @@ _c_public_ int b1_message_new_error(B1Peer *peer, B1Message **messagep, const ch
         return 0;
 }
 
+_c_public_ int b1_message_new_seed(B1Peer *peer,
+                                   B1Message **messagep,
+                                   B1Node **nodes,
+                                   const char **node_names,
+                                   size_t n_nodes,
+                                   const char *signature) {
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        int r;
+
+        assert(peer);
+        assert(messagep);
+        assert(!n_nodes || (nodes && node_names));
+        assert(signature);
+
+        r = b1_message_new(peer, &message, B1_MESSAGE_TYPE_SEED);
+        if (r < 0)
+                return r;
+
+        /* <array of name -> root handle offset mappings> */
+        r = c_variant_begin(message->data.cv, "v", "a(su)");
+        if (r < 0)
+                return r;
+
+        r = c_variant_begin(message->data.cv, "a");
+        if (r < 0)
+                return r;
+
+        for (unsigned i = 0; i < n_nodes; i ++) {
+                r = b1_message_append_handle(message, nodes[i]->handle);
+                if (r < 0)
+                        return r;
+
+                r = c_variant_write(message->data.cv, "(su)", node_names[i], r);
+                if (r < 0)
+                        return r;
+        }
+
+        r = c_variant_end(message->data.cv, "a");
+        if (r < 0)
+                return r;
+
+        r = c_variant_begin(message->data.cv, "v", signature);
+        if (r < 0)
+                return r;
+
+        *messagep = message;
+        message = NULL;
+
+        return 0;
+}
+
 /**
  * b1_message_ref() - acquire reference
  * @message:            message to acquire reference to, or NULL
