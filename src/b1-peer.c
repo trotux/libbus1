@@ -1111,6 +1111,19 @@ _c_public_ int b1_message_new_error(B1Peer *peer, B1Message **messagep, const ch
         return 0;
 }
 
+static int strcmpuniq(const void *ap, const void *bp, void *userdata) {
+        const char *a = * (char * const *) ap;
+        const char *b = * (char * const *) bp;
+        bool *uniqp = userdata;
+        int r;
+
+        r = strcmp(a, b);
+        if (r == 0)
+                *uniqp = false;
+
+        return r;
+}
+
 _c_public_ int b1_message_new_seed(B1Peer *peer,
                                    B1Message **messagep,
                                    B1Node **nodes,
@@ -1118,6 +1131,7 @@ _c_public_ int b1_message_new_seed(B1Peer *peer,
                                    size_t n_nodes,
                                    const char *signature) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        bool uniq = true;
         int r;
 
         assert(peer);
@@ -1148,6 +1162,11 @@ _c_public_ int b1_message_new_seed(B1Peer *peer,
                 if (r < 0)
                         return r;
         }
+
+        /* node names must be globally unique, so refuse duplicates */
+        qsort_r(node_names, n_nodes, sizeof(char *), strcmpuniq, &uniq);
+        if (!uniq)
+                return -EINVAL;
 
         r = c_variant_end(message->data.cv, "a");
         if (r < 0)
