@@ -367,8 +367,16 @@ _c_public_ int b1_message_send(B1Message *message,
         };
         int r;
 
-        if (!message)
+        assert(!n_handles || handles);
+
+        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
                 return -EINVAL;
+
+        if (message->type == B1_MESSAGE_TYPE_SEED) {
+                send.flags = BUS1_SEND_FLAG_SILENT | BUS1_SEND_FLAG_SEED;
+                if (n_handles)
+                        return -EINVAL;
+        }
 
         b1_message_seal(message);
 
