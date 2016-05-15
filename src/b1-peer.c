@@ -308,49 +308,37 @@ static int handles_compare(CRBTree *t, void *k, CRBNode *n) {
                 return 0;
 }
 
-static int b1_node_link(B1Node *node, B1Peer *peer, uint64_t handle_id) {
+static int b1_node_link(B1Node *node) {
         CRBNode **slot, *p;
 
         assert(node);
-        assert(peer);
-        assert(handle_id != BUS1_HANDLE_INVALID);
+        assert(node->id != BUS1_HANDLE_INVALID);
+        assert(node->owner);
 
-        slot = c_rbtree_find_slot(&peer->nodes,
-                                  nodes_compare, &handle_id, &p);
+        slot = c_rbtree_find_slot(&node->owner->nodes,
+                                  nodes_compare, &node->id, &p);
         if (!slot)
                 return -ENOTUNIQ;
 
-        if (!node->owner)
-                node->owner = b1_peer_ref(peer);
-        else
-                assert(node->owner == peer);
-
-        node->id = handle_id;
-        c_rbtree_add(&peer->nodes, p, slot, &node->rb);
+        c_rbtree_add(&node->owner->nodes, p, slot, &node->rb);
 
         return 0;
 
 }
 
-static int b1_handle_link(B1Handle *handle, B1Peer *peer, uint64_t handle_id) {
+static int b1_handle_link(B1Handle *handle) {
         CRBNode **slot, *p;
 
         assert(handle);
-        assert(peer);
-        assert(handle_id != BUS1_HANDLE_INVALID);
+        assert(handle->id != BUS1_HANDLE_INVALID);
+        assert(handle->holder);
 
-        slot = c_rbtree_find_slot(&peer->handles,
-                                  handles_compare, &handle_id, &p);
+        slot = c_rbtree_find_slot(&handle->holder->handles,
+                                  handles_compare, &handle->id, &p);
         if (!slot)
                 return -ENOTUNIQ;
 
-        if (!handle->holder)
-                handle->holder = b1_peer_ref(peer);
-        else
-                assert(handle->holder == peer);
-
-        handle->id = handle_id;
-        c_rbtree_add(&peer->handles, p, slot, &handle->rb);
+        c_rbtree_add(&handle->holder->handles, p, slot, &handle->rb);
 
         return 0;
 
@@ -439,10 +427,14 @@ _c_public_ int b1_message_send(B1Message *message,
                 if (handle->id != BUS1_HANDLE_INVALID)
                         continue;
 
-                assert(b1_handle_link(handle, message->peer, handle_ids[i]) >= 0);
+                handle->id = handle_ids[i];
 
-                if (handle->node)
-                        assert(b1_node_link(handle->node, message->peer, handle_ids[i]) >= 0);
+                assert(b1_handle_link(handle) >= 0);
+
+                if (handle->node) {
+                        handle->node->id = handle_ids[i];
+                        assert(b1_node_link(handle->node) >= 0);
+                }
         }
 
         free(handle_ids);
@@ -499,9 +491,10 @@ static int b1_message_new_from_slice(B1Message **messagep,
         return 0;
 }
 
-static int b1_handle_new(B1Peer *peer, B1Handle **handlep) {
+static int b1_handle_new(B1Peer *peer, uint64_t id, B1Handle **handlep) {
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
 
+        assert(peer);
         assert(handlep);
 
         handle = malloc(sizeof(*handle));
@@ -511,7 +504,7 @@ static int b1_handle_new(B1Peer *peer, B1Handle **handlep) {
         handle->n_ref = 1;
         handle->holder = b1_peer_ref(peer);
         handle->node = NULL;
-        handle->id = BUS1_HANDLE_INVALID;
+        handle->id = id;
         handle->marked = false;
         handle->subscriptions = NULL;
         c_rbnode_init(&handle->rb);
@@ -546,11 +539,9 @@ static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_i
 
         slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
         if (slot) {
-                r = b1_handle_new(peer, &handle);
+                r = b1_handle_new(peer, handle_id, &handle);
                 if (r < 0)
                         return r;
-
-                handle->id = handle_id;
 
                 c_rbtree_add(&peer->handles, p, slot, &handle->rb);
         } else {
@@ -561,6 +552,36 @@ static int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_i
 
         *handlep = handle;
 
+        return 0;
+}
+
+static int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, uint64_t id, const char *name) {
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        size_t n_name;
+
+        assert(peer);
+        assert(nodep);
+
+        n_name = name ? strlen(name) + 1 : 0;
+        node = malloc(sizeof(*node) + n_name);
+        if (!node)
+                return -ENOMEM;
+        if (name)
+                node->name = memcpy((void*)(node + 1), name, n_name);
+        else
+                node->name = NULL;
+
+        node->id = id;
+        node->owner = b1_peer_ref(peer);
+        node->userdata = userdata;
+        node->live = false;
+        node->implementations = (CRBTree){};
+        node->slot = NULL;
+        node->handle = NULL;
+        node->destroy_fn = NULL;
+
+        *nodep = node;
+        node = NULL;
         return 0;
 }
 
@@ -772,19 +793,28 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
         if (r < 0)
                 return r;
 
-        r = b1_handle_new(peer, &handle);
+        r = b1_handle_new(peer, handle_id, &handle);
         if (r < 0)
                 return r;
 
-        r = b1_handle_link(handle, peer, handle_id);
+        r = b1_handle_link(handle);
         if (r < 0)
                 return r;
 
-        r = b1_node_new(clone, &node, clone);
+        r = b1_node_new_internal(clone, &node, clone, node_id, NULL);
         if (r < 0)
                 return r;
 
-        r = b1_node_link(node, clone, node_id);
+        r = b1_node_link(node);
+        if (r < 0)
+                return r;
+
+        r = b1_handle_new(clone, node_id, &node->handle);
+        if (r < 0)
+                return r;
+        node->handle->node = node;
+
+        r = b1_handle_link(node->handle);
         if (r < 0)
                 return r;
 
@@ -1828,42 +1858,6 @@ _c_public_ int b1_message_get_fd(B1Message *message, unsigned int index, int *fd
         return 0;
 }
 
-static int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, const char *name) {
-        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
-        size_t n_name;
-        int r;
-
-        assert(nodep);
-
-        n_name = name ? strlen(name) + 1 : 0;
-        node = malloc(sizeof(*node) + n_name);
-        if (!node)
-                return -ENOMEM;
-        if (name)
-                node->name = memcpy((void*)(node + 1), name, n_name);
-        else
-                node->name = NULL;
-
-        node->id = BUS1_HANDLE_INVALID;
-        node->owner = b1_peer_ref(peer);
-        node->userdata = userdata;
-        node->live = false;
-        node->implementations = (CRBTree){};
-        node->slot = NULL;
-        node->handle = NULL;
-        node->destroy_fn = NULL;
-
-        r = b1_handle_new(peer, &node->handle);
-        if (r < 0)
-                return r;
-
-        node->handle->node = node;
-
-        *nodep = node;
-        node = NULL;
-        return 0;
-}
-
 /**
  * b1_node_new() - create a new node for a peer
  * @peer:               the owning peer, or null
@@ -1879,7 +1873,22 @@ static int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, co
  * Return: 0 on success, and a negative error code on failure.
  */
 _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
-        return b1_node_new_internal(peer, nodep, userdata, NULL);
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        int r;
+
+        r = b1_node_new_internal(peer, &node, userdata, BUS1_HANDLE_INVALID, NULL);
+        if (r < 0)
+                return r;
+
+        r = b1_handle_new(peer, BUS1_HANDLE_INVALID, &node->handle);
+        if (r < 0)
+                return r;
+
+        node->handle->node = node;
+
+        *nodep = node;
+        node = NULL;
+        return 0;
 }
 
 /**
