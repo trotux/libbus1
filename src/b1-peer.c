@@ -1143,6 +1143,7 @@ _c_public_ int b1_message_new_seed(B1Peer *peer,
                 if (r < 0)
                         return r;
 
+                /* XXX: verify that the node names are unique */
                 r = c_variant_write(message->data.cv, "(su)", node_names[i], r);
                 if (r < 0)
                         return r;
