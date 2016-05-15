@@ -1630,12 +1630,8 @@ static int b1_message_dispatch_data(B1Message *message) {
 
                 break;
         case B1_MESSAGE_TYPE_ERROR:
-                if (!node->slot)
-                        return b1_peer_reply_error(message, "org.bus1.Error.InvalidNode");
-
-                r = node->slot->fn(node->slot, node->userdata, message);
-                if (r < 0)
-                        return b1_peer_reply_errno(message, -r);
+                if (node->slot)
+                        (void)node->slot->fn(node->slot, node->userdata, message);
 
                 break;
         default:
