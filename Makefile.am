@@ -49,7 +49,14 @@ noinst_LIBRARIES += \
 	libbus1.a
 
 libbus1_a_SOURCES = \
-	src/b1-peer.c \
+	src/peer.c \
+	src/peer.h \
+	src/message.c \
+	src/message.h \
+	src/node.c \
+	src/node.h \
+	src/interface.c \
+	src/interface.h \
 	src/bus1-client.c \
 	src/bus1-client.h \
 	src/libbus1.sym \
