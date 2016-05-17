@@ -206,6 +206,9 @@ static void test_api(void)
 }
 
 int main(int argc, char **argv) {
+        if (access("/dev/bus1", F_OK) < 0 && errno == ENOENT)
+                return 77;
+
         test_cvariant();
         test_api();
 

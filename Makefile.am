@@ -120,7 +120,7 @@ CLEANFILES += \
 # ------------------------------------------------------------------------------
 # test-perf
 
-default_tests += \
+check_PROGRAMS += \
 	test-perf
 
 test_perf_SOURCES = \
