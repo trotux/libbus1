@@ -549,6 +549,10 @@ _c_public_ int b1_message_new_seed(B1Peer *peer,
         if (r < 0)
                 return r;
 
+        r = c_variant_end(message->data.cv, "v");
+        if (r < 0)
+                return r;
+
         r = c_variant_begin(message->data.cv, "v", signature);
         if (r < 0)
                 return r;

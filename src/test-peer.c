@@ -205,12 +205,36 @@ static void test_api(void)
         assert(done);
 }
 
+static void test_seed(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        const char *name ="org.foo.bar.Root";
+        int r;
+
+        r = b1_peer_new(&peer, NULL);
+        assert(r >= 0);
+        assert(peer);
+
+        r = b1_node_new(peer, &node, NULL);
+        assert(r >= 0);
+        assert(node);
+
+        r = b1_message_new_seed(peer, &seed, &node, &name, 1, "()");
+        assert(r >= 0);
+        assert(seed);
+
+        r = b1_message_send(seed, NULL, 0);
+        assert(r >= 0);
+}
+
 int main(int argc, char **argv) {
         if (access("/dev/bus1", F_OK) < 0 && errno == ENOENT)
                 return 77;
 
         test_cvariant();
         test_api();
+        test_seed();
 
         return 0;
 }
