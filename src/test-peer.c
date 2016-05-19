@@ -207,8 +207,9 @@ static void test_api(void)
 
 static void test_seed(void) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
-        _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
-        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *seed1 = NULL, *seed2 = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node1 = NULL, *node2 = NULL;
+        _c_cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
         const char *name ="org.foo.bar.Root";
         int r;
 
@@ -216,15 +217,31 @@ static void test_seed(void) {
         assert(r >= 0);
         assert(peer);
 
-        r = b1_node_new(peer, &node, NULL);
+        r = b1_node_new(peer, &node1, NULL);
         assert(r >= 0);
-        assert(node);
+        assert(node1);
 
-        r = b1_message_new_seed(peer, &seed, &node, &name, 1, "()");
+        r = b1_message_new_seed(peer, &seed1, &node1, &name, 1, "()");
         assert(r >= 0);
-        assert(seed);
+        assert(seed1);
 
-        r = b1_message_send(seed, NULL, 0);
+        r = b1_message_send(seed1, NULL, 0);
+        assert(r >= 0);
+
+        r = b1_peer_recv_seed(peer, &seed2);
+        assert(r >= 0);
+
+        r = b1_interface_new(&interface, name);
+        assert(r >= 0);
+
+        r = b1_peer_implement(peer, &node2, NULL, interface);
+        assert(!node2);
+        assert(r == -ENOENT);
+
+        r = b1_message_dispatch(seed2);
+        assert(r >= 0);
+
+        r = b1_peer_implement(peer, &node2, NULL, interface);
         assert(r >= 0);
 }
 
