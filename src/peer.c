@@ -42,15 +42,11 @@ _c_public_ int b1_peer_new(B1Peer **peerp, const char *path) {
 
         assert(peerp);
 
-        peer = malloc(sizeof(*peer));
+        peer = calloc(1, sizeof(*peer));
         if (!peer)
                 return -ENOMEM;
 
         peer->n_ref = 1;
-        peer->nodes = (CRBTree){};
-        peer->handles = (CRBTree){};
-        peer->root_nodes = (CRBTree){};
-        peer->client = NULL;
 
         r = bus1_client_new_from_path(&peer->client, path);
         if (r < 0)
@@ -86,13 +82,11 @@ _c_public_ int b1_peer_new_from_fd(B1Peer **peerp, int fd) {
 
         assert(peerp);
 
-        peer = malloc(sizeof(*peer));
+        peer = calloc(1, sizeof(*peer));
         if (!peer)
                 return -ENOMEM;
 
         peer->n_ref = 1;
-        peer->nodes = (CRBTree){};
-        peer->handles = (CRBTree){};
 
         r = bus1_client_new_from_fd(&peer->client, fd);
         if (r < 0)
@@ -340,7 +334,7 @@ static int b1_peer_recv_node_destroy(B1Peer *peer,
                                      B1Message **messagep) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
 
-        message = malloc(sizeof(*message));
+        message = calloc(1, sizeof(*message));
         if (!message)
                 return -ENOMEM;
 

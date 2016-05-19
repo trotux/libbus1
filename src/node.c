@@ -114,16 +114,14 @@ int b1_handle_new(B1Peer *peer, uint64_t id, B1Handle **handlep) {
         assert(peer);
         assert(handlep);
 
-        handle = malloc(sizeof(*handle));
+        handle = calloc(1, sizeof(*handle));
         if (!handle)
                 return -ENOMEM;
 
         handle->n_ref = 1;
         handle->holder = b1_peer_ref(peer);
-        handle->node = NULL;
         handle->id = id;
         handle->marked = false;
-        handle->subscriptions = NULL;
         c_rbnode_init(&handle->rb);
 
         *handlep = handle;
@@ -180,22 +178,16 @@ int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, uint64_t 
         assert(nodep);
 
         n_name = name ? strlen(name) + 1 : 0;
-        node = malloc(sizeof(*node) + n_name);
+        node = calloc(1, sizeof(*node) + n_name);
         if (!node)
                 return -ENOMEM;
         if (name)
                 node->name = memcpy((void*)(node + 1), name, n_name);
-        else
-                node->name = NULL;
 
         node->id = id;
         node->owner = b1_peer_ref(peer);
         node->userdata = userdata;
         node->live = false;
-        node->implementations = (CRBTree){};
-        node->slot = NULL;
-        node->handle = NULL;
-        node->destroy_fn = NULL;
 
         *nodep = node;
         node = NULL;
@@ -382,7 +374,7 @@ _c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
         if (!slot)
                 return -ENOTUNIQ;
 
-        implementation = malloc(sizeof(*implementation));
+        implementation = calloc(1, sizeof(*implementation));
         if (!implementation)
                 return -ENOMEM;
 
@@ -547,7 +539,7 @@ _c_public_ int b1_handle_subscribe(B1Handle *handle, B1Subscription **subscripti
         assert(subscriptionp);
         assert(fn);
 
-        subscription = malloc(sizeof(*subscription));
+        subscription = calloc(1, sizeof(*subscription));
         if (!subscription)
                 return -ENOMEM;
 
@@ -555,7 +547,6 @@ _c_public_ int b1_handle_subscribe(B1Handle *handle, B1Subscription **subscripti
         subscription->userdata = userdata;
 
         subscription->handle = handle;
-        subscription->previous = NULL;
         subscription->next = handle->subscriptions;
 
         handle->subscriptions = subscription;

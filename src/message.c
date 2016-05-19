@@ -217,7 +217,7 @@ int b1_message_new_from_slice(B1Message **messagep, B1Peer *peer, void *slice, s
 
         assert(messagep);
 
-        message = malloc(sizeof(*message));
+        message = calloc(1, sizeof(*message));
         if (!message)
                 return -ENOMEM;
 
@@ -291,7 +291,7 @@ static int b1_message_new(B1Peer *peer, B1Message **messagep, unsigned int type)
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
 
-        message = malloc(sizeof(*message));
+        message = calloc(1, sizeof(*message));
         if (!message)
                 return -ENOMEM;
 
@@ -304,12 +304,6 @@ static int b1_message_new(B1Peer *peer, B1Message **messagep, unsigned int type)
         message->data.gid = -1;
         message->data.pid = -1;
         message->data.tid = -1;
-        message->data.slice = NULL;
-        message->data.handles = NULL;
-        message->data.n_handles = 0;
-        message->data.fds = NULL;
-        message->data.n_fds = 0;
-        message->data.cv = NULL;
 
         /* <type, header variant, payload variant> */
         r = c_variant_new(&message->data.cv, "(tvv)", strlen("(tvv)"));
@@ -541,7 +535,6 @@ _c_public_ int b1_message_new_seed(B1Peer *peer,
                 if (r < 0)
                         return r;
 
-                /* XXX: verify that the node names are unique */
                 r = c_variant_write(message->data.cv, "(su)", node_names[i], r);
                 if (r < 0)
                         return r;
