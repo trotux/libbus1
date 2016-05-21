@@ -120,7 +120,7 @@ _c_public_ int b1_message_send(B1Message *message,
                 return -EINVAL;
 
         if (message->type == B1_MESSAGE_TYPE_SEED) {
-                send.flags = BUS1_SEND_FLAG_SILENT | BUS1_SEND_FLAG_SEED;
+                send.flags = BUS1_SEND_FLAG_SEED;
                 if (n_handles)
                         return -EINVAL;
         }
