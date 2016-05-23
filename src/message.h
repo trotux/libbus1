@@ -49,9 +49,6 @@ struct B1Message {
                                         B1Handle *reply_handle;
                                 } call;
                                 struct {
-                                        B1Handle *reply_handle;
-                                } reply;
-                                struct {
                                         const char *name;
                                 } error;
                                 struct {

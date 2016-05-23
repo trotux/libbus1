@@ -329,7 +329,8 @@ static int b1_message_new(B1Peer *peer, B1Message **messagep, unsigned int type)
  * @messagep:           pointer to the new message object
  * @interface:          the interface to call on
  * @member:             the member of the interface
- * @type:               the type of the payload
+ * @signature_input:    the type of the payload
+ * @signature_output:   the type of the expected reply message, or NULL
  * @slotp:              pointer to a new reply object, or NULL
  * @fn:                 the reply handler, or NULL
  * @userdata:           the userdata to pass to the reply handler, or NULL
@@ -395,60 +396,33 @@ _c_public_ int b1_message_new_call(B1Peer *peer,
 /**
  * b1_message_new_reply() - create a new method reply
  * @messagep:           the new message object
- * @type:               the payload type
- * @slotp:              pointer to a new reply object, or NULL
- * @fn:                 the reply handler, or NULL
- * @userdata:           the userdata to pass to the reply handler, or NULL
+ * @signature:          the payload type
  *
  * A reply to a method does not need an interface or a method name, as it is
- * sent directly to the reply object it es responding to. Otherwise it is
- * exactly like any other method call.
+ * sent directly to the reply object it is responding to. It is not possible to
+ * reply to a reply, so no slot is provided. Otherwise this behaves like a
+ * method call.
  *
  * Return: 0 on success, or a negative error code on failure.
  */
 _c_public_ int b1_message_new_reply(B1Peer *peer,
                                     B1Message **messagep,
-                                    const char *signature_input,
-                                    const char *signature_output,
-                                    B1ReplySlot **slotp,
-                                    B1ReplySlotFn fn,
-                                    void *userdata) {
+                                    const char *signature) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
-        _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         int r;
 
         r = b1_message_new(peer, &message, B1_MESSAGE_TYPE_REPLY);
         if (r < 0)
                 return r;
 
-        if (slotp) {
-                r = b1_reply_slot_new(peer, &slot, signature_output, fn, userdata);
-                if (r < 0)
-                        return r;
-
-                r = b1_message_append_handle(message, slot->reply_node->handle);
-                if (r < 0)
-                        return r;
-
-                /* <reply handle> */
-                r = c_variant_write(message->data.cv, "v", "mu", true, r);
-                if (r < 0)
-                        return r;
-        } else {
-                /* <nothing> */
-                r = c_variant_write(message->data.cv, "v", "mu", false);
-                if (r < 0)
-                        return r;
-        }
-
-        r = c_variant_begin(message->data.cv, "v", signature_input);
+        /* <> */
+        r = c_variant_write(message->data.cv, "v");
         if (r < 0)
                 return r;
 
-        if (slotp) {
-                *slotp = slot;
-                slot = NULL;
-        }
+        r = c_variant_begin(message->data.cv, "v", signature);
+        if (r < 0)
+                return r;
 
         *messagep = message;
         message = NULL;
@@ -461,8 +435,8 @@ _c_public_ int b1_message_new_reply(B1Peer *peer,
  * @messagep:           the new message object
  * @type:               the payload type
  *
- * An error reply to a message can not receive a reply, otherwise it is exactly
- * like any other method reply.
+ * An error reply to a message is exactly like any other method reply, except
+ * the receiver does not enforce a specific type.
  *
  * Return: 0 on success, or a negative error code on failure.
  */
@@ -474,7 +448,7 @@ _c_public_ int b1_message_new_error(B1Peer *peer, B1Message **messagep, const ch
         if (r < 0)
                 return r;
 
-        /* <> */
+        /* <error name> */
         r = c_variant_write(message->data.cv, "v", "s", name);
         if (r < 0)
                 return r;
@@ -769,15 +743,13 @@ static int b1_message_dispatch_data(B1Message *message) {
                 break;
         case B1_MESSAGE_TYPE_REPLY:
                 if (!node->slot)
-                        return b1_message_reply_error(message, "org.bus1.Error.InvalidNode");
+                        break;
 
                 signature = b1_message_peek_type(message, &signature_len);
                 if (strncmp(node->slot->type_input, signature, signature_len) != 0)
-                        return b1_message_reply_error(message, "org.bus1.Error.InvalidSignature");
+                        break;
 
-                r = node->slot->fn(node->slot, node->userdata, message);
-                if (r < 0)
-                        return b1_message_reply_errno(message, -r);
+                (void)node->slot->fn(node->slot, node->userdata, message);
 
                 break;
         case B1_MESSAGE_TYPE_ERROR:
@@ -844,8 +816,6 @@ _c_public_ B1Handle *b1_message_get_reply_handle(B1Message *message) {
         switch (message->type) {
                 case B1_MESSAGE_TYPE_CALL:
                         return message->data.call.reply_handle;
-                case B1_MESSAGE_TYPE_REPLY:
-                        return message->data.reply.reply_handle;
                 default:
                         return NULL;
         }

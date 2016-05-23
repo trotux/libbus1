@@ -245,26 +245,9 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                 break;
 
         case B1_MESSAGE_TYPE_REPLY:
-                r = c_variant_enter(message->data.cv, "vm");
+                r = c_variant_read(message->data.cv, "v");
                 if (r < 0)
                         return r;
-
-                r = c_variant_peek_count(message->data.cv);
-                if (r < 0)
-                        return r;
-                else if (r == 1) {
-                        r = c_variant_read(message->data.cv, "u", &reply_handle);
-                        if (r < 0)
-                                return r;
-
-                        if (data->n_handles <= reply_handle)
-                                return -EIO;
-
-                        message->data.reply.reply_handle = message->data.handles[reply_handle];
-                } else
-                        message->data.reply.reply_handle = NULL;
-
-                r = c_variant_exit(message->data.cv, "mv");
 
                 break;
 

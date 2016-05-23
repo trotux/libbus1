@@ -90,11 +90,7 @@ int b1_message_new_call(B1Peer *peer,
                         void *userdata);
 int b1_message_new_reply(B1Peer *peer,
                          B1Message **messagep,
-                         const char *signature_input,
-                         const char *signature_output,
-                         B1ReplySlot **slotp,
-                         B1ReplySlotFn fn,
-                         void *userdata);
+                         const char *signature);
 int b1_message_new_error(B1Peer *peer,
                          B1Message **messagep,
                          const char *name,
