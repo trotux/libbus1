@@ -394,6 +394,7 @@ _c_public_ int b1_peer_recv_seed(B1Peer *peer, B1Message **seedp) {
  * b1_peer_clone() - create a new peer connected to an existing one
  * @peer:               existing, parent peer
  * @nodep:              root node of new child peer
+ * @userdata:           userdata to associate with root node
  * @handlep:            handle to @nodep in the parent peer
  *
  * In order for peers to communicate, they must be reachable from one another.
@@ -402,7 +403,7 @@ _c_public_ int b1_peer_recv_seed(B1Peer *peer, B1Message **seedp) {
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
+_c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, void *userdata, B1Handle **handlep) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
@@ -429,7 +430,7 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
         if (r < 0)
                 return r;
 
-        r = b1_node_new_internal(clone, &node, clone, node_id, NULL);
+        r = b1_node_new_internal(clone, &node, userdata, node_id, NULL);
         if (r < 0)
                 return r;
 

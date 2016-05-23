@@ -163,7 +163,7 @@ static void test_api(void)
         assert(r >= 0);
         assert(peer);
 
-        r = b1_peer_clone(peer, &node, &handle);
+        r = b1_peer_clone(peer, &node, NULL, &handle);
         assert(r >= 0);
         assert(node);
         assert(handle);
