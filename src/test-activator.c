@@ -35,6 +35,9 @@ typedef struct Component {
         B1Peer *peer;
         B1Node *management_node;
         B1Handle *management_handle;
+        char **root_node_names;
+        B1Node **root_nodes;
+        size_t n_root_nodes;
         char **dependencies;
         size_t n_dependencies;
 } Component;
@@ -125,6 +128,9 @@ static void component_free(Component *c) {
 
         c_rbtree_remove_init(&c->manager->components, &c->rb);
 
+        for (unsigned int i = 0; i < c->n_root_nodes; ++i)
+                b1_node_free(c->root_nodes[i]);
+
         manager_unref(c->manager);
         b1_peer_unref(c->peer);
         b1_node_free(c->management_node);
@@ -145,6 +151,7 @@ static int components_compare(CRBTree *t, void *k, CRBNode *n) {
 }
 
 static int component_new(Manager *manager, Component **componentp, const char *name,
+                         const char **root_nodes, size_t n_root_nodes,
                          const char **dependencies, size_t n_dependencies) {
         _c_cleanup_(component_freep) Component *component = NULL;
         size_t n_names;
@@ -164,17 +171,30 @@ static int component_new(Manager *manager, Component **componentp, const char *n
         n_names = strlen(name) + 1;
         for (unsigned int i = 0; i < n_dependencies; ++i)
                 n_names += strlen(dependencies[i]) + 1;
+        for (unsigned int i = 0; i < n_root_nodes; ++i)
+                n_names += strlen(root_nodes[i]) + 1;
 
-        component = calloc(1, sizeof(*component) + sizeof(char*) * n_dependencies + n_names);
+        component = calloc(1, sizeof(*component) +
+                              sizeof(char*) * n_dependencies +
+                              sizeof(char*) * n_root_nodes +
+                              sizeof(B1Node*) * n_root_nodes +
+                              n_names);
         if (!component)
                 return -ENOMEM;
-        component->name = (void*)(component + 1);
         component->n_dependencies = n_dependencies;
+        component->n_root_nodes = n_root_nodes;
+        component->name = (void*)(component + 1);
         component->dependencies = (char **)(stpcpy((char*)component->name, name) + 1);
-        buf = (char*)(component->dependencies + n_dependencies);
+        component->root_node_names = (char**)(component->dependencies + n_dependencies);
+        component->root_nodes = (B1Node**)(component->root_node_names + n_root_nodes);
+        buf = (char*)(component->root_nodes + n_root_nodes);
         for (unsigned int i = 0; i < n_dependencies; ++i) {
                 component->dependencies[i] = buf;
-                buf = stpcpy(buf, name) + 1;
+                buf = stpcpy(buf, dependencies[i]) + 1;
+        }
+        for (unsigned int i = 0; i < n_root_nodes; ++i) {
+                component->root_node_names[i] = buf;
+                buf = stpcpy(buf, root_nodes[i]) + 1;
         }
 
         c_rbnode_init(&component->rb);
@@ -193,6 +213,12 @@ static int component_new(Manager *manager, Component **componentp, const char *n
                           &component->management_handle);
         if (r < 0)
                 return r;
+
+        for (unsigned int i = 0; i < n_root_nodes; ++i) {
+                r = b1_node_new(component->peer, &component->root_nodes[i], NULL);
+                if (r < 0)
+                        return r;
+        }
 
         c_rbtree_add(&manager->components, p, slot, &component->rb);
 
@@ -349,21 +375,28 @@ int component_get_dependencies(B1Node *node, void *userdata, B1Message *message)
 
 int main(void) {
         _c_cleanup_(manager_unrefp) Manager *manager = NULL;
-        _c_cleanup_(component_freep) Component *foo = NULL, *bar = NULL;
+        _c_cleanup_(component_freep) Component *foo = NULL, *bar = NULL, *baz = NULL;
         const char *foo_deps[] = { "org.bus1.bar", "org.bus1.baz" };
+        const char *foo_roots[] = { "org.bus1.foo" };
+        const char *bar_roots[] = { "org.bus1.bar.Read", "org.bus1.bar.ReadWrite" };
+        const char *baz_roots[] = { "org.bus1.baz" };
         int r;
 
         r = manager_new(&manager);
         if (r < 0)
                 return EXIT_FAILURE;
 
-        r = component_new(manager, &foo, "org.bus1.foo", foo_deps, 2);
+        r = component_new(manager, &foo, "org.bus1.foo", foo_roots, 1, foo_deps, 2);
         if (r < 0)
-                return r;
+                return EXIT_FAILURE;
 
-        r = component_new(manager, &bar, "org.bus1.bar", NULL, 0);
+        r = component_new(manager, &bar, "org.bus1.bar", bar_roots, 2, NULL, 0);
         if (r < 0)
-                return r;
+                return EXIT_FAILURE;
+
+        r = component_new(manager, &baz, "org.bus1.baz", baz_roots, 1, NULL, 0);
+        if (r < 0)
+                return EXIT_FAILURE;
 
         return EXIT_SUCCESS;
 }
