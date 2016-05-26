@@ -25,6 +25,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <sys/uio.h>
 
 #ifdef __cplusplus
 extern "C" {
