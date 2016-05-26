@@ -158,6 +158,26 @@ test_peer_LDADD = \
 	$(CVARIANT_LIBS)
 
 # ------------------------------------------------------------------------------
+# test-activator
+
+default_tests += \
+	test-activator
+
+test_activator_SOURCES = \
+	src/test-activator.c
+
+test_activator_CFLAGS = \
+	$(AM_CFLAGS) \
+	$(CRBTREE_CFLAGS) \
+	$(CSUNDRY_CFLAGS) \
+	$(CVARIANT_CFLAGS)
+
+test_activator_LDADD = \
+	libbus1.a \
+	$(CRBTREE_LIBS) \
+	$(CVARIANT_LIBS)
+
+# ------------------------------------------------------------------------------
 # test suite
 
 AM_TESTS_ENVIRONMENT = LD_LIBRARY_PATH=$(abs_builddir)
