@@ -57,7 +57,7 @@ static int node_function(B1Node *node, void *userdata, B1Message *message)
         peer = b1_node_get_peer(node);
         assert(peer);
 
-        r = b1_message_new_reply(peer, &reply, "", "", NULL, NULL, NULL);
+        r = b1_message_new_reply(peer, &reply, "");
         assert(r >= 0);
         assert(message);
 

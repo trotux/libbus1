@@ -109,7 +109,7 @@ _c_public_ int b1_message_send(B1Message *message,
         uint64_t *handle_ids;
         size_t n_vecs;
         struct bus1_cmd_send send = {
-                .ptr_destinations = (uintptr_t)destinations,
+                .ptr_destinations = n_handles > 0 ? (uintptr_t)destinations : 0,
                 .n_destinations = n_handles,
         };
         int r;
@@ -204,7 +204,7 @@ error:
                         handle->marked = false;
         }
 
-        return 0;
+        return r;
 }
 
 int b1_message_new_from_slice(B1Message **messagep, B1Peer *peer, void *slice, size_t n_bytes) {
@@ -676,7 +676,7 @@ static int b1_message_reply_error(B1Message *origin, const char *name) {
         if (!reply_handle)
                 return 0;
 
-        r = b1_message_new_error(origin->peer, &error, name, NULL);
+        r = b1_message_new_error(origin->peer, &error, name, "");
         if (r < 0)
                 return r;
 
