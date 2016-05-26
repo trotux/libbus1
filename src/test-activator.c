@@ -24,6 +24,7 @@ typedef struct Manager {
         unsigned n_ref;
         B1Peer *peer;
         CRBTree components; /* currently only used as a list */
+        CRBTree dependencies;
         B1Interface *component_interface;
 } Manager;
 
@@ -38,6 +39,13 @@ typedef struct Component {
         size_t n_dependencies;
 } Component;
 
+typedef struct Dependency {
+        Manager *manager;
+        const char *name;
+        CRBNode rb;
+        B1Handle *handle;
+} Dependency;
+
 static Manager *manager_unref(Manager *m) {
         if (!m)
                 return NULL;
@@ -49,6 +57,7 @@ static Manager *manager_unref(Manager *m) {
                 return NULL;
 
         assert(!c_rbtree_first(&m->components));
+        assert(!c_rbtree_first(&m->dependencies));
         b1_interface_unref(m->component_interface);
         b1_peer_unref(m->peer);
 
@@ -72,6 +81,9 @@ static Manager *manager_ref(Manager *m) {
         return m;
 }
 
+static int component_set_root_nodes(B1Node *node, void *userdata, B1Message *message);
+static int component_get_dependencies(B1Node *node, void *userdata, B1Message *message);
+
 static int manager_new(Manager **managerp) {
         _c_cleanup_(manager_unrefp) Manager *manager = NULL;
         int r;
@@ -89,6 +101,16 @@ static int manager_new(Manager **managerp) {
                 return r;
 
         r = b1_interface_new(&manager->component_interface, "org.bus1.Activator.Component");
+        if (r < 0)
+                return r;
+
+        r = b1_interface_add_member(manager->component_interface,
+                                    "setRootNodes", "a(su)", "()", component_set_root_nodes);
+        if (r < 0)
+                return r;
+
+        r = b1_interface_add_member(manager->component_interface,
+                                    "getDependencies", "()", "a(su)", component_get_dependencies);
         if (r < 0)
                 return r;
 
@@ -177,6 +199,152 @@ static int component_new(Manager *manager, Component **componentp, const char *n
         *componentp = component;
         component = NULL;
         return 0;
+}
+
+static void dependency_free(Dependency *d) {
+        if (!d)
+                return;
+
+        c_rbtree_remove_init(&d->manager->dependencies, &d->rb);
+
+        manager_unref(d->manager);
+        b1_handle_unref(d->handle);
+
+        free(d);
+}
+
+static void dependency_freep(Dependency **d) {
+        dependency_free(*d);
+}
+
+static int dependencies_compare(CRBTree *t, void *k, CRBNode *n) {
+        Dependency *d = c_container_of(n, Dependency, rb);
+        const char *name = k;
+
+        return strcmp(name, d->name);
+}
+
+static int dependency_new(Manager *manager, Dependency **dependencyp, const char *name, B1Handle *handle) {
+        _c_cleanup_(dependency_freep) Dependency *dependency = NULL;
+        size_t n_name;
+        CRBNode **slot, *p;
+
+        assert(manager);
+        assert(name);
+        assert(handle);
+
+        slot = c_rbtree_find_slot(&manager->dependencies, dependencies_compare, name, &p);
+        if (!slot)
+                return -ENOTUNIQ;
+
+        n_name = strlen(name) + 1;
+        dependency = calloc(1, sizeof(*dependency) + n_name);
+        if (!dependency)
+                return -ENOMEM;
+        memcpy((void*)(dependency + 1), name, n_name);
+
+        c_rbnode_init(&dependency->rb);
+        dependency->manager = manager_ref(manager);
+        dependency->handle = b1_handle_ref(handle);
+        c_rbtree_add(&manager->dependencies, p, slot, &dependency->rb);
+
+        if (dependencyp)
+                *dependencyp = dependency;
+        dependency = NULL;
+        return 0;
+}
+
+static Dependency *dependency_get(Manager *manager, const char *name) {
+        CRBNode *n;
+
+        n = c_rbtree_find_node(&manager->dependencies, dependencies_compare, name);
+        if (!n)
+                return NULL;
+
+        return c_container_of(n, Dependency, rb);
+}
+
+int component_set_root_nodes(B1Node *node, void *userdata, B1Message *message) {
+        Component *component = userdata;
+        unsigned int n;
+        int r;
+
+        assert(component);
+
+        r = b1_message_enter(message, "a");
+        if (r < 0)
+                return r;
+
+        r = b1_message_peek_count(message);
+        if (r < 0)
+                return r;
+        else
+                n = r;
+
+        for (unsigned int i = 0; i < n; ++i) {
+                const char *name;
+                uint32_t handle_id;
+                B1Handle *handle;
+
+                r = b1_message_read(message, "(su)", &name, &handle_id);
+                if (r < 0)
+                        return r;
+
+                r = b1_message_get_handle(message, handle_id, &handle);
+                if (r < 0)
+                        return r;
+
+                r = dependency_new(component->manager, NULL, name, handle);
+                if (r < 0)
+                        return r;
+        }
+
+        r = b1_message_exit(message, "a");
+        if (r < 0)
+                return r;
+
+        return 0;
+}
+
+int component_get_dependencies(B1Node *node, void *userdata, B1Message *message) {
+        Component *component = userdata;
+        _c_cleanup_(b1_message_unrefp) B1Message *reply = NULL;
+        int r;
+
+        assert(component);
+
+        r = b1_message_new_reply(component->manager->peer, &reply, "a(su)");
+        if (r < 0)
+                return r;
+
+        r = b1_message_begin(reply, "a");
+        if (r < 0)
+                return r;
+
+        for (unsigned int i = 0; i < component->n_dependencies; ++i) {
+                Dependency *dep;
+                uint32_t handle;
+
+                dep = dependency_get(component->manager, component->dependencies[i]);
+                if (!dep)
+                        return -ENOENT;
+
+                r = b1_message_append_handle(message, dep->handle);
+                if (r < 0)
+                        return r;
+                else
+                        handle = r;
+
+                r = b1_message_write(reply, "(su)", dep->name, handle);
+                if (r < 0)
+                        return r;
+        }
+
+        r = b1_message_end(reply, "a");
+        if (r < 0)
+                return r;
+
+        return b1_message_reply(message, reply);
 }
 
 int main(void) {
