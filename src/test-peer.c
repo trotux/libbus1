@@ -163,17 +163,18 @@ static void test_api(void)
         assert(r >= 0);
         assert(peer);
 
-        r = b1_peer_clone(peer, &node, NULL, &handle);
+        r = b1_node_new(peer, &node, NULL);
         assert(r >= 0);
-        assert(node);
-        assert(handle);
-        clone = b1_node_get_peer(node);
-        assert(clone);
 
         r = b1_node_implement(node, interface);
         assert(r >= 0);
 
-        r = b1_message_new_call(peer, &message, "foo", "bar", "(tu)", "()", &slot, slot_function, NULL);
+        r = b1_peer_clone(peer, &clone, b1_node_get_handle(node), &handle);
+        assert(r >= 0);
+        assert(clone);
+        assert(handle);
+
+        r = b1_message_new_call(clone, &message, "foo", "bar", "(tu)", "()", &slot, slot_function, NULL);
         assert(r >= 0);
         assert(message);
         assert(slot);
@@ -190,13 +191,13 @@ static void test_api(void)
         r = b1_message_send(message, &handle, 1);
         assert(r >= 0);
 
-        r = b1_peer_recv(clone, &request);
+        r = b1_peer_recv(peer, &request);
         assert(r >= 0);
         assert(request);
         r = b1_message_dispatch(request);
         assert(r >= 0);
 
-        r = b1_peer_recv(peer, &reply);
+        r = b1_peer_recv(clone, &reply);
         assert(r >= 0);
         assert(reply);
         r = b1_message_dispatch(reply);

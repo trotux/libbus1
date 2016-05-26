@@ -393,36 +393,41 @@ _c_public_ int b1_peer_recv_seed(B1Peer *peer, B1Message **seedp) {
 /**
  * b1_peer_clone() - create a new peer connected to an existing one
  * @peer:               existing, parent peer
- * @nodep:              root node of new child peer
- * @userdata:           userdata to associate with root node
- * @handlep:            handle to @nodep in the parent peer
+ * @childp:             new, child peer
+ * @handle:             handle in @peer to transfer to @child
+ * @child_handlep:            new handle in @child
  *
  * In order for peers to communicate, they must be reachable from one another.
- * This creates a new peer and gives a handle to it to an existing peer,
- * allowing communication to be established.
+ * This creates a new peer from an existing one and hands the new peer a handle
+ * from the existing peer.
  *
  * Return: 0 on success, or a negative error code on failure.
  */
-_c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, void *userdata, B1Handle **handlep) {
-        _c_cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
-        _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
-        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
-        uint64_t handle_id, node_id;
+_c_public_ int b1_peer_clone(B1Peer *peer, B1Peer **childp, B1Handle *handle, B1Handle **child_handlep) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *child = NULL;
+        _c_cleanup_(b1_handle_unrefp) B1Handle *child_handle = NULL;
+        uint64_t parent_id, child_id;
         int r, fd;
 
         assert(peer);
-        assert(nodep);
-        assert(handlep);
+        assert(childp);
+        assert(handle);
+        assert(child_handlep);
 
-        r = bus1_client_clone(peer->client, &node_id, &handle_id, &fd, BUS1_CLIENT_POOL_SIZE);
+        if (handle->id != BUS1_HANDLE_INVALID)
+                return -EOPNOTSUPP;
+
+        r = bus1_client_clone(peer->client, &parent_id, &child_id, &fd, BUS1_CLIENT_POOL_SIZE);
         if (r < 0)
                 return r;
 
-        r = b1_peer_new_from_fd(&clone, fd);
+        r = b1_peer_new_from_fd(&child, fd);
         if (r < 0)
                 return r;
 
-        r = b1_handle_new(peer, handle_id, &handle);
+        handle->id = parent_id;
+
+        r = b1_handle_new(child, child_id, &child_handle);
         if (r < 0)
                 return r;
 
@@ -430,27 +435,14 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Node **nodep, void *userdata, B1Han
         if (r < 0)
                 return r;
 
-        r = b1_node_new_internal(clone, &node, userdata, node_id, NULL);
+        r = b1_handle_link(child_handle);
         if (r < 0)
                 return r;
 
-        r = b1_node_link(node);
-        if (r < 0)
-                return r;
-
-        r = b1_handle_new(clone, node_id, &node->handle);
-        if (r < 0)
-                return r;
-        node->handle->node = node;
-
-        r = b1_handle_link(node->handle);
-        if (r < 0)
-                return r;
-
-        *nodep = node;
-        node = NULL;
-        *handlep = handle;
-        handle = NULL;
+        *childp = child;
+        child = NULL;
+        *child_handlep = child_handle;
+        child_handle = NULL;
 
         return 0;
 }
