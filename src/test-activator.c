@@ -33,8 +33,8 @@ typedef struct Component {
         const char *name;
         CRBNode rb;
         B1Peer *peer;
-        B1Node *node;
-        B1Handle *handle;
+        B1Node *management_node;
+        B1Handle *management_handle;
         char **dependencies;
         size_t n_dependencies;
 } Component;
@@ -127,8 +127,8 @@ static void component_free(Component *c) {
 
         manager_unref(c->manager);
         b1_peer_unref(c->peer);
-        b1_node_free(c->node);
-        b1_handle_unref(c->handle);
+        b1_node_free(c->management_node);
+        b1_handle_unref(c->management_handle);
 
         free(c);
 }
@@ -180,17 +180,17 @@ static int component_new(Manager *manager, Component **componentp, const char *n
         c_rbnode_init(&component->rb);
         component->manager = manager_ref(manager);
 
-        r = b1_node_new(manager->peer, &component->node, component);
+        r = b1_node_new(manager->peer, &component->management_node, component);
         if (r < 0)
                 return r;
 
-        r = b1_node_implement(component->node, manager->component_interface);
+        r = b1_node_implement(component->management_node, manager->component_interface);
         if (r < 0)
                 return r;
 
         r = b1_peer_clone(manager->peer, &component->peer,
-                          b1_node_get_handle(component->node),
-                          &component->handle);
+                          b1_node_get_handle(component->management_node),
+                          &component->management_handle);
         if (r < 0)
                 return r;
 
