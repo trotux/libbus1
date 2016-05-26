@@ -296,6 +296,10 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                         node = NULL;
                 }
 
+                r = c_variant_exit(message->data.cv, "av");
+                if (r < 0)
+                        return r;
+
                 break;
 
         default:
