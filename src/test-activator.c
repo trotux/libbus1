@@ -21,7 +21,7 @@
 #include <string.h>
 
 typedef struct Manager {
-        unsigned n_ref;
+        unsigned long n_ref;
         B1Peer *peer;
         CRBTree components; /* currently only used as a list */
         CRBTree dependencies;
