@@ -25,6 +25,7 @@
  * contexts on the same file-descriptor, without knowing about each other.
  */
 
+#include <assert.h>
 #include <inttypes.h>
 #include <linux/bus1.h>
 #include <stdlib.h>
@@ -51,8 +52,8 @@ int bus1_client_query(struct bus1_client *client, size_t *pool_sizep);
 int bus1_client_mmap(struct bus1_client *client);
 int bus1_client_init(struct bus1_client *client, size_t pool_size);
 int bus1_client_clone(struct bus1_client *client,
-		      uint64_t *nodep,
-		      uint64_t *handlep,
+		      uint64_t *parent_handlep,
+		      uint64_t *child_handlep,
 		      int *fdp,
 		      size_t pool_size);
 
