@@ -19,6 +19,7 @@
 #include <c-rbtree.h>
 #include <org.bus1/b1-peer.h>
 #include <string.h>
+#include <unistd.h>
 
 typedef struct Manager {
         unsigned long n_ref;
@@ -496,6 +497,30 @@ static int component_request_dependencies(Component *component) {
         return b1_message_send(message, &component->management_handle, 1);
 }
 
+static int component_spawn(Component *component) {
+        pid_t pid;
+        int r;
+
+        /* destroy the management channel */
+        component->management_node = b1_node_free(component->management_node);
+        component->management_handle = b1_handle_unref(component->management_handle);
+
+        pid = fork();
+        if (pid < 0)
+                return errno;
+        else if (pid == 0) {
+                r = b1_peer_export_to_environment(component->peer);
+                if (r < 0)
+                        return r;
+
+                r = execlp(component->name, component->name, NULL);
+                if (r < 0)
+                        return -errno;
+        }
+
+        return 0;
+}
+
 static int peer_process(B1Peer *peer) {
         int r;
 
@@ -561,6 +586,21 @@ static int manager_instantiate_dependencies(Manager *manager) {
         return 0;
 }
 
+static int manager_spawn_components(Manager *manager) {
+        CRBNode *n;
+        int r;
+
+        for (n = c_rbtree_first(&manager->components); n; n = c_rbnode_next(n)) {
+                Component *c = c_container_of(n, Component, rb);
+
+                r = component_spawn(c);
+                if (r < 0)
+                        return r;
+        }
+
+        return 0;
+}
+
 int main(void) {
         _c_cleanup_(manager_unrefp) Manager *manager = NULL;
         _c_cleanup_(component_freep) Component *foo = NULL, *bar = NULL, *baz = NULL;
@@ -591,6 +631,10 @@ int main(void) {
                 return EXIT_FAILURE;
 
         r = manager_instantiate_dependencies(manager);
+        if (r < 0)
+                return EXIT_FAILURE;
+
+        r = manager_spawn_components(manager);
         if (r < 0)
                 return EXIT_FAILURE;
 
