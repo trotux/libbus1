@@ -359,7 +359,7 @@ int component_get_dependencies(B1Node *node, void *userdata, B1Message *message)
                 if (!dep)
                         return -ENOENT;
 
-                r = b1_message_append_handle(message, dep->handle);
+                r = b1_message_append_handle(reply, dep->handle);
                 if (r < 0)
                         return r;
                 else
