@@ -268,7 +268,8 @@ static int dependency_new(Manager *manager, Dependency **dependencyp, const char
         dependency = calloc(1, sizeof(*dependency) + n_name);
         if (!dependency)
                 return -ENOMEM;
-        memcpy((void*)(dependency + 1), name, n_name);
+        dependency->name = (void*)(dependency + 1);
+        memcpy((char*)dependency->name, name, n_name);
 
         c_rbnode_init(&dependency->rb);
         dependency->manager = manager_ref(manager);
