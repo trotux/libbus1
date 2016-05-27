@@ -436,6 +436,21 @@ static int component_request_dependencies_handler(B1ReplySlot *slot, void *userd
                 fprintf(stderr, "Failed to get dependencies: %s\n", strerror(err));
         }
 
+        fprintf(stderr, "Component: %s\n  Root Nodes:\n", component->name);
+
+        for (unsigned int i = 0; i < component->n_root_nodes; ++i)
+                fprintf(stderr, "    %s\n", component->root_node_names[i]);
+
+        fprintf(stderr, "  Dependencies:\n");
+
+        r = b1_message_enter(reply, "a");
+
+        r = b1_message_peek_count(reply);
+        if (r < 0)
+                return r;
+        else
+                n = r;
+
         r = b1_message_new_seed(component->peer, &seed,
                                 component->root_nodes,
                                 component->root_node_names,
@@ -448,14 +463,6 @@ static int component_request_dependencies_handler(B1ReplySlot *slot, void *userd
         if (r < 0)
                 return r;
 
-        r = b1_message_enter(reply, "a");
-
-        r = b1_message_peek_count(reply);
-        if (r < 0)
-                return r;
-        else
-                n = r;
-
         for (unsigned int i = 0; i < n; ++i) {
                 B1Handle *handle;
                 const char *name;
@@ -464,6 +471,8 @@ static int component_request_dependencies_handler(B1ReplySlot *slot, void *userd
                 r = b1_message_read(reply, "(su)", &name, &offset);
                 if (r < 0)
                         return r;
+
+                fprintf(stderr, "    %s\n", name);
 
                 r = b1_message_get_handle(reply, offset, &handle);
                 if (r < 0)
