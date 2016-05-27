@@ -36,6 +36,7 @@ typedef struct Component {
         B1Peer *peer;
         B1Node *management_node;
         B1Handle *management_handle;
+        B1ReplySlot *slot;
         const char **root_node_names;
         B1Node **root_nodes;
         size_t n_root_nodes;
@@ -136,6 +137,7 @@ static void component_free(Component *c) {
         b1_peer_unref(c->peer);
         b1_node_free(c->management_node);
         b1_handle_unref(c->management_handle);
+        b1_reply_slot_free(c->slot);
 
         free(c);
 }
@@ -496,7 +498,7 @@ static int component_request_dependencies(Component *component) {
                                 "getDependencies",
                                 "()",
                                 "a(su)",
-                                NULL,
+                                &component->slot,
                                 component_request_dependencies_handler,
                                 component);
         if (r < 0)
