@@ -425,17 +425,27 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Peer **childp, B1Handle *handle, B1
         if (r < 0)
                 return r;
 
+        if (handle->id == BUS1_HANDLE_INVALID) {
+                handle->id = parent_id;
+
+                r = b1_handle_link(handle);
+                if (r < 0)
+                        return r;
+
+                if (handle->node) {
+                        assert(handle->node->id == BUS1_HANDLE_INVALID);
+                        handle->node->id = parent_id;
+                        r = b1_node_link(handle->node);
+                        if (r < 0)
+                                return r;
+                }
+        }
+
         r = b1_peer_new_from_fd(&child, fd);
         if (r < 0)
                 return r;
 
-        handle->id = parent_id;
-
         r = b1_handle_new(child, child_id, &child_handle);
-        if (r < 0)
-                return r;
-
-        r = b1_handle_link(handle);
         if (r < 0)
                 return r;
 
