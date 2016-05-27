@@ -313,14 +313,14 @@ int component_set_root_nodes(B1Node *node, void *userdata, B1Message *message) {
 
         for (unsigned int i = 0; i < n; ++i) {
                 const char *name;
-                uint32_t handle_id;
+                uint32_t offset;
                 B1Handle *handle;
 
-                r = b1_message_read(message, "(su)", &name, &handle_id);
+                r = b1_message_read(message, "(su)", &name, &offset);
                 if (r < 0)
                         return r;
 
-                r = b1_message_get_handle(message, handle_id, &handle);
+                r = b1_message_get_handle(message, offset, &handle);
                 if (r < 0)
                         return r;
 
