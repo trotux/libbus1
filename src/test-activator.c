@@ -373,6 +373,89 @@ int component_get_dependencies(B1Node *node, void *userdata, B1Message *message)
         return b1_message_reply(message, reply);
 }
 
+static int component_send_root_nodes(Component *component) {
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        int r;
+
+        r = b1_message_new_call(component->peer, &message,
+                                "org.bus1.Activator.Component",
+                                "setRootNodes",
+                                "a(su)",
+                                "()",
+                                NULL,
+                                NULL,
+                                NULL);
+        if (r < 0)
+                return r;
+
+        r = b1_message_begin(message, "a");
+        if (r < 0)
+                return r;
+
+        for (unsigned int i = 0; i < component->n_root_nodes; ++i) {
+                B1Handle *handle;
+                uint32_t handle_id;
+
+                handle = b1_node_get_handle(component->root_nodes[i]);
+                assert(handle);
+
+                r = b1_message_append_handle(message, handle);
+                if (r < 0)
+                        return r;
+                else
+                        handle_id = r;
+
+                r = b1_message_write(message, "(su)", component->root_node_names[i], handle_id);
+                if (r < 0)
+                        return r;
+        }
+
+        r = b1_message_end(message, "a");
+        if (r < 0)
+                return r;
+
+        return b1_message_send(message, &component->management_handle, 1);
+}
+
+static int peer_process(B1Peer *peer) {
+        int r;
+
+        for (;;) {
+                _c_cleanup_(b1_message_unrefp) B1Message *request = NULL;
+
+                r = b1_peer_recv(peer, &request);
+                if (r == -EAGAIN)
+                        return 0;
+                else if (r < 0)
+                        return r;
+
+                r = b1_message_dispatch(request);
+                if (r < 0)
+                        return r;
+        }
+}
+
+static int manager_instantiate_root_handles(Manager *manager) {
+        CRBNode *n;
+        int r;
+
+        /* pass the root nodes from each component to the manager */
+        for (n = c_rbtree_first(&manager->components); n; n = c_rbnode_next(n)) {
+                Component *c = c_container_of(n, Component, rb);
+
+                r = component_send_root_nodes(c);
+                if (r < 0)
+                        return r;
+        }
+
+        /* dispatch all the pending messages, installing the new root handles */
+        r = peer_process(manager->peer);
+        if (r < 0)
+                return r;
+
+        return 0;
+}
+
 int main(void) {
         _c_cleanup_(manager_unrefp) Manager *manager = NULL;
         _c_cleanup_(component_freep) Component *foo = NULL, *bar = NULL, *baz = NULL;
@@ -395,6 +478,10 @@ int main(void) {
                 return EXIT_FAILURE;
 
         r = component_new(manager, &baz, "org.bus1.baz", baz_roots, 1, NULL, 0);
+        if (r < 0)
+                return EXIT_FAILURE;
+
+        r = manager_instantiate_root_handles(manager);
         if (r < 0)
                 return EXIT_FAILURE;
 
