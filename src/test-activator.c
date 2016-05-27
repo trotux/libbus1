@@ -426,6 +426,13 @@ static int component_request_dependencies_handler(B1ReplySlot *slot, void *userd
 
         assert(component);
 
+        if (b1_message_get_type(reply) == B1_MESSAGE_TYPE_ERROR) {
+                unsigned int err;
+
+                r = b1_message_read(reply, "u", &err);
+                fprintf(stderr, "Failed to get dependencies: %s\n", strerror(err));
+        }
+
         r = b1_message_new_seed(component->peer, &seed,
                                 component->root_nodes,
                                 component->root_node_names,
@@ -514,8 +521,10 @@ static int component_spawn(Component *component) {
                         return r;
 
                 r = execlp(component->name, component->name, NULL);
-                if (r < 0)
+                if (r < 0) {
+                        fprintf(stderr, "Spawning '%s' failed: %m\n", component->name);
                         return -errno;
+                }
         }
 
         return 0;
@@ -604,7 +613,7 @@ static int manager_spawn_components(Manager *manager) {
 int main(void) {
         _c_cleanup_(manager_unrefp) Manager *manager = NULL;
         _c_cleanup_(component_freep) Component *foo = NULL, *bar = NULL, *baz = NULL;
-        const char *foo_deps[] = { "org.bus1.bar", "org.bus1.baz" };
+        const char *foo_deps[] = { "org.bus1.bar.Read", "org.bus1.baz" };
         const char *foo_roots[] = { "org.bus1.foo" };
         const char *bar_roots[] = { "org.bus1.bar.Read", "org.bus1.bar.ReadWrite" };
         const char *baz_roots[] = { "org.bus1.baz" };
