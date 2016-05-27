@@ -416,7 +416,7 @@ _c_public_ int b1_message_new_reply(B1Peer *peer,
                 return r;
 
         /* <> */
-        r = c_variant_write(message->data.cv, "v");
+        r = c_variant_write(message->data.cv, "v", "()");
         if (r < 0)
                 return r;
 
