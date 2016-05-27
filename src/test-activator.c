@@ -35,7 +35,7 @@ typedef struct Component {
         B1Peer *peer;
         B1Node *management_node;
         B1Handle *management_handle;
-        char **root_node_names;
+        const char **root_node_names;
         B1Node **root_nodes;
         size_t n_root_nodes;
         char **dependencies;
@@ -185,7 +185,7 @@ static int component_new(Manager *manager, Component **componentp, const char *n
         component->n_root_nodes = n_root_nodes;
         component->name = (void*)(component + 1);
         component->dependencies = (char **)(stpcpy((char*)component->name, name) + 1);
-        component->root_node_names = (char**)(component->dependencies + n_dependencies);
+        component->root_node_names = (const char**)(component->dependencies + n_dependencies);
         component->root_nodes = (B1Node**)(component->root_node_names + n_root_nodes);
         buf = (char*)(component->root_nodes + n_root_nodes);
         for (unsigned int i = 0; i < n_dependencies; ++i) {
@@ -417,6 +417,85 @@ static int component_send_root_nodes(Component *component) {
         return b1_message_send(message, &component->management_handle, 1);
 }
 
+static int component_request_dependencies_handler(B1ReplySlot *slot, void *userdata, B1Message *reply) {
+        Component *component = userdata;
+        _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
+        unsigned int n;
+        int r;
+
+        assert(component);
+
+        r = b1_message_new_seed(component->peer, &seed,
+                                component->root_nodes,
+                                component->root_node_names,
+                                component->n_root_nodes,
+                                "a(su)");
+        if (r < 0)
+                return r;
+
+        r = b1_message_begin(seed, "a");
+        if (r < 0)
+                return r;
+
+        r = b1_message_enter(reply, "a");
+
+        r = b1_message_peek_count(reply);
+        if (r < 0)
+                return r;
+        else
+                n = r;
+
+        for (unsigned int i = 0; i < n; ++i) {
+                B1Handle *handle;
+                const char *name;
+                uint32_t offset;
+
+                r = b1_message_read(reply, "(su)", &name, &offset);
+                if (r < 0)
+                        return r;
+
+                r = b1_message_get_handle(reply, offset, &handle);
+                if (r < 0)
+                        return r;
+
+                r = b1_message_append_handle(seed, handle);
+                if (r < 0)
+                        return r;
+                else
+                        offset = r;
+
+                r = b1_message_write(seed, "(su)", name, offset);
+                if (r < 0)
+                        return r;
+        }
+
+        r = b1_message_exit(reply, "a");
+
+        r = b1_message_end(seed, "a");
+        if (r < 0)
+                return r;
+
+        return b1_message_send(seed, NULL, 0);
+}
+
+static int component_request_dependencies(Component *component) {
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        int r;
+
+        r = b1_message_new_call(component->peer, &message,
+                                "org.bus1.Activator.Component",
+                                "getDependencies",
+                                "()",
+                                "a(su)",
+                                NULL,
+                                component_request_dependencies_handler,
+                                component);
+        if (r < 0)
+                return r;
+
+        return b1_message_send(message, &component->management_handle, 1);
+}
+
 static int peer_process(B1Peer *peer) {
         int r;
 
@@ -456,6 +535,32 @@ static int manager_instantiate_root_handles(Manager *manager) {
         return 0;
 }
 
+static int manager_instantiate_dependencies(Manager *manager) {
+        CRBNode *n;
+        int r;
+
+        for (n = c_rbtree_first(&manager->components); n; n = c_rbnode_next(n)) {
+                Component *c = c_container_of(n, Component, rb);
+
+                /* request dependencies */
+                r = component_request_dependencies(c);
+                if (r < 0)
+                        return r;
+
+                /* process request */
+                r = peer_process(manager->peer);
+                if (r < 0)
+                        return r;
+
+                /* process reply */
+                r = peer_process(c->peer);
+                if (r < 0)
+                        return r;
+        }
+
+        return 0;
+}
+
 int main(void) {
         _c_cleanup_(manager_unrefp) Manager *manager = NULL;
         _c_cleanup_(component_freep) Component *foo = NULL, *bar = NULL, *baz = NULL;
@@ -482,6 +587,10 @@ int main(void) {
                 return EXIT_FAILURE;
 
         r = manager_instantiate_root_handles(manager);
+        if (r < 0)
+                return EXIT_FAILURE;
+
+        r = manager_instantiate_dependencies(manager);
         if (r < 0)
                 return EXIT_FAILURE;
 
