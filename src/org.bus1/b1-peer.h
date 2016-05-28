@@ -38,6 +38,7 @@ typedef struct B1Node B1Node;
 typedef struct B1Peer B1Peer;
 typedef struct B1NotificationSlot B1NotificationSlot;
 typedef struct B1ReplySlot B1ReplySlot;
+typedef struct B1Match B1Match;
 
 typedef int (*B1NodeFn) (B1Node *node, void *userdata, B1Message *message);
 typedef int (*B1NotificationFn) (B1NotificationSlot *slot, void *userdata, B1Handle *handle);
@@ -171,6 +172,14 @@ int b1_interface_add_member(B1Interface *interface,
                             const char *type_output,
                             B1NodeFn fn);
 
+/* matches */
+int b1_match_new(B1Peer *peer, B1Match **matchp);
+B1Match *b1_match_free(B1Match *match);
+
+int b1_match_is_empty(B1Match *match);
+int b1_match_subscribe(B1Match *match, B1Message *message);
+int b1_match_send(B1Match **matches, size_t n_matches, B1Message *message);
+
 /* convenience */
 
 int b1_peer_export_to_environment(B1Peer *peer);
@@ -212,6 +221,11 @@ static inline void b1_handle_unrefp(B1Handle **handle) {
 static inline void b1_interface_unrefp(B1Interface **interface) {
         if (*interface)
                 b1_interface_unref(*interface);
+}
+
+static inline void b1_match_freep(B1Match **match) {
+        if (*match)
+                b1_match_free(*match);
 }
 
 static inline int b1_message_read(B1Message *message,

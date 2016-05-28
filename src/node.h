@@ -31,6 +31,9 @@ struct B1Handle {
         CList notification_slots;
 
         CRBNode rb;
+
+        B1NotificationSlot *match_notification;
+        CListEntry match_le;
 };
 
 struct B1Node {

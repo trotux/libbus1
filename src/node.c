@@ -113,6 +113,7 @@ int b1_handle_new(B1Peer *peer, uint64_t id, B1Handle **handlep) {
         handle->id = id;
         handle->marked = false;
         c_rbnode_init(&handle->rb);
+        c_list_entry_init(&handle->match_le);
 
         *handlep = handle;
         handle = NULL;
@@ -450,6 +451,9 @@ _c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
 
         if (--handle->n_ref > 0)
                 return NULL;
+
+        assert(!c_list_entry_is_linked(&handle->match_le));
+        assert(!handle->match_notification);
 
         b1_handle_release(handle);
 
