@@ -32,7 +32,7 @@
 struct B1ReplySlot {
         char *type_input;
         B1Node *reply_node;
-        B1ReplySlotFn fn;
+        B1ReplyFn fn;
         void *userdata;
 };
 
@@ -62,7 +62,7 @@ _c_public_ void *b1_reply_slot_get_userdata(B1ReplySlot *slot) {
         return b1_node_get_userdata(slot->reply_node);
 }
 
-static int b1_reply_slot_new(B1Peer *peer, B1ReplySlot **slotp, const char *type_input, B1ReplySlotFn fn, void *userdata) {
+static int b1_reply_slot_new(B1Peer *peer, B1ReplySlot **slotp, const char *type_input, B1ReplyFn fn, void *userdata) {
         _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         size_t n_type_input;
         int r;
@@ -348,7 +348,7 @@ _c_public_ int b1_message_new_call(B1Peer *peer,
                                    const char *signature_input,
                                    const char *signature_output,
                                    B1ReplySlot **slotp,
-                                   B1ReplySlotFn fn,
+                                   B1ReplyFn fn,
                                    void *userdata) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
@@ -650,8 +650,11 @@ static int b1_message_dispatch_node_destroy(B1Message *message) {
 
         handle = b1_peer_get_handle(message->peer, handle_id);
         if (handle) {
-                for (B1Subscription *s = handle->subscriptions; s; s = b1_subscription_next(s)) {
-                        k = b1_subscription_dispatch(s);
+                for (CListEntry *le = c_list_first(&handle->notification_slots);
+                     le; le = c_list_entry_next(le)) {
+                        B1NotificationSlot *slot = c_container_of(le, B1NotificationSlot, le);
+
+                        k = b1_notification_dispatch(slot);
                         if (k < 0 && r == 0)
                                 r = k;
                 }

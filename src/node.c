@@ -31,16 +31,6 @@ typedef struct B1Implementation {
         B1Interface *interface;
 } B1Implementation;
 
-struct B1Subscription {
-        B1Subscription *previous;
-        B1Subscription *next;
-
-        B1Handle *handle;
-
-        B1SubscriptionFn fn;
-        void *userdata;
-};
-
 int nodes_compare(CRBTree *t, void *k, CRBNode *n) {
         B1Node *node = c_container_of(n, B1Node, rb);
         uint64_t id = *(uint64_t*)k;
@@ -488,37 +478,37 @@ _c_public_ B1Peer *b1_handle_get_peer(B1Handle *handle) {
 }
 
 /**
- * b1_subscription_free() - unregister and free subscription
- * @subscription:               a subscription, or NULL
+ * b1_notification_slot_free() - unregister and free notification slot
+ * @slot:               a notification slot, or NULL
  *
  * Return: NULL.
  */
-_c_public_ B1Subscription *b1_subscription_free(B1Subscription *subscription) {
-        if (subscription->previous)
-                subscription->previous->next = subscription->next;
-        if (subscription->next)
-                subscription->next->previous = subscription->previous;
+_c_public_ B1NotificationSlot *b1_notification_slot_free(B1NotificationSlot *slot) {
+        if (!slot)
+                return NULL;
 
-        free(subscription);
+        c_list_remove(&slot->handle->notification_slots, &slot->le);
+
+        free(slot);
 
         return NULL;
 }
 
 /**
- * b1_subscription_get_userdata() - get userdata from subscription
- * @subscription:               a subscription
+ * b1_notification_slot_get_userdata() - get userdata from notification slot
+ * @slot:               a notification slot
  *
  * Retrurn: the userdata.
  */
-_c_public_ void *b1_subscription_get_userdata(B1Subscription *subscription) {
-        if (!subscription)
+_c_public_ void *b1_notification_slot_get_userdata(B1NotificationSlot *slot) {
+        if (!slot)
                 return NULL;
 
-        return subscription->userdata;
+        return slot->userdata;
 }
 
 /**
- * b1_handle_subscribe() - subscribe to handle events
+ * b1_handle_subscribe() - monitor handle for events
  * @handle:             handle to operate on
  * @slotp:              output argument for newly created slot
  * @fn:                 slot callback function
@@ -533,36 +523,30 @@ _c_public_ void *b1_subscription_get_userdata(B1Subscription *subscription) {
  *
  * Return: 0 on success, negative error code on failure.
  */
-_c_public_ int b1_handle_subscribe(B1Handle *handle, B1Subscription **subscriptionp, B1SubscriptionFn fn, void *userdata) {
-        _c_cleanup_(b1_subscription_freep) B1Subscription *subscription = NULL;
+_c_public_ int b1_handle_monitor(B1Handle *handle, B1NotificationSlot **slotp, B1NotificationFn fn, void *userdata) {
+        _c_cleanup_(b1_notification_slot_freep) B1NotificationSlot *slot = NULL;
 
-        assert(subscriptionp);
+        assert(slotp);
         assert(fn);
 
-        subscription = calloc(1, sizeof(*subscription));
-        if (!subscription)
+        slot = calloc(1, sizeof(*slot));
+        if (!slot)
                 return -ENOMEM;
 
-        subscription->fn = fn;
-        subscription->userdata = userdata;
+        slot->fn = fn;
+        slot->userdata = userdata;
+        c_list_entry_init(&slot->le);
 
-        subscription->handle = handle;
-        subscription->next = handle->subscriptions;
+        c_list_append(&handle->notification_slots, &slot->le);
 
-        handle->subscriptions = subscription;
-
-        *subscriptionp = subscription;
-        subscription = NULL;
+        *slotp = slot;
+        slot = NULL;
         return 0;
 }
 
-int b1_subscription_dispatch(B1Subscription *s) {
+int b1_notification_dispatch(B1NotificationSlot *s) {
+        assert(s);
+        assert(s->fn);
+
         return s->fn(s, s->userdata, s->handle);
-}
-
-B1Subscription *b1_subscription_next(B1Subscription *s) {
-        if (!s)
-                return NULL;
-
-        return s->next;
 }

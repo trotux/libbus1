@@ -35,13 +35,13 @@ typedef struct B1Handle B1Handle;
 typedef struct B1Interface B1Interface;
 typedef struct B1Message B1Message;
 typedef struct B1Node B1Node;
-typedef struct B1Subscription B1Subscription;
 typedef struct B1Peer B1Peer;
+typedef struct B1NotificationSlot B1NotificationSlot;
 typedef struct B1ReplySlot B1ReplySlot;
 
 typedef int (*B1NodeFn) (B1Node *node, void *userdata, B1Message *message);
-typedef int (*B1SubscriptionFn) (B1Subscription *subscription, void *userdata, B1Handle *handle);
-typedef int (*B1ReplySlotFn) (B1ReplySlot *slot, void *userdata, B1Message *message);
+typedef int (*B1NotificationFn) (B1NotificationSlot *slot, void *userdata, B1Handle *handle);
+typedef int (*B1ReplyFn) (B1ReplySlot *slot, void *userdata, B1Message *message);
 
 /* peers */
 
@@ -58,15 +58,15 @@ int b1_peer_clone(B1Peer *peer, B1Peer **childp, B1Handle *handle, B1Handle **ch
 
 int b1_peer_implement(B1Peer *peer, B1Node **nodep, void *userdata, B1Interface *interface);
 
-/* slots */
+/* replies */
 
 B1ReplySlot *b1_reply_slot_free(B1ReplySlot *slot);
 void *b1_reply_slot_get_userdata(B1ReplySlot *slot);
 
-/* subscriptions */
+/* notifications */
 
-B1Subscription *b1_subscription_free(B1Subscription *subscription);
-void *b1_subscription_get_userdata(B1Subscription *subscription);
+B1NotificationSlot *b1_notification_slot_free(B1NotificationSlot *slot);
+void *b1_notification_slot_get_userdata(B1NotificationSlot *slot);
 
 /* messages */
 
@@ -87,7 +87,7 @@ int b1_message_new_call(B1Peer *peer,
                         const char *signature_input,
                         const char *signature_output,
                         B1ReplySlot **slotp,
-                        B1ReplySlotFn fn,
+                        B1ReplyFn fn,
                         void *userdata);
 int b1_message_new_reply(B1Peer *peer,
                          B1Message **messagep,
@@ -157,7 +157,7 @@ B1Handle *b1_handle_unref(B1Handle *handle);
 
 B1Peer *b1_handle_get_peer(B1Handle *handle);
 
-int b1_handle_subscribe(B1Handle *handle, B1Subscription **subscriptionp, B1SubscriptionFn fn, void *userdata);
+int b1_handle_monitor(B1Handle *handle, B1NotificationSlot **slotp, B1NotificationFn fn, void *userdata);
 
 /* interfaces */
 
@@ -199,9 +199,9 @@ static inline void b1_reply_slot_freep(B1ReplySlot **slot) {
                 b1_reply_slot_free(*slot);
 }
 
-static inline void b1_subscription_freep(B1Subscription **subscription) {
-        if (*subscription)
-                b1_subscription_free(*subscription);
+static inline void b1_notification_slot_freep(B1NotificationSlot **slot) {
+        if (*slot)
+                b1_notification_slot_free(*slot);
 }
 
 static inline void b1_handle_unrefp(B1Handle **handle) {

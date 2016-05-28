@@ -16,6 +16,7 @@
 ***/
 
 #include <c-rbtree.h>
+#include <c-list.h>
 #include "org.bus1/b1-peer.h"
 
 struct B1Handle {
@@ -27,7 +28,7 @@ struct B1Handle {
 
         bool marked; /* used for duplicate detection */
 
-        B1Subscription *subscriptions;
+        CList notification_slots;
 
         CRBNode rb;
 };
@@ -48,6 +49,15 @@ struct B1Node {
         B1NodeFn destroy_fn;
 };
 
+struct B1NotificationSlot {
+        CListEntry le;
+
+        B1Handle *handle;
+
+        B1NotificationFn fn;
+        void *userdata;
+};
+
 int root_nodes_compare(CRBTree *t, void *k, CRBNode *n);
 int handles_compare(CRBTree *t, void *k, CRBNode *n);
 int nodes_compare(CRBTree *t, void *k, CRBNode *n);
@@ -61,5 +71,4 @@ int b1_node_link(B1Node *node);
 
 B1Interface *b1_node_get_interface(B1Node *node, const char *name);
 
-int b1_subscription_dispatch(B1Subscription *s);
-B1Subscription *b1_subscription_next(B1Subscription *s);
+int b1_notification_dispatch(B1NotificationSlot *s);
