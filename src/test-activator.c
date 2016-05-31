@@ -18,6 +18,7 @@
 #include <c-macro.h>
 #include <c-rbtree.h>
 #include <org.bus1/b1-peer.h>
+#include <poll.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -662,11 +663,36 @@ static int main_activator(void) {
         return 0;
 }
 
+static int ping(B1Node *node, void *userdata, B1Message *ping) {
+        _c_cleanup_(b1_message_unrefp) B1Message *pong = NULL;
+        B1Peer *peer;
+        int r;
+
+        fprintf(stderr, "PING!\n!");
+
+        peer = b1_node_get_peer(node);
+        assert(peer);
+
+        r = b1_message_new_reply(peer, &pong, "()");
+        if (r < 0)
+                return r;
+
+        return b1_message_reply(ping, pong);
+}
+
+static int pong(B1ReplySlot *slot, void *userdata, B1Message *pong) {
+        fprintf(stderr, "PONG!\n");
+
+        return 1;
+}
+
 static int main_foo(void) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
         _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
         _c_cleanup_(b1_interface_unrefp) B1Interface *root_interface = NULL;
         _c_cleanup_(b1_node_freep) B1Node *root_node = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *request = NULL;
+        _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         B1Handle *bar_read, *baz;
         const char *name;
         uint32_t offset;
@@ -726,6 +752,37 @@ static int main_foo(void) {
         r = b1_peer_implement(peer, &root_node, NULL, root_interface);
         if (r < 0)
                 return r;
+
+        /* do a method call */
+        r = b1_message_new_call(peer, &request, "org.bus1.baz", "Ping", "()", "()", &slot, pong, NULL);
+        if (r < 0)
+                return r;
+
+        r = b1_message_send(request, &baz, 1);
+        if (r < 0)
+                return r;
+
+        for (;;) {
+                _c_cleanup_(b1_message_unrefp) B1Message *reply = NULL;
+                struct pollfd pfd = {
+                        .fd = b1_peer_get_fd(peer),
+                        .events = POLLIN,
+                };
+
+                r = poll(&pfd, 1, 1000);
+                if (r < 0)
+                        return -errno;
+                else if (r == 0)
+                        return -ETIMEDOUT;
+
+                r = b1_peer_recv(peer, &reply);
+                if (r < 0)
+                        return r;
+
+                r = b1_message_dispatch(reply);
+                if (r < 0)
+                        return r;
+        }
 
         return 0;
 }
@@ -798,6 +855,10 @@ static int main_baz(void) {
 
         /* implement root node */
         r = b1_interface_new(&root_interface, "org.bus1.baz");
+        if (r < 0)
+                return r;
+
+        r = b1_interface_add_member(root_interface, "Ping()", "()", "()", ping);
         if (r < 0)
                 return r;
 
