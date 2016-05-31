@@ -547,17 +547,23 @@ B1Handle *b1_peer_get_handle(B1Peer *peer, uint64_t handle_id) {
  */
 _c_public_ int b1_peer_export_to_environment(B1Peer *peer) {
         char fdnum[C_DECIMAL_MAX(int)];
-        int r;
+        int fd, r;
 
         r = b1_peer_get_fd(peer);
         if (r < 0)
                 return r;
+        else
+                fd = r;
 
-        r = sprintf(fdnum, "%d", r);
+        r = sprintf(fdnum, "%d", fd);
         if (r < 0)
                 return -EINVAL;
 
         r = setenv("BUS1_PEER_FD", fdnum, 1);
+        if (r < 0)
+                return -errno;
+
+        r = fcntl(fd, F_SETFD, 0);
         if (r < 0)
                 return -errno;
 
