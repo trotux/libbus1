@@ -532,7 +532,7 @@ static int component_spawn(Component *component) {
                 if (r < 0)
                         return r;
 
-                r = execlp(component->name, component->name, NULL);
+                r = execlp("/proc/self/exe", "/proc/self/exe", component->name, NULL);
                 if (r < 0) {
                         fprintf(stderr, "Spawning '%s' failed: %m\n", component->name);
                         return -errno;
@@ -622,7 +622,7 @@ static int manager_spawn_components(Manager *manager) {
         return 0;
 }
 
-int main(void) {
+static int main_activator(void) {
         _c_cleanup_(manager_unrefp) Manager *manager = NULL;
         _c_cleanup_(component_freep) Component *foo = NULL, *bar = NULL, *baz = NULL;
         const char *foo_deps[] = { "org.bus1.bar.Read", "org.bus1.baz" };
@@ -633,31 +633,209 @@ int main(void) {
 
         r = manager_new(&manager);
         if (r < 0)
-                return EXIT_FAILURE;
+                return r;
 
         r = component_new(manager, &foo, "org.bus1.foo", foo_roots, 1, foo_deps, 2);
         if (r < 0)
-                return EXIT_FAILURE;
+                return r;
 
         r = component_new(manager, &bar, "org.bus1.bar", bar_roots, 2, NULL, 0);
         if (r < 0)
-                return EXIT_FAILURE;
+                return r;
 
         r = component_new(manager, &baz, "org.bus1.baz", baz_roots, 1, NULL, 0);
         if (r < 0)
-                return EXIT_FAILURE;
+                return r;
 
         r = manager_instantiate_root_handles(manager);
         if (r < 0)
-                return EXIT_FAILURE;
+                return r;
 
         r = manager_instantiate_dependencies(manager);
         if (r < 0)
-                return EXIT_FAILURE;
+                return r;
 
         r = manager_spawn_components(manager);
         if (r < 0)
+                return r;
+
+        return 0;
+}
+
+static int main_foo(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
+        _c_cleanup_(b1_interface_unrefp) B1Interface *root_interface = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *root_node = NULL;
+        B1Handle *bar_read, *baz;
+        const char *name;
+        uint32_t offset;
+        int r;
+
+        /* instantiate peer from the passed in fd */
+        r = b1_peer_new_from_environment(&peer);
+        if (r < 0)
+                return r;
+
+        /* fetch the seed pinned in the kernel */
+        r = b1_peer_recv_seed(peer, &seed);
+        if (r < 0)
+                return r;
+
+        /* read out all the pedendencies and their handles */
+        r = b1_message_enter(seed, "a");
+        if (r < 0)
+                return r;
+
+        r = b1_message_read(seed, "(su)", &name, &offset);
+        if (r < 0)
+                return r;
+
+        if (strcmp(name, "org.bus1.bar.Read") != 0)
+                return -EINVAL;
+
+        r = b1_message_get_handle(seed, offset, &bar_read);
+        if (r < 0)
+                return r;
+
+        r = b1_message_read(seed, "(su)", &name, &offset);
+        if (r < 0)
+                return r;
+
+        if (strcmp(name, "org.bus1.baz") != 0)
+                return -EINVAL;
+
+        r = b1_message_get_handle(seed, offset, &baz);
+        if (r < 0)
+                return r;
+
+        r = b1_message_exit(seed, "a");
+        if (r < 0)
+                return r;
+
+        /* instantiate root nodes in peer */
+        r = b1_message_dispatch(seed);
+        if (r < 0)
+                return r;
+
+        /* implement root node */
+        r = b1_interface_new(&root_interface, "org.bus1.foo");
+        if (r < 0)
+                return r;
+
+        r = b1_peer_implement(peer, &root_node, NULL, root_interface);
+        if (r < 0)
+                return r;
+
+        return 0;
+}
+
+static int main_bar(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
+        _c_cleanup_(b1_interface_unrefp) B1Interface *root_interface_read = NULL;
+        _c_cleanup_(b1_interface_unrefp) B1Interface *root_interface_write = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *root_node_read = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *root_node_write = NULL;
+        int r;
+
+        /* instantiate peer from the passed in fd */
+        r = b1_peer_new_from_environment(&peer);
+        if (r < 0)
+                return r;
+
+        /* fetch the seed pinned in the kernel */
+        r = b1_peer_recv_seed(peer, &seed);
+        if (r < 0)
+                return r;
+
+        /* instantiate root nodes in peer */
+        r = b1_message_dispatch(seed);
+        if (r < 0)
+                return r;
+
+        /* implement root nodes */
+        r = b1_interface_new(&root_interface_read, "org.bus1.bar.Read");
+        if (r < 0)
+                return r;
+
+        r = b1_peer_implement(peer, &root_node_read, NULL, root_interface_read);
+        if (r < 0)
+                return r;
+
+        r = b1_interface_new(&root_interface_write, "org.bus1.bar.ReadWrite");
+        if (r < 0)
+                return r;
+
+        r = b1_peer_implement(peer, &root_node_write, NULL, root_interface_write);
+        if (r < 0)
+                return r;
+
+        return 0;
+}
+
+static int main_baz(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
+        _c_cleanup_(b1_interface_unrefp) B1Interface *root_interface = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *root_node = NULL;
+        int r;
+
+        /* instantiate peer from the passed in fd */
+        r = b1_peer_new_from_environment(&peer);
+        if (r < 0)
+                return r;
+
+        /* fetch the seed pinned in the kernel */
+        r = b1_peer_recv_seed(peer, &seed);
+        if (r < 0)
+                return r;
+
+        /* instantiate root nodes in peer */
+        r = b1_message_dispatch(seed);
+        if (r < 0)
+                return r;
+
+        /* implement root node */
+        r = b1_interface_new(&root_interface, "org.bus1.baz");
+        if (r < 0)
+                return r;
+
+        r = b1_peer_implement(peer, &root_node, NULL, root_interface);
+        if (r < 0)
+                return r;
+
+        return 0;
+}
+
+int main(int argc, char **argv) {
+        int r;
+
+        if (argc == 1) {
+                r = main_activator();
+                if (r < 0) {
+                        fprintf(stderr, "Activator failed: %s\n", strerror(-r));
+                        return EXIT_FAILURE;
+                }
+        } else if (argc == 2) {
+                if (strcmp(argv[1], "org.bus1.foo") == 0)
+                        r = main_foo();
+                else if (strcmp(argv[1], "org.bus1.bar") == 0)
+                        r = main_bar();
+                else if (strcmp(argv[1], "org.bus1.baz") == 0)
+                        r = main_baz();
+                else {
+                        fprintf(stderr, "Unrecognized component '%s'\n", argv[1]);
+                        return EXIT_FAILURE;
+                }
+                if (r < 0) {
+                        fprintf(stderr, "Component '%s', failed: %s\n", argv[1], strerror(-r));
+                        return EXIT_FAILURE;
+                }
+        } else {
+                fprintf(stderr, "This binary takes none or one argumnets\n");
                 return EXIT_FAILURE;
+        }
 
         return EXIT_SUCCESS;
 }
