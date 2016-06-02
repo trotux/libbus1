@@ -22,6 +22,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#define B1_PEER_FD (3)
+
 typedef struct Manager {
         unsigned long n_ref;
         B1Peer *peer;
@@ -529,9 +531,11 @@ static int component_spawn(Component *component) {
         if (pid < 0)
                 return errno;
         else if (pid == 0) {
-                r = b1_peer_export_to_environment(component->peer);
+                /* Move our peer fd to the well-known peer fd number and clear
+                 * CLOEXEC on it. */
+                r = dup2(b1_peer_get_fd(component->peer), B1_PEER_FD);
                 if (r < 0)
-                        return r;
+                        return -errno;
 
                 r = execlp("/proc/self/exe", "/proc/self/exe", component->name, NULL);
                 if (r < 0) {
@@ -698,8 +702,13 @@ static int main_foo(void) {
         uint32_t offset;
         int r;
 
+        /* set CLOEXEC on the passed in fd again */
+        r = fcntl(B1_PEER_FD, F_SETFD, FD_CLOEXEC);
+        if (r < 0)
+                return -errno;
+
         /* instantiate peer from the passed in fd */
-        r = b1_peer_new_from_environment(&peer);
+        r = b1_peer_new_from_fd(&peer, B1_PEER_FD);
         if (r < 0)
                 return r;
 
@@ -796,8 +805,13 @@ static int main_bar(void) {
         _c_cleanup_(b1_node_freep) B1Node *root_node_write = NULL;
         int r;
 
+        /* set CLOEXEC on the passed in fd again */
+        r = fcntl(B1_PEER_FD, F_SETFD, FD_CLOEXEC);
+        if (r < 0)
+                return -errno;
+
         /* instantiate peer from the passed in fd */
-        r = b1_peer_new_from_environment(&peer);
+        r = b1_peer_new_from_fd(&peer, B1_PEER_FD);
         if (r < 0)
                 return r;
 
@@ -838,8 +852,13 @@ static int main_baz(void) {
         _c_cleanup_(b1_node_freep) B1Node *root_node = NULL;
         int r;
 
+        /* set CLOEXEC on the passed in fd again */
+        r = fcntl(B1_PEER_FD, F_SETFD, FD_CLOEXEC);
+        if (r < 0)
+                return -errno;
+
         /* instantiate peer from the passed in fd */
-        r = b1_peer_new_from_environment(&peer);
+        r = b1_peer_new_from_fd(&peer, B1_PEER_FD);
         if (r < 0)
                 return r;
 
