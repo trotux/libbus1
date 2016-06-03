@@ -218,11 +218,11 @@ static void test_seed(void) {
         assert(r >= 0);
         assert(peer);
 
-        r = b1_node_new(peer, &node1, NULL);
+        r = b1_node_new_root(peer, &node1, NULL, "org.foo.bar.Root");
         assert(r >= 0);
         assert(node1);
 
-        r = b1_message_new_seed(peer, &seed1, &node1, &name, 1, "()");
+        r = b1_message_new_seed(peer, &seed1, &node1, 1, "()");
         assert(r >= 0);
         assert(seed1);
 

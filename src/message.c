@@ -467,12 +467,12 @@ _c_public_ int b1_message_new_error(B1Peer *peer, B1Message **messagep, const ch
 }
 
 static int strcmpuniq(const void *ap, const void *bp, void *userdata) {
-        const char *a = * (char * const *) ap;
-        const char *b = * (char * const *) bp;
+        B1Node *a = * (B1Node**) ap;
+        B1Node *b = * (B1Node**) bp;
         bool *uniqp = userdata;
         int r;
 
-        r = strcmp(a, b);
+        r = strcmp(a->name, b->name);
         if (r == 0)
                 *uniqp = false;
 
@@ -482,7 +482,6 @@ static int strcmpuniq(const void *ap, const void *bp, void *userdata) {
 _c_public_ int b1_message_new_seed(B1Peer *peer,
                                    B1Message **messagep,
                                    B1Node **nodes,
-                                   const char **node_names,
                                    size_t n_nodes,
                                    const char *signature) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
@@ -491,7 +490,7 @@ _c_public_ int b1_message_new_seed(B1Peer *peer,
 
         assert(peer);
         assert(messagep);
-        assert(!n_nodes || (nodes && node_names));
+        assert(!n_nodes || nodes);
         assert(signature);
 
         r = b1_message_new(peer, &message, B1_MESSAGE_TYPE_SEED);
@@ -508,17 +507,20 @@ _c_public_ int b1_message_new_seed(B1Peer *peer,
                 return r;
 
         for (unsigned i = 0; i < n_nodes; i ++) {
+                if (!nodes[i]->name)
+                        return -EINVAL;
+
                 r = b1_message_append_handle(message, nodes[i]->handle);
                 if (r < 0)
                         return r;
 
-                r = c_variant_write(message->data.cv, "(su)", node_names[i], r);
+                r = c_variant_write(message->data.cv, "(su)", nodes[i]->name, r);
                 if (r < 0)
                         return r;
         }
 
         /* node names must be globally unique, so refuse duplicates */
-        qsort_r(node_names, n_nodes, sizeof(char *), strcmpuniq, &uniq);
+        qsort_r(nodes, n_nodes, sizeof(B1Node*), strcmpuniq, &uniq);
         if (!uniq)
                 return -EINVAL;
 

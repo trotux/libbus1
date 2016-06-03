@@ -211,15 +211,12 @@ B1Interface *b1_node_get_interface(B1Node *node, const char *name) {
 
 /**
  * b1_node_new() - create a new node for a peer
- * @peer:               the owning peer, or null
+ * @peer:               the owning peer
  * @nodep:              pointer to the new node object
  * @userdata:           userdata to associate with the node
  *
- * A node is the recipient of messages, and. Nodes are allocated lazily in the
- * kernel, so it is not guaranteed to be a kernel equivalent to the userspace
- * object at all times. A node is associated with at most one peer, and for a
- * lazily created node it may not be associated with any peer until it is
- * actually created, at which point it is associated with the creating peer.
+ * A root node is a named node, which is like any other node except that it is
+ * guaranteed not to be cleaned up in case a peer is reset.
  *
  * Return: 0 on success, and a negative error code on failure.
  */
@@ -228,6 +225,39 @@ _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
         int r;
 
         r = b1_node_new_internal(peer, &node, userdata, BUS1_HANDLE_INVALID, NULL);
+        if (r < 0)
+                return r;
+
+        r = b1_handle_new(peer, BUS1_HANDLE_INVALID, &node->handle);
+        if (r < 0)
+                return r;
+
+        node->handle->node = node;
+
+        *nodep = node;
+        node = NULL;
+        return 0;
+}
+
+/**
+ * b1_node_new_root() - create a new root node for a peer
+ * @peer:               the owning peer
+ * @nodep:              pointer to the new root node object
+ * @userdata:           userdata to associate with the node
+ *
+ * A root node is the recipient of messages, and. Nodes are allocated lazily in the
+ * kernel, so it is not guaranteed to be a kernel equivalent to the userspace
+ * object at all times. A node is associated with at most one peer, and for a
+ * lazily created node it may not be associated with any peer until it is
+ * actually created, at which point it is associated with the creating peer.
+ *
+ * Return: 0 on success, and a negative error code on failure.
+ */
+_c_public_ int b1_node_new_root(B1Peer *peer, B1Node **nodep, void *userdata, const char *name) {
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        int r;
+
+        r = b1_node_new_internal(peer, &node, userdata, BUS1_HANDLE_INVALID, name);
         if (r < 0)
                 return r;
 
@@ -309,6 +339,17 @@ _c_public_ B1Peer *b1_node_get_peer(B1Node *node) {
 _c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
         assert(node);
         return node->handle;
+}
+
+/**
+ * b1_node_get_name() - get name of a node
+ * @node:               node to query
+ *
+ * Return: Pointer to root node name, or NULL if not a root node.
+ */
+_c_public_ const char *b1_node_get_name(B1Node *node) {
+        assert(node);
+        return node->name;
 }
 
 /**

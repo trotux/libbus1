@@ -43,7 +43,7 @@ struct B1Node {
         const char *name;
         void *userdata;
 
-        bool live;
+        bool live:1;
 
         CRBNode rb; /* used either to link into nodes map or root_nodes map */
 

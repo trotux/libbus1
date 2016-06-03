@@ -40,7 +40,6 @@ typedef struct Component {
         B1Node *management_node;
         B1Handle *management_handle;
         B1ReplySlot *slot;
-        const char **root_node_names;
         B1Node **root_nodes;
         size_t n_root_nodes;
         char **dependencies;
@@ -177,12 +176,9 @@ static int component_new(Manager *manager, Component **componentp, const char *n
         n_names = strlen(name) + 1;
         for (unsigned int i = 0; i < n_dependencies; ++i)
                 n_names += strlen(dependencies[i]) + 1;
-        for (unsigned int i = 0; i < n_root_nodes; ++i)
-                n_names += strlen(root_nodes[i]) + 1;
 
         component = calloc(1, sizeof(*component) +
                               sizeof(char*) * n_dependencies +
-                              sizeof(char*) * n_root_nodes +
                               sizeof(B1Node*) * n_root_nodes +
                               n_names);
         if (!component)
@@ -191,16 +187,11 @@ static int component_new(Manager *manager, Component **componentp, const char *n
         component->n_root_nodes = n_root_nodes;
         component->name = (void*)(component + 1);
         component->dependencies = (char **)(stpcpy((char*)component->name, name) + 1);
-        component->root_node_names = (const char**)(component->dependencies + n_dependencies);
-        component->root_nodes = (B1Node**)(component->root_node_names + n_root_nodes);
+        component->root_nodes = (B1Node**)(component->dependencies + n_dependencies);
         buf = (char*)(component->root_nodes + n_root_nodes);
         for (unsigned int i = 0; i < n_dependencies; ++i) {
                 component->dependencies[i] = buf;
                 buf = stpcpy(buf, dependencies[i]) + 1;
-        }
-        for (unsigned int i = 0; i < n_root_nodes; ++i) {
-                component->root_node_names[i] = buf;
-                buf = stpcpy(buf, root_nodes[i]) + 1;
         }
 
         c_rbnode_init(&component->rb);
@@ -221,7 +212,7 @@ static int component_new(Manager *manager, Component **componentp, const char *n
                 return r;
 
         for (unsigned int i = 0; i < n_root_nodes; ++i) {
-                r = b1_node_new(component->peer, &component->root_nodes[i], NULL);
+                r = b1_node_new_root(component->peer, &component->root_nodes[i], NULL, root_nodes[i]);
                 if (r < 0)
                         return r;
         }
@@ -401,7 +392,8 @@ static int component_send_root_nodes(Component *component) {
 
         for (unsigned int i = 0; i < component->n_root_nodes; ++i) {
                 B1Handle *handle;
-                uint32_t handle_id;
+                uint32_t index;
+                const char *name;
 
                 handle = b1_node_get_handle(component->root_nodes[i]);
                 assert(handle);
@@ -410,9 +402,12 @@ static int component_send_root_nodes(Component *component) {
                 if (r < 0)
                         return r;
                 else
-                        handle_id = r;
+                        index = r;
 
-                r = b1_message_write(message, "(su)", component->root_node_names[i], handle_id);
+                name = b1_node_get_name(component->root_nodes[i]);
+                assert(name);
+
+                r = b1_message_write(message, "(su)", name, index);
                 if (r < 0)
                         return r;
         }
@@ -442,7 +437,7 @@ static int component_request_dependencies_handler(B1ReplySlot *slot, void *userd
         fprintf(stderr, "Component: %s\n  Root Nodes:\n", component->name);
 
         for (unsigned int i = 0; i < component->n_root_nodes; ++i)
-                fprintf(stderr, "    %s\n", component->root_node_names[i]);
+                fprintf(stderr, "    %s\n", b1_node_get_name(component->root_nodes[i]));
 
         fprintf(stderr, "  Dependencies:\n");
 
@@ -456,7 +451,6 @@ static int component_request_dependencies_handler(B1ReplySlot *slot, void *userd
 
         r = b1_message_new_seed(component->peer, &seed,
                                 component->root_nodes,
-                                component->root_node_names,
                                 component->n_root_nodes,
                                 "a(su)");
         if (r < 0)

@@ -100,7 +100,6 @@ int b1_message_new_error(B1Peer *peer,
 int b1_message_new_seed(B1Peer *peer,
                         B1Message **messagep,
                         B1Node **nodes,
-                        const char **node_names,
                         size_t n_nodes,
                         const char *signature);
 B1Message *b1_message_ref(B1Message *message);
@@ -139,11 +138,13 @@ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp);
 /* nodes */
 
 int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata);
+int b1_node_new_root(B1Peer *peer, B1Node **nodep, void *userdata, const char *name);
 B1Node *b1_node_free(B1Node *node);
 
 B1Peer *b1_node_get_peer(B1Node *node);
 B1Handle *b1_node_get_handle(B1Node *node);
 void *b1_node_get_userdata(B1Node *node);
+const char *b1_node_get_name(B1Node *node);
 
 void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn);
 int b1_node_implement(B1Node *node, B1Interface *interface);
