@@ -179,6 +179,7 @@ int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, uint64_t 
         node->owner = b1_peer_ref(peer);
         node->userdata = userdata;
         node->live = false;
+        node->owned = false;
         node->persistent = false;
 
         *nodep = node;
@@ -302,9 +303,9 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
                 free(implementation);
         }
 
-        /* if the node name is set, it means this node is owned by a message or
-         * peer object, which will be responsibly for cleaning it up */
-        if (!node->name && node->id != BUS1_HANDLE_INVALID) {
+        /* a root node may be owned by a peer or a message object, in which case
+         * they are responsible for cleaning it up */
+        if (!node->owned && node->id != BUS1_HANDLE_INVALID) {
                 b1_node_destroy(node);
                 c_rbtree_remove(&node->owner->nodes, &node->rb);
         }

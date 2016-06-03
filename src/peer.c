@@ -292,6 +292,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                         node->handle = b1_handle_ref(message->data.handles[offset]);
 
                         c_rbtree_add(&message->data.seed.root_nodes, p, slot, &node->rb);
+                        node->owned = true;
 
                         node = NULL;
                 }
@@ -505,7 +506,7 @@ _c_public_ int b1_peer_implement(B1Peer *peer, B1Node **nodep, void *userdata, B
 
         node->userdata = userdata;
         c_rbtree_remove(&peer->root_nodes, &node->rb);
-        node->name = NULL;
+        node->owned = false;
 
         *nodep = node;
 
