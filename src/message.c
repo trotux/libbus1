@@ -43,6 +43,9 @@ struct B1ReplySlot {
  * Return: NULL.
  */
 _c_public_ B1ReplySlot *b1_reply_slot_free(B1ReplySlot *slot) {
+        if (!slot)
+                return NULL;
+
         b1_node_free(slot->reply_node);
         free(slot);
 
