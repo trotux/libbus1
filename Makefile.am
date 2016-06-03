@@ -51,8 +51,7 @@ noinst_LIBRARIES += \
 libbus1_a_SOURCES = \
 	src/peer.c \
 	src/peer.h \
-	src/match.c \
-	src/match.h \
+	src/multicast.c \
 	src/message.c \
 	src/message.h \
 	src/node.c \

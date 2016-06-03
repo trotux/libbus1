@@ -32,8 +32,8 @@ struct B1Handle {
 
         CRBNode rb;
 
-        B1NotificationSlot *match_notification;
-        CListEntry match_le;
+        B1NotificationSlot *multicast_group_notification;
+        CListEntry multicast_group_le;
 };
 
 struct B1Node {
