@@ -153,7 +153,8 @@ _c_public_ int b1_message_send(B1Message *message,
 
                 if (handle->id == BUS1_HANDLE_INVALID)
                         handle_ids[i] = BUS1_NODE_FLAG_MANAGED |
-                                        BUS1_NODE_FLAG_ALLOCATE;
+                                        BUS1_NODE_FLAG_ALLOCATE |
+                                        (handle->node->persistent ? BUS1_NODE_FLAG_PERSISTENT : 0);
                 else
                         handle_ids[i] = handle->id;
         }

@@ -44,6 +44,7 @@ struct B1Node {
         void *userdata;
 
         bool live:1;
+        bool persistent:1;
 
         CRBNode rb; /* used either to link into nodes map or root_nodes map */
 

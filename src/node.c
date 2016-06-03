@@ -179,6 +179,7 @@ int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, uint64_t 
         node->owner = b1_peer_ref(peer);
         node->userdata = userdata;
         node->live = false;
+        node->persistent = false;
 
         *nodep = node;
         node = NULL;
@@ -260,6 +261,8 @@ _c_public_ int b1_node_new_root(B1Peer *peer, B1Node **nodep, void *userdata, co
         r = b1_node_new_internal(peer, &node, userdata, BUS1_HANDLE_INVALID, name);
         if (r < 0)
                 return r;
+
+        node->persistent = true;
 
         r = b1_handle_new(peer, BUS1_HANDLE_INVALID, &node->handle);
         if (r < 0)
