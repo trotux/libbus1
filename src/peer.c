@@ -379,7 +379,7 @@ _c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep) {
  */
 _c_public_ int b1_peer_recv_seed(B1Peer *peer, B1Message **seedp) {
         struct bus1_cmd_recv recv = {
-                .flags = BUS1_RECV_FLAG_PEEK | BUS1_RECV_FLAG_SEED,
+                .flags = BUS1_RECV_FLAG_SEED,
         };
         int r;
 
