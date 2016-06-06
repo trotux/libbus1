@@ -532,10 +532,10 @@ static int component_spawn(Component *component) {
                         return -errno;
 
                 r = execlp("/proc/self/exe", "/proc/self/exe", component->name, NULL);
-                if (r < 0) {
+                if (r < 0)
                         fprintf(stderr, "Spawning '%s' failed: %m\n", component->name);
-                        return -errno;
-                }
+
+                _exit(EXIT_FAILURE);
         }
 
         return 0;
@@ -903,7 +903,7 @@ int main(int argc, char **argv) {
                         return EXIT_FAILURE;
                 }
                 if (r < 0) {
-                        fprintf(stderr, "Component '%s', failed: %s\n", argv[1], strerror(-r));
+                        fprintf(stderr, "Component '%s' failed: %s\n", argv[1], strerror(-r));
                         return EXIT_FAILURE;
                 }
         } else {

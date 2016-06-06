@@ -271,6 +271,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
 
                 for (unsigned i = 0, n = r; i < n; i ++) {
                         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+                        B1Handle *handle;
                         const char *name;
                         unsigned int offset;
                         CRBNode **slot, *p;
@@ -279,21 +280,26 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                         if (r < 0)
                                 return r;
 
+                        if (offset >= data->n_handles)
+                                return -EIO;
+
+                        handle = message->data.handles[offset];
+                        if (!handle)
+                                continue;
+
                         slot = c_rbtree_find_slot(&message->data.seed.root_nodes,
                                                   root_nodes_compare, name, &p);
                         if (!slot)
                                 return -EIO;
 
-                        r = b1_node_new_internal(peer, &node, NULL,
-                                                 message->data.handles[offset]->id, name);
+                        r = b1_node_new_internal(peer, &node, NULL, handle->id, name);
                         if (r < 0)
                                 return r;
 
-                        node->handle = b1_handle_ref(message->data.handles[offset]);
+                        node->handle = b1_handle_ref(handle);
 
                         c_rbtree_add(&message->data.seed.root_nodes, p, slot, &node->rb);
                         node->owned = true;
-
                         node = NULL;
                 }
 
