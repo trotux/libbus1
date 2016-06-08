@@ -598,9 +598,9 @@ _c_public_ B1Message *b1_message_unref(B1Message *message) {
                 CRBNode *n;
 
                 while ((n = c_rbtree_first(&message->data.seed.root_nodes))) {
-                        B1Node *node = c_container_of(n, B1Node, rb);
+                        B1Node *node = c_container_of(n, B1Node, rb_root_nodes);
 
-                        c_rbtree_remove(&message->data.seed.root_nodes, n);
+                        c_rbtree_remove_init(&message->data.seed.root_nodes, n);
                         b1_node_free(node);
                 }
         }
@@ -777,9 +777,9 @@ static int b1_message_dispatch_seed(B1Message *message) {
         CRBNode *n;
 
         while ((n = c_rbtree_first(&message->peer->root_nodes))) {
-                B1Node *node = c_container_of(n, B1Node, rb);
+                B1Node *node = c_container_of(n, B1Node, rb_root_nodes);
 
-                c_rbtree_remove(&message->peer->root_nodes, n);
+                c_rbtree_remove_init(&message->peer->root_nodes, n);
                 b1_node_free(node);
         }
 

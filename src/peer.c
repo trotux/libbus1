@@ -137,9 +137,9 @@ _c_public_ B1Peer *b1_peer_unref(B1Peer *peer) {
                 return NULL;
 
         while ((n = c_rbtree_first(&peer->root_nodes))) {
-                B1Node *node = c_container_of(n, B1Node, rb);
+                B1Node *node = c_container_of(n, B1Node, rb_root_nodes);
 
-                c_rbtree_remove(&peer->root_nodes, n);
+                c_rbtree_remove_init(&peer->root_nodes, n);
                 b1_node_free(node);
         }
 
@@ -298,8 +298,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
 
                         node->handle = b1_handle_ref(handle);
 
-                        c_rbtree_add(&message->data.seed.root_nodes, p, slot, &node->rb);
-                        node->owned = true;
+                        c_rbtree_add(&message->data.seed.root_nodes, p, slot, &node->rb_root_nodes);
                         node = NULL;
                 }
 
@@ -477,7 +476,7 @@ B1Node *b1_peer_get_root_node(B1Peer *peer, const char *name) {
         if (!n)
                 return NULL;
 
-        return c_container_of(n, B1Node, rb);
+        return c_container_of(n, B1Node, rb_root_nodes);
 }
 
 /**
@@ -511,8 +510,7 @@ _c_public_ int b1_peer_implement(B1Peer *peer, B1Node **nodep, void *userdata, B
                 return r;
 
         node->userdata = userdata;
-        c_rbtree_remove(&peer->root_nodes, &node->rb);
-        node->owned = false;
+        c_rbtree_remove_init(&peer->root_nodes, &node->rb_root_nodes);
 
         *nodep = node;
 
@@ -528,7 +526,7 @@ B1Node *b1_peer_get_node(B1Peer *peer, uint64_t node_id) {
         if (!n)
                 return NULL;
 
-        return c_container_of(n, B1Node, rb);
+        return c_container_of(n, B1Node, rb_nodes);
 }
 
 B1Handle *b1_peer_get_handle(B1Peer *peer, uint64_t handle_id) {

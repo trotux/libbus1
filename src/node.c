@@ -32,7 +32,7 @@ typedef struct B1Implementation {
 } B1Implementation;
 
 int nodes_compare(CRBTree *t, void *k, CRBNode *n) {
-        B1Node *node = c_container_of(n, B1Node, rb);
+        B1Node *node = c_container_of(n, B1Node, rb_nodes);
         uint64_t id = *(uint64_t*)k;
 
         if (id < node->id)
@@ -44,7 +44,7 @@ int nodes_compare(CRBTree *t, void *k, CRBNode *n) {
 }
 
 int root_nodes_compare(CRBTree *t, void *k, CRBNode *n) {
-        B1Node *node = c_container_of(n, B1Node, rb);
+        B1Node *node = c_container_of(n, B1Node, rb_root_nodes);
         const char *name = k;
 
         return strcmp(node->name, name);
@@ -74,7 +74,7 @@ int b1_node_link(B1Node *node) {
         if (!slot)
                 return -ENOTUNIQ;
 
-        c_rbtree_add(&node->owner->nodes, p, slot, &node->rb);
+        c_rbtree_add(&node->owner->nodes, p, slot, &node->rb_nodes);
 
         return 0;
 
@@ -179,8 +179,9 @@ int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, uint64_t 
         node->owner = b1_peer_ref(peer);
         node->userdata = userdata;
         node->live = false;
-        node->owned = false;
         node->persistent = false;
+        c_rbnode_init(&node->rb_nodes);
+        c_rbnode_init(&node->rb_root_nodes);
 
         *nodep = node;
         node = NULL;
@@ -292,6 +293,9 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
                 return NULL;
 
         assert(node->owner);
+        assert(!c_rbnode_is_linked(&node->rb_root_nodes));
+
+        c_rbtree_remove_init(&node->owner->nodes, &node->rb_nodes);
 
         b1_node_release(node);
 
@@ -303,12 +307,8 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
                 free(implementation);
         }
 
-        /* a root node may be owned by a peer or a message object, in which case
-         * they are responsible for cleaning it up */
-        if (!node->owned && node->id != BUS1_HANDLE_INVALID) {
+        if (!node->persistent)
                 b1_node_destroy(node);
-                c_rbtree_remove(&node->owner->nodes, &node->rb);
-        }
 
         b1_peer_unref(node->owner);
         free(node);
