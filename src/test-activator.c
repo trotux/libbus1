@@ -663,10 +663,15 @@ static int main_activator(void) {
 
 static int ping(B1Node *node, void *userdata, B1Message *ping) {
         _c_cleanup_(b1_message_unrefp) B1Message *pong = NULL;
+        bool *done = userdata;
         B1Peer *peer;
         int r;
 
+        assert(done);
+
         fprintf(stderr, "PING!\n!");
+
+        *done = true;
 
         peer = b1_node_get_peer(node);
         assert(peer);
@@ -679,7 +684,13 @@ static int ping(B1Node *node, void *userdata, B1Message *ping) {
 }
 
 static int pong(B1ReplySlot *slot, void *userdata, B1Message *pong) {
+        unsigned int *count = userdata;
+
+        assert(count);
+
         fprintf(stderr, "PONG!\n");
+
+        (*count)++;
 
         return 1;
 }
@@ -694,6 +705,7 @@ static int main_foo(void) {
         B1Handle *bar_read, *baz;
         const char *name;
         uint32_t offset;
+        unsigned int count = 0;
         int r;
 
         /* set CLOEXEC on the passed in fd again */
@@ -757,11 +769,15 @@ static int main_foo(void) {
                 return r;
 
         /* do a method call */
-        r = b1_message_new_call(peer, &request, "org.bus1.baz", "Ping", "()", "()", &slot, pong, NULL);
+        r = b1_message_new_call(peer, &request, "org.bus1.baz", "Ping", "()", "()", &slot, pong, &count);
         if (r < 0)
                 return r;
 
         r = b1_message_send(request, &baz, 1);
+        if (r < 0)
+                return r;
+
+        r = b1_message_send(request, &bar_read, 1);
         if (r < 0)
                 return r;
 
@@ -772,7 +788,7 @@ static int main_foo(void) {
                         .events = POLLIN,
                 };
 
-                r = poll(&pfd, 1, 1000);
+                r = poll(&pfd, 1, 100);
                 if (r < 0)
                         return -errno;
                 else if (r == 0)
@@ -785,6 +801,9 @@ static int main_foo(void) {
                 r = b1_message_dispatch(reply);
                 if (r < 0)
                         return r;
+
+                if (count == 2)
+                        break;
         }
 
         return 0;
@@ -797,6 +816,7 @@ static int main_bar(void) {
         _c_cleanup_(b1_interface_unrefp) B1Interface *root_interface_write = NULL;
         _c_cleanup_(b1_node_freep) B1Node *root_node_read = NULL;
         _c_cleanup_(b1_node_freep) B1Node *root_node_write = NULL;
+        bool done = false;
         int r;
 
         /* set CLOEXEC on the passed in fd again */
@@ -832,9 +852,36 @@ static int main_bar(void) {
         if (r < 0)
                 return r;
 
-        r = b1_peer_implement(peer, &root_node_write, NULL, root_interface_write);
+        r = b1_peer_implement(peer, &root_node_write, &done, root_interface_write);
         if (r < 0)
                 return r;
+
+        for (;;) {
+                _c_cleanup_(b1_message_unrefp) B1Message *reply = NULL;
+                struct pollfd pfd = {
+                        .fd = b1_peer_get_fd(peer),
+                        .events = POLLIN,
+                };
+
+                r = poll(&pfd, 1, 100);
+                if (r < 0)
+                        return -errno;
+                else if (r == 0)
+                        return -ETIMEDOUT;
+
+                fprintf(stderr, "bar: something happened\n");
+
+                r = b1_peer_recv(peer, &reply);
+                if (r < 0)
+                        return r;
+
+                r = b1_message_dispatch(reply);
+                if (r < 0)
+                        return r;
+
+                if (done)
+                        break;
+        }
 
         return 0;
 }
@@ -844,6 +891,7 @@ static int main_baz(void) {
         _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
         _c_cleanup_(b1_interface_unrefp) B1Interface *root_interface = NULL;
         _c_cleanup_(b1_node_freep) B1Node *root_node = NULL;
+        bool done = false;
         int r;
 
         /* set CLOEXEC on the passed in fd again */
@@ -875,9 +923,34 @@ static int main_baz(void) {
         if (r < 0)
                 return r;
 
-        r = b1_peer_implement(peer, &root_node, NULL, root_interface);
+        r = b1_peer_implement(peer, &root_node, &done, root_interface);
         if (r < 0)
                 return r;
+
+        for (;;) {
+                _c_cleanup_(b1_message_unrefp) B1Message *reply = NULL;
+                struct pollfd pfd = {
+                        .fd = b1_peer_get_fd(peer),
+                        .events = POLLIN,
+                };
+
+                r = poll(&pfd, 1, 100);
+                if (r < 0)
+                        return -errno;
+                else if (r == 0)
+                        return -ETIMEDOUT;
+
+                r = b1_peer_recv(peer, &reply);
+                if (r < 0)
+                        return r;
+
+                r = b1_message_dispatch(reply);
+                if (r < 0)
+                        return r;
+
+                if (done)
+                        break;
+        }
 
         return 0;
 }
