@@ -196,9 +196,20 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
         message->data.n_handles = data->n_handles;
 
         for (unsigned int i = 0; i < data->n_handles; i++) {
-                r = b1_handle_acquire(&message->data.handles[i], peer, handle_ids[i]);
-                if (r < 0)
-                        return r;
+                B1Handle *handle;
+
+                if (handle_ids[i] == BUS1_HANDLE_INVALID)
+                        handle = NULL;
+                else {
+                        r = b1_handle_acquire(&handle, peer, handle_ids[i]);
+                        if (r == 0)
+                                /* Reusing an existing handle, drop userref from kernel */
+                                b1_handle_release(handle);
+                        else if (r < 0)
+                                return r;
+                }
+
+                message->data.handles[i] = handle;
         }
 
         r = c_variant_enter(message->data.cv, "(");

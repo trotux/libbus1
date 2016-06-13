@@ -68,6 +68,7 @@ int handles_compare(CRBTree *t, void *k, CRBNode *n);
 int nodes_compare(CRBTree *t, void *k, CRBNode *n);
 
 int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_id);
+void b1_handle_release(B1Handle *handle);
 int b1_handle_new(B1Peer *peer, uint64_t id, B1Handle **handlep);
 int b1_handle_link(B1Handle *handle);
 

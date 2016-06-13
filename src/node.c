@@ -120,7 +120,7 @@ int b1_handle_new(B1Peer *peer, uint64_t id, B1Handle **handlep) {
         return 0;
 }
 
-static void b1_handle_release(B1Handle *handle) {
+void b1_handle_release(B1Handle *handle) {
         if (!handle)
                 return;
 
@@ -135,13 +135,9 @@ int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_id) {
         CRBNode **slot, *p;
         int r;
 
-        assert(handlep);
         assert(peer);
-
-        if (handle_id == BUS1_HANDLE_INVALID) {
-                *handlep = NULL;
-                return 0;
-        }
+        assert(handlep);
+        assert(handle_id != BUS1_HANDLE_INVALID);
 
         slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
         if (slot) {
@@ -150,15 +146,16 @@ int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_id) {
                         return r;
 
                 c_rbtree_add(&peer->handles, p, slot, &handle->rb);
+
+                *handlep = handle;
+                return 1;
         } else {
                 handle = c_container_of(p, B1Handle, rb);
                 b1_handle_ref(handle);
-                b1_handle_release(handle);
+
+                *handlep = handle;
+                return 0;
         }
-
-        *handlep = handle;
-
-        return 0;
 }
 
 int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, uint64_t id, const char *name) {
