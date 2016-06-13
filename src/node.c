@@ -125,6 +125,8 @@ void b1_handle_release(B1Handle *handle) {
                 return;
 
         if (handle->id == BUS1_HANDLE_INVALID)
+                /* XXX: pass this in to the kernel if we have anyone listening
+                 * for notifications on the local peer (needs kernel patch). */
                 return;
 
         (void)bus1_client_handle_release(handle->holder->client, handle->id);
@@ -328,18 +330,37 @@ _c_public_ B1Peer *b1_node_get_peer(B1Node *node) {
 }
 
 /**
- * b1_node_get_handle() - get owner handle of a node
+ * b1_node_acquire_handle() - acquire owner handle of a node
  * @node:               node to query
  *
- * This returns the owner's handle of a node. For each create node, the owner
- * gets a handle themself initially. Unless released via b1_node_release(), an
- * owner can query this handle at any time.
+ * This acquires the owner's handle of a node. The caller owns a reference to
+ * the returned handle and is responsible for releasing it.
  *
- * Return: Pointer to owner's handle, or NULL if already released.
+ * Return: Pointer to owner's handle.
  */
-_c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
+_c_public_ int b1_node_acquire_handle(B1Node *node, B1Handle **handlep) {
+        int r;
+
         assert(node);
-        return node->handle;
+        assert(handlep);
+
+        if (node->handle) {
+                *handlep = b1_handle_ref(node->handle);
+                return 0;
+        }
+
+        if (node->id == BUS1_HANDLE_INVALID) {
+                r = b1_handle_new(node->owner, BUS1_HANDLE_INVALID, &node->handle);
+                if (r < 0)
+                        return r;
+        } else {
+                r = b1_handle_acquire(&node->handle, node->owner, node->id);
+                if (r < 0)
+                        return r;
+        }
+
+        *handlep = node->handle;
+        return 0;
 }
 
 /**
@@ -449,7 +470,11 @@ _c_public_ void b1_node_release(B1Node *node) {
  * If NULL is passed, this is a no-op.
  */
 _c_public_ void b1_node_destroy(B1Node *node) {
-        if (!node || node->id == BUS1_HANDLE_INVALID)
+        if (!node)
+                return;
+        if (node->id == BUS1_HANDLE_INVALID)
+                /* XXX: pass this in to the kernel if we have anyone listening
+                 * for notifications on the local peer (needs kernel patch). */
                 return;
 
         (void)bus1_client_node_destroy(node->owner->client, node->id);

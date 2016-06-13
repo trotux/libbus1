@@ -143,6 +143,7 @@ static void test_api(void)
 {
         _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
         _c_cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
+        _c_cleanup_(b1_handle_unrefp) B1Handle *parent_handle = NULL;
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
         _c_cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
@@ -169,7 +170,11 @@ static void test_api(void)
         r = b1_node_implement(node, interface);
         assert(r >= 0);
 
-        r = b1_peer_clone(peer, &clone, b1_node_get_handle(node), &handle);
+        r = b1_node_acquire_handle(node, &parent_handle);
+        assert(r >= 0);
+        assert(parent_handle);
+
+        r = b1_peer_clone(peer, &clone, parent_handle, &handle);
         assert(r >= 0);
         assert(clone);
         assert(handle);

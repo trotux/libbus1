@@ -159,6 +159,7 @@ static int component_new(Manager *manager, Component **componentp, const char *n
                          const char **root_nodes, size_t n_root_nodes,
                          const char **dependencies, size_t n_dependencies) {
         _c_cleanup_(component_freep) Component *component = NULL;
+        _c_cleanup_(b1_handle_unrefp) B1Handle *management_handle = NULL;
         size_t n_names;
         CRBNode **slot, *p;
         char *buf;
@@ -205,9 +206,11 @@ static int component_new(Manager *manager, Component **componentp, const char *n
         if (r < 0)
                 return r;
 
-        r = b1_peer_clone(manager->peer, &component->peer,
-                          b1_node_get_handle(component->management_node),
-                          &component->management_handle);
+        r = b1_node_acquire_handle(component->management_node, &management_handle);
+        if (r < 0)
+                return r;
+
+        r = b1_peer_clone(manager->peer, &component->peer, management_handle, &component->management_handle);
         if (r < 0)
                 return r;
 
@@ -395,8 +398,8 @@ static int component_send_root_nodes(Component *component) {
                 uint32_t index;
                 const char *name;
 
-                handle = b1_node_get_handle(component->root_nodes[i]);
-                assert(handle);
+                r = b1_node_acquire_handle(component->root_nodes[i], &handle);
+                assert(r >= 0);
 
                 r = b1_message_append_handle(message, handle);
                 if (r < 0)

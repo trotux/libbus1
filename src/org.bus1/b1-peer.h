@@ -143,7 +143,7 @@ int b1_node_new_root(B1Peer *peer, B1Node **nodep, void *userdata, const char *n
 B1Node *b1_node_free(B1Node *node);
 
 B1Peer *b1_node_get_peer(B1Node *node);
-B1Handle *b1_node_get_handle(B1Node *node);
+int b1_node_acquire_handle(B1Node *node, B1Handle **handlep);
 void *b1_node_get_userdata(B1Node *node);
 const char *b1_node_get_name(B1Node *node);
 
