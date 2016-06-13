@@ -72,6 +72,7 @@ void *b1_notification_slot_get_userdata(B1NotificationSlot *slot);
 /* messages */
 
 enum {
+        B1_MESSAGE_TYPE_NODE_RELEASE,
         B1_MESSAGE_TYPE_NODE_DESTROY,
         B1_MESSAGE_TYPE_CALL,
         B1_MESSAGE_TYPE_REPLY,

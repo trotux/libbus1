@@ -58,7 +58,7 @@ struct B1Message {
                 } data;
                 struct {
                         uint64_t handle_id;
-                } node_destroy;
+                } notification;
         };
 };
 

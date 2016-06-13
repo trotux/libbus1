@@ -644,7 +644,7 @@ _c_public_ unsigned int b1_message_get_type(B1Message *message) {
         return message->type;
 }
 
-static int b1_message_dispatch_node_destroy(B1Message *message) {
+static int b1_message_dispatch_notification(B1Message *message) {
         B1Node *node;
         B1Handle *handle;
         uint64_t handle_id;
@@ -652,25 +652,32 @@ static int b1_message_dispatch_node_destroy(B1Message *message) {
 
         assert(message);
 
-        handle_id = message->node_destroy.handle_id;
+        handle_id = message->notification.handle_id;
 
-        handle = b1_peer_get_handle(message->peer, handle_id);
-        if (handle) {
-                for (CListEntry *le = c_list_first(&handle->notification_slots);
-                     le; le = c_list_entry_next(le)) {
-                        B1NotificationSlot *slot = c_container_of(le, B1NotificationSlot, le);
+        switch (message->type) {
+        case B1_MESSAGE_TYPE_NODE_DESTROY:
+                handle = b1_peer_get_handle(message->peer, handle_id);
+                if (handle) {
+                        for (CListEntry *le = c_list_first(&handle->notification_slots);
+                             le; le = c_list_entry_next(le)) {
+                                B1NotificationSlot *slot = c_container_of(le, B1NotificationSlot, le);
 
-                        k = b1_notification_dispatch(slot);
+                                k = b1_notification_dispatch(slot);
+                                if (k < 0 && r == 0)
+                                        r = k;
+                        }
+                }
+
+                break;
+        case B1_MESSAGE_TYPE_NODE_RELEASE:
+                node = b1_peer_get_node(message->peer, handle_id);
+                if (node && node->destroy_fn) {
+                        k = node->destroy_fn(node, node->userdata, message);
                         if (k < 0 && r == 0)
                                 r = k;
                 }
-        }
 
-        node = b1_peer_get_node(message->peer, handle_id);
-        if (node && node->destroy_fn) {
-                k = node->destroy_fn(node, node->userdata, message);
-                if (k < 0 && r == 0)
-                        r = k;
+                break;
         }
 
         return r;
@@ -789,6 +796,13 @@ static int b1_message_dispatch_seed(B1Message *message) {
         return 0;
 }
 
+static bool b1_message_is_notification(B1Message *message) {
+        assert(message);
+
+        return (message->type == B1_MESSAGE_TYPE_NODE_DESTROY ||
+                message->type == B1_MESSAGE_TYPE_NODE_RELEASE);
+}
+
 /**
  * b1_message_dispatch() - handle received message
  * @message:            the message to handle
@@ -801,8 +815,8 @@ static int b1_message_dispatch_seed(B1Message *message) {
 _c_public_ int b1_message_dispatch(B1Message *message) {
         assert(message);
 
-        if (message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
-                return b1_message_dispatch_node_destroy(message);
+        if (b1_message_is_notification(message))
+                return b1_message_dispatch_notification(message);
         else if (message->type == B1_MESSAGE_TYPE_SEED)
                 return b1_message_dispatch_seed(message);
         else
@@ -837,7 +851,7 @@ _c_public_ B1Handle *b1_message_get_reply_handle(B1Message *message) {
  * Return: the uid
  */
 _c_public_ uid_t b1_message_get_uid(B1Message *message) {
-        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (!message || b1_message_is_notification(message))
                 return -1;
 
         return message->data.uid;
@@ -850,7 +864,7 @@ _c_public_ uid_t b1_message_get_uid(B1Message *message) {
  * Return: the gid
  */
 _c_public_ gid_t b1_message_get_gid(B1Message *message) {
-        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (!message || b1_message_is_notification(message))
                 return -1;
 
         return message->data.gid;
@@ -863,7 +877,7 @@ _c_public_ gid_t b1_message_get_gid(B1Message *message) {
  * Return: the uid
  */
 _c_public_ pid_t b1_message_get_pid(B1Message *message) {
-        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (!message || b1_message_is_notification(message))
                 return -1;
 
         return message->data.pid;
@@ -876,7 +890,7 @@ _c_public_ pid_t b1_message_get_pid(B1Message *message) {
  * Return: the uid
  */
 _c_public_ pid_t b1_message_get_tid(B1Message *message) {
-        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (!message || b1_message_is_notification(message))
                 return -1;
 
         return message->data.tid;
@@ -888,7 +902,7 @@ _c_public_ pid_t b1_message_get_tid(B1Message *message) {
 _c_public_ size_t b1_message_peek_count(B1Message *message) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_peek_count(cv);
@@ -900,7 +914,7 @@ _c_public_ size_t b1_message_peek_count(B1Message *message) {
 _c_public_ const char *b1_message_peek_type(B1Message *message, size_t *sizep) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_peek_type(cv, sizep);
@@ -912,7 +926,7 @@ _c_public_ const char *b1_message_peek_type(B1Message *message, size_t *sizep) {
 _c_public_ int b1_message_enter(B1Message *message, const char *containers) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_enter(cv, containers);
@@ -924,7 +938,7 @@ _c_public_ int b1_message_enter(B1Message *message, const char *containers) {
 _c_public_ int b1_message_exit(B1Message *message, const char *containers) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_exit(cv, containers);
@@ -936,7 +950,7 @@ _c_public_ int b1_message_exit(B1Message *message, const char *containers) {
 _c_public_ int b1_message_readv(B1Message *message, const char *signature, va_list args) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_readv(cv, signature, args);
@@ -948,7 +962,7 @@ _c_public_ int b1_message_readv(B1Message *message, const char *signature, va_li
 _c_public_ void b1_message_rewind(B1Message *message) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         c_variant_rewind(cv);
@@ -964,7 +978,7 @@ _c_public_ void b1_message_rewind(B1Message *message) {
 _c_public_ int b1_message_beginv(B1Message *message, const char *containers, va_list args) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_beginv(cv, containers, args);
@@ -976,7 +990,7 @@ _c_public_ int b1_message_beginv(B1Message *message, const char *containers, va_
 _c_public_ int b1_message_end(B1Message *message, const char *containers) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_end(cv, containers);
@@ -988,7 +1002,7 @@ _c_public_ int b1_message_end(B1Message *message, const char *containers) {
 _c_public_ int b1_message_writev(B1Message *message, const char *signature, va_list args) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_writev(cv, signature, args);
@@ -1000,7 +1014,7 @@ _c_public_ int b1_message_writev(B1Message *message, const char *signature, va_l
 _c_public_ int b1_message_insert(B1Message *message, const char *type, const struct iovec *vecs, size_t n_vecs) {
         CVariant *cv = NULL;
 
-        if (message && message->type != B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (message && !b1_message_is_notification(message))
                 cv = message->data.cv;
 
         return c_variant_insert(cv, type, vecs, n_vecs);
@@ -1013,7 +1027,7 @@ _c_public_ int b1_message_seal(B1Message *message) {
         CVariant *cv;
         int r;
 
-        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (!message || b1_message_is_notification(message))
                 return 0;
 
         cv = message->data.cv;
@@ -1055,7 +1069,7 @@ _c_public_ int b1_message_seal(B1Message *message) {
 _c_public_ int b1_message_get_handle(B1Message *message, unsigned int index, B1Handle **handlep) {
         assert(handlep);
 
-        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (!message || b1_message_is_notification(message))
                 return -EINVAL;
 
         if (index >= message->data.n_handles)
@@ -1084,7 +1098,7 @@ _c_public_ int b1_message_get_handle(B1Message *message, unsigned int index, B1H
 _c_public_ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp) {
         assert(fdp);
 
-        if (!message || message->type == B1_MESSAGE_TYPE_NODE_DESTROY)
+        if (!message || b1_message_is_notification(message))
                 return -EINVAL;
 
         if (index >= message->data.n_fds)

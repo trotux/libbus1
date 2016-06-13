@@ -322,8 +322,9 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
         return 0;
 }
 
-static int b1_peer_recv_node_destroy(B1Peer *peer,
-                                     struct bus1_msg_node_destroy *node_destroy,
+static int b1_peer_recv_notification(B1Peer *peer,
+                                     uint64_t type,
+                                     uint64_t id,
                                      B1Message **messagep) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
 
@@ -331,10 +332,10 @@ static int b1_peer_recv_node_destroy(B1Peer *peer,
         if (!message)
                 return -ENOMEM;
 
-        message->type = B1_MESSAGE_TYPE_NODE_DESTROY;
+        message->type = type;
         message->n_ref = 1;
-        message->node_destroy.handle_id = node_destroy->handle;
         message->peer = b1_peer_ref(peer);
+        message->notification.handle_id = id;
 
         *messagep = message;
         message = NULL;
@@ -365,9 +366,9 @@ _c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep) {
                 case BUS1_MSG_DATA:
                         return b1_peer_recv_data(peer, &recv.data, messagep);
                 case BUS1_MSG_NODE_DESTROY:
-                        return b1_peer_recv_node_destroy(peer,
-                                                         &recv.node_destroy,
-                                                         messagep);
+                        return b1_peer_recv_notification(peer, B1_MESSAGE_TYPE_NODE_DESTROY, recv.node_destroy.handle, messagep);
+                case BUS1_MSG_NODE_RELEASE:
+                        return b1_peer_recv_notification(peer, B1_MESSAGE_TYPE_NODE_RELEASE, recv.node_release.handle, messagep);
         }
 
         return -EIO;
