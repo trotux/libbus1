@@ -201,7 +201,7 @@ static int b1_peer_recv_data(B1Peer *peer, struct bus1_msg_data *data, B1Message
                 if (handle_ids[i] == BUS1_HANDLE_INVALID)
                         handle = NULL;
                 else {
-                        r = b1_handle_acquire(&handle, peer, handle_ids[i]);
+                        r = b1_handle_acquire(peer, &handle, handle_ids[i]);
                         if (r == 0)
                                 /* Reusing an existing handle, drop userref from kernel */
                                 b1_handle_release(handle);
@@ -463,7 +463,7 @@ _c_public_ int b1_peer_clone(B1Peer *peer, B1Peer **childp, B1Handle *handle, B1
         if (r < 0)
                 return r;
 
-        r = b1_handle_new(child, child_id, &child_handle);
+        r = b1_handle_new(child, &child_handle, child_id);
         if (r < 0)
                 return r;
 

@@ -98,7 +98,7 @@ int b1_handle_link(B1Handle *handle) {
 
 }
 
-int b1_handle_new(B1Peer *peer, uint64_t id, B1Handle **handlep) {
+int b1_handle_new(B1Peer *peer, B1Handle **handlep, uint64_t id) {
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
 
         assert(peer);
@@ -132,7 +132,7 @@ void b1_handle_release(B1Handle *handle) {
         (void)bus1_client_handle_release(handle->holder->client, handle->id);
 }
 
-int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_id) {
+int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
         B1Handle *handle;
         CRBNode **slot, *p;
         int r;
@@ -143,7 +143,7 @@ int b1_handle_acquire(B1Handle **handlep, B1Peer *peer, uint64_t handle_id) {
 
         slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
         if (slot) {
-                r = b1_handle_new(peer, handle_id, &handle);
+                r = b1_handle_new(peer, &handle, handle_id);
                 if (r < 0)
                         return r;
 
@@ -230,7 +230,7 @@ _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
         if (r < 0)
                 return r;
 
-        r = b1_handle_new(peer, BUS1_HANDLE_INVALID, &node->handle);
+        r = b1_handle_new(peer, &node->handle, BUS1_HANDLE_INVALID);
         if (r < 0)
                 return r;
 
@@ -265,7 +265,7 @@ _c_public_ int b1_node_new_root(B1Peer *peer, B1Node **nodep, void *userdata, co
 
         node->persistent = true;
 
-        r = b1_handle_new(peer, BUS1_HANDLE_INVALID, &node->handle);
+        r = b1_handle_new(peer, &node->handle, BUS1_HANDLE_INVALID);
         if (r < 0)
                 return r;
 
@@ -350,11 +350,11 @@ _c_public_ int b1_node_acquire_handle(B1Node *node, B1Handle **handlep) {
         }
 
         if (node->id == BUS1_HANDLE_INVALID) {
-                r = b1_handle_new(node->owner, BUS1_HANDLE_INVALID, &node->handle);
+                r = b1_handle_new(node->owner, &node->handle, BUS1_HANDLE_INVALID);
                 if (r < 0)
                         return r;
         } else {
-                r = b1_handle_acquire(&node->handle, node->owner, node->id);
+                r = b1_handle_acquire(node->owner, &node->handle, node->id);
                 if (r < 0)
                         return r;
         }
