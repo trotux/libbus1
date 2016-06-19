@@ -880,8 +880,6 @@ static int main_bar(void) {
                 else if (r == 0)
                         return -ETIMEDOUT;
 
-                fprintf(stderr, "bar: something happened\n");
-
                 r = b1_peer_recv(peer, &reply);
                 if (r < 0)
                         return r;
