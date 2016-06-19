@@ -248,6 +248,13 @@ static void test_seed(void) {
         assert(r >= 0);
 
         r = b1_peer_implement(peer, &node2, NULL, interface);
+        assert(!node2);
+        assert(r == -ENOTUNIQ);
+
+        node1 = b1_node_free(node1);
+        assert(!node1);
+
+        r = b1_peer_implement(peer, &node2, NULL, interface);
         assert(r >= 0);
 }
 

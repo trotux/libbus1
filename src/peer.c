@@ -517,9 +517,15 @@ _c_public_ int b1_peer_implement(B1Peer *peer, B1Node **nodep, void *userdata, B
         if (!node)
                 return -ENOENT;
 
-        r = b1_node_implement(node, interface);
+        r = b1_node_link(node);
         if (r < 0)
                 return r;
+
+        r = b1_node_implement(node, interface);
+        if (r < 0) {
+                c_rbtree_remove_init(&peer->nodes, &node->rb_nodes);
+                return r;
+        }
 
         node->userdata = userdata;
         c_rbtree_remove_init(&peer->root_nodes, &node->rb_root_nodes);
