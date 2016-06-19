@@ -672,7 +672,7 @@ static int ping(B1Node *node, void *userdata, B1Message *ping) {
 
         assert(done);
 
-        fprintf(stderr, "PING!\n!");
+        fprintf(stderr, "PING!\n");
 
         *done = true;
 
@@ -711,7 +711,8 @@ static int main_foo(void) {
         _c_cleanup_(b1_message_unrefp) B1Message *seed = NULL;
         _c_cleanup_(b1_interface_unrefp) B1Interface *root_interface = NULL;
         _c_cleanup_(b1_node_freep) B1Node *root_node = NULL;
-        _c_cleanup_(b1_message_unrefp) B1Message *request = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *request1 = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *request2 = NULL;
         _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
         B1Handle *bar_read, *baz;
         const char *name;
@@ -780,15 +781,19 @@ static int main_foo(void) {
                 return r;
 
         /* do a method call */
-        r = b1_message_new_call(peer, &request, "org.bus1.baz", "Ping", "()", "()", &slot, pong, &count);
+        r = b1_message_new_call(peer, &request1, "org.bus1.baz", "Ping", "()", "()", &slot, pong, &count);
         if (r < 0)
                 return r;
 
-        r = b1_message_send(request, &baz, 1);
+        r = b1_message_send(request1, &baz, 1);
         if (r < 0)
                 return r;
 
-        r = b1_message_send(request, &bar_read, 1);
+        r = b1_message_new_call(peer, &request2, "org.bus1.bar.Read", "Ping", "()", "()", &slot, pong, &count);
+        if (r < 0)
+                return r;
+
+        r = b1_message_send(request2, &bar_read, 1);
         if (r < 0)
                 return r;
 
@@ -855,7 +860,11 @@ static int main_bar(void) {
         if (r < 0)
                 return r;
 
-        r = b1_peer_implement(peer, &root_node_read, NULL, root_interface_read);
+        r = b1_interface_add_member(root_interface_read, "Ping", "()", "()", ping);
+        if (r < 0)
+                return r;
+
+        r = b1_peer_implement(peer, &root_node_read, &done, root_interface_read);
         if (r < 0)
                 return r;
 
@@ -928,7 +937,7 @@ static int main_baz(void) {
         if (r < 0)
                 return r;
 
-        r = b1_interface_add_member(root_interface, "Ping()", "()", "()", ping);
+        r = b1_interface_add_member(root_interface, "Ping", "()", "()", ping);
         if (r < 0)
                 return r;
 
