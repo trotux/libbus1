@@ -113,6 +113,7 @@ int b1_message_dispatch(B1Message *message);
 int b1_message_send(B1Message *message, B1Handle **handles, size_t n_handles);
 
 B1Handle *b1_message_get_reply_handle(B1Message *message);
+const char *b1_message_get_error(B1Message *message);
 uid_t b1_message_get_uid(B1Message *message);
 gid_t b1_message_get_gid(B1Message *message);
 pid_t b1_message_get_pid(B1Message *message);

@@ -845,6 +845,22 @@ _c_public_ B1Handle *b1_message_get_reply_handle(B1Message *message) {
 }
 
 /**
+ * b1_message_get_error() - get the error name
+ * @message:              the received error message
+ *
+ * Return: the error name
+ */
+_c_public_ const char *b1_message_get_error(B1Message *message) {
+        if (!message)
+                return NULL;
+
+        if (message->type != B1_MESSAGE_TYPE_ERROR)
+                return NULL;
+
+        return message->data.error.name;
+}
+
+/**
  * b1_message_get_uid() - get uid of sending peer
  * @message:            the received message
  *

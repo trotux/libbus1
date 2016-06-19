@@ -688,8 +688,16 @@ static int ping(B1Node *node, void *userdata, B1Message *ping) {
 
 static int pong(B1ReplySlot *slot, void *userdata, B1Message *pong) {
         unsigned int *count = userdata;
+        const char *error;
 
         assert(count);
+
+        error = b1_message_get_error(pong);
+        if (error) {
+                fprintf(stderr, "ping failed: %s\n", error);
+
+                return 1;
+        }
 
         fprintf(stderr, "PONG!\n");
 
