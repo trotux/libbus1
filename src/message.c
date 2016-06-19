@@ -731,7 +731,7 @@ static int b1_message_dispatch_data(B1Message *message) {
 
         node = b1_peer_get_node(message->peer, message->data.destination);
         if (!node)
-                return b1_message_reply_error(message, "org.bus1.Error.NodeDestroyed");
+                return -EIO;
 
         node->live = true;
 
