@@ -1,10 +1,10 @@
 Name:           libbus1
 Version:        1
-Release:        4
+Release:        5%{?dist}
 Summary:        Bus1 IPC Library
-License:        LGPL2+
+License:        LGPLv2+
 URL:            https://github.com/bus1/libbus1
-Source0:        %{name}.tar.xz
+Source0:        https://github.com/bus1/libbus1/archive/v%{version}.tar.gz
 BuildRequires:  autoconf automake pkgconfig
 BuildRequires:  c-rbtree-devel
 BuildRequires:  c-sundry-devel
@@ -32,13 +32,13 @@ make %{?_smp_mflags}
 %install
 %make_install
 
-%post
-/sbin/ldconfig
+%post -p /sbin/ldconfig
 
 %postun -p /sbin/ldconfig
 
 %files
-%doc COPYING
+%license COPYING
+%license LICENSE.LGPL2.1
 %{_libdir}/libbus1.so.*
 
 %files devel
@@ -47,6 +47,9 @@ make %{?_smp_mflags}
 %{_libdir}/pkgconfig/libbus1.pc
 
 %changelog
+* Tue Jun 21 2016 <kay@redhat.com> 1-5
+- update spec file according to Fedora guidelines
+
 * Sun May 15 2016 <kay@redhat.com> 1-4
 - use c-sundry
 
