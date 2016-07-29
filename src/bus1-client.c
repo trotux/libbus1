@@ -21,9 +21,9 @@
 #include "bus1-client.h"
 
 struct bus1_client {
-	int fd;
-	void *pool;
+	const uint8_t *pool;
 	size_t pool_size;
+	int fd;
 };
 
 #define _cleanup_(_x) __attribute__((__cleanup__(_x)))
@@ -43,7 +43,8 @@ _public_ int bus1_client_new_from_fd(struct bus1_client **clientp, int fd)
 
 	client->fd = fd;
 	client->pool = NULL;
-	client->pool_size = 0;
+	/* XXX: remap the pool dynamically */
+	client->pool_size = 1024 * 1024 * 32;
 
 	*clientp = client;
 	client = NULL;
@@ -75,7 +76,7 @@ _public_ struct bus1_client *bus1_client_free(struct bus1_client *client)
 		return NULL;
 
 	if (client->pool)
-		munmap(client->pool, client->pool_size);
+		munmap((void *)client->pool, client->pool_size);
 
 	close(client->fd);
 	free(client);
@@ -93,7 +94,7 @@ _public_ size_t bus1_client_get_pool_size(struct bus1_client *client)
 	return client ? client->pool_size : 0;
 }
 
-_public_ void *bus1_client_get_pool(struct bus1_client *client)
+_public_ const void *bus1_client_get_pool(struct bus1_client *client)
 {
 	return client ? client->pool : NULL;
 }
@@ -108,46 +109,15 @@ _public_ int bus1_client_ioctl(struct bus1_client *client,
 	return r >= 0 ? r : -errno;
 }
 
-_public_ int bus1_client_query(struct bus1_client *client, size_t *pool_sizep)
-{
-	struct bus1_cmd_peer_init peer_init;
-	int r;
-
-	if (_likely_(client->pool_size > 0)) {
-		*pool_sizep = client->pool_size;
-		return 0;
-	}
-
-	peer_init.flags = 0;
-	peer_init.pool_size = 0;
-
-	static_assert(_IOC_SIZE(BUS1_CMD_PEER_QUERY) == sizeof(peer_init),
-		      "ioctl is called with invalid argument size");
-
-	r = bus1_client_ioctl(client, BUS1_CMD_PEER_QUERY, &peer_init);
-	if (r < 0)
-		return r;
-
-	assert(peer_init.pool_size != 0);
-
-	*pool_sizep = peer_init.pool_size;
-	return 0;
-}
-
 _public_ int bus1_client_mmap(struct bus1_client *client)
 {
 	const void *pool, *old_pool;
-	size_t pool_size, old_size;
-	int r;
-
-	r = bus1_client_query(client, &pool_size);
-	if (r < 0)
-		return r;
+	size_t pool_size;
 
 	/*
 	 * MMap the pool of @client with size @pool_size. Note that this might
-	 * be called in parallel on multiple threads. However, we got
-	 * @pool_size from the kernel, so it is guaranteed to never change.
+	 * be called in parallel on multiple threads. However, @pool_size is
+	 * static so that is fine.
 	 *
 	 * We first acquire @pool and see whether it is set. If it is, we know
 	 * we are already done so we simply bail out. If it is not set (i.e.,
@@ -163,88 +133,59 @@ _public_ int bus1_client_mmap(struct bus1_client *client)
 	 * fast-path).
 	 */
 
-	assert(pool_size > 0);
-
 	/* fastpath: sync'ed with atomic exchange (__ATOMIC_RELEASE) */
 	if (__atomic_load_n(&client->pool, __ATOMIC_ACQUIRE)) {
 		assert(pool_size == client->pool_size);
 		return 0;
 	}
 
-	pool = mmap(NULL, pool_size, PROT_READ, MAP_SHARED, client->fd, 0);
+	pool = mmap(NULL, client->pool_size, PROT_READ, MAP_SHARED,
+		    client->fd, 0);
 	if (pool == MAP_FAILED)
 		return -errno;
 
 	/* NULL is never mapped if we let the kernel choose; we rely on this */
 	assert(pool != NULL);
 
-	/* no reason to be atomic, but lets verify the semantics nonetheless */
-	old_size = __atomic_exchange_n(&client->pool_size, pool_size,
-				       __ATOMIC_RELEASE);
-	assert(old_size == 0 || old_size == pool_size);
-
 	old_pool = NULL;
 	if (!__atomic_compare_exchange_n(&client->pool, &old_pool, pool, false,
 					 __ATOMIC_RELEASE, __ATOMIC_ACQUIRE))
-		munmap((void *)pool, pool_size);
+		munmap((void *)pool, client->pool_size);
 
 	return 0;
 }
 
-_public_ int bus1_client_init(struct bus1_client *client, size_t pool_size)
+_public_ int bus1_client_reset(struct bus1_client *client)
 {
-	struct bus1_cmd_peer_init peer_init;
-	size_t old_size;
-	int r;
-
-	peer_init.flags = 0;
-	peer_init.pool_size = pool_size;
-
-	static_assert(_IOC_SIZE(BUS1_CMD_PEER_INIT) == sizeof(peer_init),
-		      "ioctl is called with invalid argument size");
-
-	r = bus1_client_ioctl(client, BUS1_CMD_PEER_INIT, &peer_init);
-	if (r < 0)
-		return r;
-
-	/* no reason to be atomic, but lets verify the semantics nonetheless */
-	old_size = __atomic_exchange_n(&client->pool_size, pool_size,
-				       __ATOMIC_RELEASE);
-	assert(old_size == 0 || old_size == pool_size);
-
-	return 0;
+	return bus1_client_ioctl(client, BUS1_CMD_PEER_RESET, NULL);
 }
 
-_public_ int bus1_client_clone(struct bus1_client *client,
-			       uint64_t *parent_handlep,
-			       uint64_t *child_handlep,
-			       int *fdp,
-			       size_t pool_size)
+_public_ int bus1_client_handle_transfer(struct bus1_client *src,
+					 struct bus1_client *dst,
+					 uint64_t *src_handlep,
+					 uint64_t *dst_handlep)
 {
-	struct bus1_cmd_peer_clone peer_clone;
+	struct bus1_cmd_handle_transfer handle_transfer;
 	int r;
 
-	peer_clone.flags = 0;
-	peer_clone.pool_size = pool_size;
-	peer_clone.parent_handle = BUS1_NODE_FLAG_MANAGED |
-				   BUS1_NODE_FLAG_ALLOCATE;
-	peer_clone.child_handle = BUS1_HANDLE_INVALID;
-	peer_clone.fd = (uint64_t)-1;
+	handle_transfer.flags = 0;
+	handle_transfer.src_handle = *src_handlep;
+	handle_transfer.dst_fd = dst->fd;
+	handle_transfer.dst_handle = *dst_handlep;
 
-	static_assert(_IOC_SIZE(BUS1_CMD_PEER_CLONE) == sizeof(peer_clone),
+	static_assert(_IOC_SIZE(BUS1_CMD_HANDLE_TRANSFER) ==
+		      sizeof(handle_transfer),
 		      "ioctl is called with invalid argument size");
 
-	r = bus1_client_ioctl(client, BUS1_CMD_PEER_CLONE, &peer_clone);
+	r = bus1_client_ioctl(src, BUS1_CMD_HANDLE_TRANSFER, &handle_transfer);
 	if (r < 0)
 		return r;
 
-	assert(peer_clone.parent_handle != BUS1_HANDLE_INVALID);
-	assert(peer_clone.child_handle != BUS1_HANDLE_INVALID);
-	assert(peer_clone.fd != (uint64_t)-1);
+	assert(handle_transfer.src_handle != BUS1_HANDLE_INVALID);
+	assert(handle_transfer.dst_handle != BUS1_HANDLE_INVALID);
 
-	*parent_handlep = peer_clone.parent_handle;
-	*child_handlep = peer_clone.child_handle;
-	*fdp = peer_clone.fd;
+	*src_handlep = handle_transfer.src_handle;
+	*dst_handlep = handle_transfer.dst_handle;
 	return 0;
 }
 
@@ -275,22 +216,23 @@ _public_ int bus1_client_slice_release(struct bus1_client *client,
 	return bus1_client_ioctl(client, BUS1_CMD_SLICE_RELEASE, &offset);
 }
 
-_public_ void *bus1_client_slice_from_offset(struct bus1_client *client,
-					     uint64_t offset)
+_public_ const void *bus1_client_slice_from_offset(struct bus1_client *client,
+						   uint64_t offset)
 {
-	if (!client->pool || offset >= client->pool_size)
+	if (_unlikely_(!client->pool || offset >= client->pool_size))
 		return NULL;
 
-	return (uint8_t *)client->pool + offset;
+	return client->pool + offset;
 }
 
 _public_ uint64_t bus1_client_slice_to_offset(struct bus1_client *client,
 					      const void *slice)
 {
-	if (_unlikely_(!client->pool || !client->pool_size || slice < client->pool))
-		return BUS1_OFFSET_INVALID;
-	if (_unlikely_((uint8_t *)slice >= (uint8_t *)client->pool + client->pool_size))
+	if (_unlikely_(!client->pool ||
+		       !client->pool_size ||
+		       (uint8_t *)slice < client->pool ||
+		       (uint8_t *)slice >= client->pool + client->pool_size))
 		return BUS1_OFFSET_INVALID;
 
-	return (uint8_t *)slice - (uint8_t *)client->pool;
+	return (uint8_t *)slice - client->pool;
 }

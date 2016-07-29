@@ -15,51 +15,40 @@
   along with bus1; If not, see <http://www.gnu.org/licenses/>.
 ***/
 
-#include <c-rbtree.h>
-#include <c-variant.h>
 #include <stdlib.h>
 #include "org.bus1/b1-peer.h"
 
 struct B1Message {
         unsigned long n_ref;
-        uint64_t type;
-
         B1Peer *peer;
-        union {
-                struct {
-                        uint64_t destination;
-                        uid_t uid;
-                        gid_t gid;
-                        pid_t pid;
-                        pid_t tid;
+        const void *slice; /* NULL if not backed by a slice */
 
-                        void *slice;
+        uint64_t type; /* BUS1_MSG_* */
 
-                        B1Handle **handles;
-                        size_t n_handles;
-                        int *fds;
-                        size_t n_fds;
+        uint64_t destination;
+        uid_t uid;
+        gid_t gid;
+        pid_t pid;
+        pid_t tid;
 
-                        CVariant *cv;
-
-                        union {
-                                struct {
-                                        const char *interface;
-                                        const char *member;
-                                        B1Handle *reply_handle;
-                                } call;
-                                struct {
-                                        const char *name;
-                                } error;
-                                struct {
-                                        CRBTree root_nodes;
-                                } seed;
-                        };
-                } data;
-                struct {
-                        uint64_t handle_id;
-                } notification;
-        };
+        /* each of the following arrays are owned by the message */
+        struct iovec *vecs; /* message does not own the backing data */
+        size_t n_vecs;
+        B1Handle **handles; /* message owns a ref to each handle */
+        size_t n_handles;
+        int *fds; /* message owns each fd */
+        size_t n_fds;
 };
 
-int b1_message_new_from_slice(B1Message **messagep, B1Peer *peer, void *slice, size_t n_bytes);
+int b1_message_new_from_slice(B1Peer *peer,
+                              B1Message **messagep,
+                              const void *slice,
+                              uint64_t type,
+                              uint64_t destination,
+                              uid_t uid,
+                              gid_t gid,
+                              pid_t pid,
+                              pid_t tid,
+                              size_t n_bytes,
+                              size_t n_handles,
+                              size_t n_fds);

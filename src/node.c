@@ -19,19 +19,13 @@
 #include <c-macro.h>
 #include <c-rbtree.h>
 #include <errno.h>
-#include "interface.h"
 #include "linux/bus1.h"
 #include "node.h"
 #include "peer.h"
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct B1Implementation {
-        CRBNode rb;
-        B1Interface *interface;
-} B1Implementation;
-
-int nodes_compare(CRBTree *t, void *k, CRBNode *n) {
+static int nodes_compare(CRBTree *t, void *k, CRBNode *n) {
         B1Node *node = c_container_of(n, B1Node, rb_nodes);
         uint64_t id = *(uint64_t*)k;
 
@@ -43,14 +37,7 @@ int nodes_compare(CRBTree *t, void *k, CRBNode *n) {
                 return 0;
 }
 
-int root_nodes_compare(CRBTree *t, void *k, CRBNode *n) {
-        B1Node *node = c_container_of(n, B1Node, rb_root_nodes);
-        const char *name = k;
-
-        return strcmp(node->name, name);
-}
-
-int handles_compare(CRBTree *t, void *k, CRBNode *n) {
+static int handles_compare(CRBTree *t, void *k, CRBNode *n) {
         B1Handle *handle = c_container_of(n, B1Handle, rb);
         uint64_t id = *(uint64_t*)k;
 
@@ -62,17 +49,19 @@ int handles_compare(CRBTree *t, void *k, CRBNode *n) {
                 return 0;
 }
 
-int b1_node_link(B1Node *node) {
+int b1_node_link(B1Node *node, uint64_t id) {
         CRBNode **slot, *p;
 
         assert(node);
-        assert(node->id != BUS1_HANDLE_INVALID);
+        assert(node->id == BUS1_HANDLE_INVALID);
+        assert(id != BUS1_HANDLE_INVALID);
         assert(node->owner);
 
-        slot = c_rbtree_find_slot(&node->owner->nodes,
-                                  nodes_compare, &node->id, &p);
+        slot = c_rbtree_find_slot(&node->owner->nodes, nodes_compare, &id, &p);
         if (!slot)
                 return -ENOTUNIQ;
+
+        node->id = id;
 
         c_rbtree_add(&node->owner->nodes, p, slot, &node->rb_nodes);
 
@@ -80,17 +69,19 @@ int b1_node_link(B1Node *node) {
 
 }
 
-int b1_handle_link(B1Handle *handle) {
+int b1_handle_link(B1Handle *handle, uint64_t id) {
         CRBNode **slot, *p;
 
         assert(handle);
-        assert(handle->id != BUS1_HANDLE_INVALID);
+        assert(handle->id == BUS1_HANDLE_INVALID);
+        assert(id != BUS1_HANDLE_INVALID);
         assert(handle->holder);
 
-        slot = c_rbtree_find_slot(&handle->holder->handles,
-                                  handles_compare, &handle->id, &p);
+        slot = c_rbtree_find_slot(&handle->holder->handles, handles_compare, &id, &p);
         if (!slot)
                 return -ENOTUNIQ;
+
+        handle->id = id;
 
         c_rbtree_add(&handle->holder->handles, p, slot, &handle->rb);
 
@@ -98,7 +89,7 @@ int b1_handle_link(B1Handle *handle) {
 
 }
 
-int b1_handle_new(B1Peer *peer, B1Handle **handlep, uint64_t id) {
+static int b1_handle_new(B1Peer *peer, B1Handle **handlep) {
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
 
         assert(peer);
@@ -110,10 +101,9 @@ int b1_handle_new(B1Peer *peer, B1Handle **handlep, uint64_t id) {
 
         handle->n_ref = 1;
         handle->holder = b1_peer_ref(peer);
-        handle->id = id;
+        handle->id = BUS1_HANDLE_INVALID;
         handle->marked = false;
         c_rbnode_init(&handle->rb);
-        c_list_entry_init(&handle->multicast_group_le);
 
         *handlep = handle;
         handle = NULL;
@@ -126,7 +116,7 @@ void b1_handle_release(B1Handle *handle) {
 
         if (handle->id == BUS1_HANDLE_INVALID)
                 /* XXX: pass this in to the kernel if we have anyone listening
-                 * for notifications on the local peer (needs kernel patch). */
+                 * for notifications on the local peer. */
                 return;
 
         (void)bus1_client_handle_release(handle->holder->client, handle->id);
@@ -143,9 +133,11 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
 
         slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
         if (slot) {
-                r = b1_handle_new(peer, &handle, handle_id);
+                r = b1_handle_new(peer, &handle);
                 if (r < 0)
                         return r;
+
+                handle->id = handle_id;
 
                 c_rbtree_add(&peer->handles, p, slot, &handle->rb);
 
@@ -158,57 +150,6 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
                 *handlep = handle;
                 return 0;
         }
-}
-
-int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, uint64_t id, const char *name) {
-        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
-        size_t n_name;
-
-        assert(peer);
-        assert(nodep);
-
-        n_name = name ? strlen(name) + 1 : 0;
-        node = calloc(1, sizeof(*node) + n_name);
-        if (!node)
-                return -ENOMEM;
-        if (name)
-                node->name = memcpy((void*)(node + 1), name, n_name);
-
-        node->id = id;
-        node->owner = b1_peer_ref(peer);
-        node->userdata = userdata;
-        node->live = false;
-        node->persistent = false;
-        c_rbnode_init(&node->rb_nodes);
-        c_rbnode_init(&node->rb_root_nodes);
-
-        *nodep = node;
-        node = NULL;
-        return 0;
-}
-
-static int implementations_compare(CRBTree *t, void *k, CRBNode *n) {
-        B1Implementation *implementation = c_container_of(n, B1Implementation,
-                                                          rb);
-        const char *name = k;
-
-        return strcmp(name, implementation->interface->name);
-}
-
-B1Interface *b1_node_get_interface(B1Node *node, const char *name) {
-        B1Implementation *implementation;
-        CRBNode *n;
-
-        assert(node);
-        assert(name);
-
-        n = c_rbtree_find_node(&node->implementations, implementations_compare, name);
-        if (!n)
-                return NULL;
-
-        implementation = c_container_of(n, B1Implementation, rb);
-
-        return implementation->interface;
 }
 
 /**
@@ -226,46 +167,18 @@ _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         int r;
 
-        r = b1_node_new_internal(peer, &node, userdata, BUS1_HANDLE_INVALID, NULL);
-        if (r < 0)
-                return r;
+        node = calloc(1, sizeof(*node));
+        if (!node)
+                return -ENOMEM;
 
-        r = b1_handle_new(peer, &node->handle, BUS1_HANDLE_INVALID);
-        if (r < 0)
-                return r;
+        node->id = BUS1_HANDLE_INVALID;
+        node->owner = b1_peer_ref(peer);
+        node->userdata = userdata;
+        node->live = false;
+        node->persistent = false;
+        c_rbnode_init(&node->rb_nodes);
 
-        node->handle->node = node;
-
-        *nodep = node;
-        node = NULL;
-        return 0;
-}
-
-/**
- * b1_node_new_root() - create a new root node for a peer
- * @peer:               the owning peer
- * @nodep:              pointer to the new root node object
- * @userdata:           userdata to associate with the node
- *
- * A root node is the recipient of messages, and. Nodes are allocated lazily in the
- * kernel, so it is not guaranteed to be a kernel equivalent to the userspace
- * object at all times. A node is associated with at most one peer, and for a
- * lazily created node it may not be associated with any peer until it is
- * actually created, at which point it is associated with the creating peer.
- *
- * Return: 0 on success, and a negative error code on failure.
- */
-_c_public_ int b1_node_new_root(B1Peer *peer, B1Node **nodep, void *userdata, const char *name) {
-        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
-        int r;
-
-        r = b1_node_new_internal(peer, &node, userdata, BUS1_HANDLE_INVALID, name);
-        if (r < 0)
-                return r;
-
-        node->persistent = true;
-
-        r = b1_handle_new(peer, &node->handle, BUS1_HANDLE_INVALID);
+        r = b1_handle_new(peer, &node->handle);
         if (r < 0)
                 return r;
 
@@ -286,25 +199,12 @@ _c_public_ int b1_node_new_root(B1Peer *peer, B1Node **nodep, void *userdata, co
  * Return: NULL is returned.
  */
 _c_public_ B1Node *b1_node_free(B1Node *node) {
-        CRBNode *n;
-
         if (!node)
                 return NULL;
-
-        assert(node->owner);
-        assert(!c_rbnode_is_linked(&node->rb_root_nodes));
 
         c_rbtree_remove_init(&node->owner->nodes, &node->rb_nodes);
 
         b1_node_release(node);
-
-        while ((n = c_rbtree_first(&node->implementations))) {
-                B1Implementation *implementation = c_container_of(n, B1Implementation, rb);
-
-                c_rbtree_remove(&node->implementations, n);
-                b1_interface_unref(implementation->interface);
-                free(implementation);
-        }
 
         if (!node->persistent)
                 b1_node_destroy(node);
@@ -325,53 +225,19 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
  * Return: Pointer to parent peer of @node.
  */
 _c_public_ B1Peer *b1_node_get_peer(B1Node *node) {
-        assert(node);
         return node->owner;
 }
 
 /**
- * b1_node_acquire_handle() - acquire owner handle of a node
+ * b1_node_get_handle() - get owner handle of the node
  * @node:               node to query
  *
- * This acquires the owner's handle of a node. The caller owns a reference to
- * the returned handle and is responsible for releasing it.
+ * This gets the owner's handle of a node.
  *
  * Return: Pointer to owner's handle.
  */
-_c_public_ int b1_node_acquire_handle(B1Node *node, B1Handle **handlep) {
-        int r;
-
-        assert(node);
-        assert(handlep);
-
-        if (node->handle) {
-                *handlep = b1_handle_ref(node->handle);
-                return 0;
-        }
-
-        if (node->id == BUS1_HANDLE_INVALID) {
-                r = b1_handle_new(node->owner, &node->handle, BUS1_HANDLE_INVALID);
-                if (r < 0)
-                        return r;
-        } else {
-                r = b1_handle_acquire(node->owner, &node->handle, node->id);
-                if (r < 0)
-                        return r;
-        }
-
-        *handlep = node->handle;
-        return 0;
-}
-
-/**
- * b1_node_get_name() - get name of a node
- * @node:               node to query
- *
- * Return: Pointer to root node name, or NULL if not a root node.
- */
-_c_public_ const char *b1_node_get_name(B1Node *node) {
-        assert(node);
-        return node->name;
+_c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
+        return node->handle;
 }
 
 /**
@@ -384,60 +250,7 @@ _c_public_ const char *b1_node_get_name(B1Node *node) {
  * Return: Userdata of the given node.
  */
 _c_public_ void *b1_node_get_userdata(B1Node *node) {
-        assert(node);
         return node->userdata;
-}
-
-/**
- * b1_node_set_destroy_fn() - set function to call when node is destroyed
- * @node:               node to operate on
- * @fn:                 function callback to set, or NULL
- *
- * This changes the function callback used for destruction notifications on
- * @node. If NULL, the functionality is disabled.
- */
-_c_public_ void b1_node_set_destroy_fn(B1Node *node, B1NodeFn fn) {
-        assert(node);
-
-        node->destroy_fn = fn;
-}
-
-/**
- * b1_node_implement() - implement interface on node
- * @node:               node to operate on
- * @interface:          interface to implement
- *
- * Extend @node to support the interface given as @interface. From then on, the
- * node will dispatch incoming method calls on this interface.
- *
- * This fails, if the given interface is already implemented by @node.
- *
- * Return: 0 on success, negative error code on failure.
- */
-_c_public_ int b1_node_implement(B1Node *node, B1Interface *interface) {
-        B1Implementation *implementation;
-        CRBNode **slot, *p;
-
-        assert(node);
-        assert(interface);
-
-        if (node->live || node->slot)
-                return -EBUSY;
-
-        slot = c_rbtree_find_slot(&node->implementations, implementations_compare, interface->name, &p);
-        if (!slot)
-                return -ENOTUNIQ;
-
-        implementation = calloc(1, sizeof(*implementation));
-        if (!implementation)
-                return -ENOMEM;
-
-        c_rbnode_init(&implementation->rb);
-        implementation->interface = b1_interface_ref(interface);
-        interface->implemented = true;
-
-        c_rbtree_add(&node->implementations, p, slot, &implementation->rb);
-        return 0;
 }
 
 /**
@@ -474,7 +287,7 @@ _c_public_ void b1_node_destroy(B1Node *node) {
                 return;
         if (node->id == BUS1_HANDLE_INVALID)
                 /* XXX: pass this in to the kernel if we have anyone listening
-                 * for notifications on the local peer (needs kernel patch). */
+                 * for notifications on the local peer. */
                 return;
 
         (void)bus1_client_node_destroy(node->owner->client, node->id);
@@ -519,15 +332,10 @@ _c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
         if (--handle->n_ref > 0)
                 return NULL;
 
-        assert(!c_list_entry_is_linked(&handle->multicast_group_le));
-        assert(!handle->multicast_group_notification);
-
         b1_handle_release(handle);
 
-        if (handle->id != BUS1_HANDLE_INVALID) {
-                assert(handle->holder);
+        if (handle->id != BUS1_HANDLE_INVALID)
                 c_rbtree_remove(&handle->holder->handles, &handle->rb);
-        }
 
         b1_peer_unref(handle->holder);
         free(handle);
@@ -544,80 +352,29 @@ _c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
  * Return: Pointer to parent peer of @handle.
  */
 _c_public_ B1Peer *b1_handle_get_peer(B1Handle *handle) {
-        assert(handle);
         return handle->holder;
 }
 
-/**
- * b1_notification_slot_free() - unregister and free notification slot
- * @slot:               a notification slot, or NULL
- *
- * Return: NULL.
- */
-_c_public_ B1NotificationSlot *b1_notification_slot_free(B1NotificationSlot *slot) {
-        if (!slot)
+B1Node *b1_node_lookup(B1Peer *peer, uint64_t node_id) {
+        CRBNode *n;
+
+        assert(peer);
+
+        n = c_rbtree_find_node(&peer->nodes, nodes_compare, &node_id);
+        if (!n)
                 return NULL;
 
-        c_list_remove(&slot->handle->notification_slots, &slot->le);
-
-        free(slot);
-
-        return NULL;
+        return c_container_of(n, B1Node, rb_nodes);
 }
 
-/**
- * b1_notification_slot_get_userdata() - get userdata from notification slot
- * @slot:               a notification slot
- *
- * Retrurn: the userdata.
- */
-_c_public_ void *b1_notification_slot_get_userdata(B1NotificationSlot *slot) {
-        if (!slot)
+B1Handle *b1_handle_lookup(B1Peer *peer, uint64_t handle_id) {
+        CRBNode *n;
+
+        assert(peer);
+
+        n = c_rbtree_find_node(&peer->handles, handles_compare, &handle_id);
+        if (!n)
                 return NULL;
 
-        return slot->userdata;
-}
-
-/**
- * b1_handle_subscribe() - monitor handle for events
- * @handle:             handle to operate on
- * @slotp:              output argument for newly created slot
- * @fn:                 slot callback function
- * @userdata:           userdata to be passed to the callback function
- *
- * When a node is destroyed, all handle holders to that node receive a node
- * destruction notification. This function registers a new handler for such
- * notifications.
- *
- * The handler will stay linked to the handle as long as the returned slot is
- * valid. Once the slot is destroyed, the handler is unlinked as well.
- *
- * Return: 0 on success, negative error code on failure.
- */
-_c_public_ int b1_handle_monitor(B1Handle *handle, B1NotificationSlot **slotp, B1NotificationFn fn, void *userdata) {
-        _c_cleanup_(b1_notification_slot_freep) B1NotificationSlot *slot = NULL;
-
-        assert(slotp);
-        assert(fn);
-
-        slot = calloc(1, sizeof(*slot));
-        if (!slot)
-                return -ENOMEM;
-
-        slot->fn = fn;
-        slot->userdata = userdata;
-        c_list_entry_init(&slot->le);
-
-        c_list_append(&handle->notification_slots, &slot->le);
-
-        *slotp = slot;
-        slot = NULL;
-        return 0;
-}
-
-int b1_notification_dispatch(B1NotificationSlot *s) {
-        assert(s);
-        assert(s->fn);
-
-        return s->fn(s, s->userdata, s->handle);
+        return c_container_of(n, B1Handle, rb);
 }

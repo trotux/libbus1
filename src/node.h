@@ -28,53 +28,25 @@ struct B1Handle {
 
         bool marked; /* used for duplicate detection */
 
-        CList notification_slots;
-
         CRBNode rb;
-
-        B1NotificationSlot *multicast_group_notification;
-        CListEntry multicast_group_le;
 };
 
 struct B1Node {
         B1Peer *owner;
         B1Handle *handle;
         uint64_t id;
-        const char *name;
         void *userdata;
 
         bool live:1;
         bool persistent:1;
 
         CRBNode rb_nodes;
-        CRBNode rb_root_nodes;
-
-        CRBTree implementations;
-        B1ReplySlot *slot;
-        B1NodeFn destroy_fn;
 };
-
-struct B1NotificationSlot {
-        CListEntry le;
-
-        B1Handle *handle;
-
-        B1NotificationFn fn;
-        void *userdata;
-};
-
-int root_nodes_compare(CRBTree *t, void *k, CRBNode *n);
-int handles_compare(CRBTree *t, void *k, CRBNode *n);
-int nodes_compare(CRBTree *t, void *k, CRBNode *n);
 
 int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id);
 void b1_handle_release(B1Handle *handle);
-int b1_handle_new(B1Peer *peer, B1Handle **handlep, uint64_t id);
-int b1_handle_link(B1Handle *handle);
+int b1_handle_link(B1Handle *handle, uint64_t id);
+B1Handle *b1_handle_lookup(B1Peer *peer, uint64_t id);
 
-int b1_node_new_internal(B1Peer *peer, B1Node **nodep, void *userdata, uint64_t id, const char *name);
-int b1_node_link(B1Node *node);
-
-B1Interface *b1_node_get_interface(B1Node *node, const char *name);
-
-int b1_notification_dispatch(B1NotificationSlot *s);
+int b1_node_link(B1Node *node, uint64_t id);
+B1Node *b1_node_lookup(B1Peer *peer, uint64_t id);

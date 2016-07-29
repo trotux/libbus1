@@ -45,24 +45,22 @@ struct bus1_client *bus1_client_free(struct bus1_client *client);
 
 int bus1_client_get_fd(struct bus1_client *client);
 size_t bus1_client_get_pool_size(struct bus1_client *client);
-void *bus1_client_get_pool(struct bus1_client *client);
+const void *bus1_client_get_pool(struct bus1_client *client);
 
 int bus1_client_ioctl(struct bus1_client *client, unsigned int cmd, void *arg);
-int bus1_client_query(struct bus1_client *client, size_t *pool_sizep);
 int bus1_client_mmap(struct bus1_client *client);
-int bus1_client_init(struct bus1_client *client, size_t pool_size);
-int bus1_client_clone(struct bus1_client *client,
-		      uint64_t *parent_handlep,
-		      uint64_t *child_handlep,
-		      int *fdp,
-		      size_t pool_size);
+int bus1_client_reset(struct bus1_client *client);
+int bus1_client_handle_transfer(struct bus1_client *src,
+				struct bus1_client *dst,
+				uint64_t *src_handlep,
+				uint64_t *dst_handlep);
 
 int bus1_client_node_destroy(struct bus1_client *client, uint64_t handle);
 int bus1_client_handle_release(struct bus1_client *client, uint64_t handle);
 int bus1_client_slice_release(struct bus1_client *client, uint64_t offset);
 
-void *bus1_client_slice_from_offset(struct bus1_client *client,
-				    uint64_t offset);
+const void *bus1_client_slice_from_offset(struct bus1_client *client,
+					  uint64_t offset);
 uint64_t bus1_client_slice_to_offset(struct bus1_client *client,
 				     const void *slice);
 
@@ -75,31 +73,21 @@ static inline void bus1_client_freep(struct bus1_client **client)
 }
 
 static inline int bus1_client_send(struct bus1_client *client,
-				   struct bus1_cmd_send *send) {
-	int r;
-
+				   struct bus1_cmd_send *send)
+{
 	static_assert(_IOC_SIZE(BUS1_CMD_SEND) == sizeof(*send),
 		      "ioctl is called with invalid argument size");
 
-	r = bus1_client_ioctl(client, BUS1_CMD_SEND, send);
-	if (r < 0)
-		return r;
-
-	return 0;
+	return bus1_client_ioctl(client, BUS1_CMD_SEND, send);
 }
 
 static inline int bus1_client_recv(struct bus1_client *client,
-				   struct bus1_cmd_recv *recv) {
-	int r;
-
+				   struct bus1_cmd_recv *recv)
+{
 	static_assert(_IOC_SIZE(BUS1_CMD_RECV) == sizeof(*recv),
 		      "ioctl is called with invalid argument size");
 
-	r = bus1_client_ioctl(client, BUS1_CMD_RECV, recv);
-	if (r < 0)
-		return r;
-
-	return 0;
+	return bus1_client_ioctl(client, BUS1_CMD_RECV, recv);
 }
 
 #ifdef __cplusplus

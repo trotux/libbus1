@@ -30,16 +30,13 @@
  *   EFAULT:            cannot access ioctl parameters
  *   EHOSTUNREACH:      destination node has been destroyed
  *   EINVAL:            invalid ioctl parameters
- *   EISCONN:           local peer is already initialized
  *   EMSGSIZE:          ioctl parameters are too small/large
  *   ENOMEM:            out of kernel memory
- *   ENOTCONN:          local peer is not initialized, yet
  *   ENOTTY:            unknown ioctl
  *   ENXIO:             invalid handle or slice
  *   EOPNOTSUPP:        could not pass file-descriptor of unsupported type
  *   EPERM:             permission denied to mmap pool as writable
  *   ESHUTDOWN:         local peer was already disconnected
- *   ETOOMANYREFS:      user has too many in-flight file-descriptors
  *   EXFULL:            target memory pool is full
  */
 
@@ -59,21 +56,11 @@ enum {
 	BUS1_NODE_FLAG_PERSISTENT	= 1ULL <<  2,
 };
 
-struct bus1_cmd_peer_init {
+struct bus1_cmd_handle_transfer {
 	__u64 flags;
-	__u64 pool_size;
-} __attribute__((__aligned__(8)));
-
-struct bus1_cmd_peer_reset {
-	__u64 flags;
-} __attribute__((__aligned__(8)));
-
-struct bus1_cmd_peer_clone {
-	__u64 flags;
-	__u64 pool_size;
-	__u64 parent_handle;
-	__u64 child_handle;
-	__u64 fd;
+	__u64 src_handle;
+	__u64 dst_fd;
+	__u64 dst_handle;
 } __attribute__((__aligned__(8)));
 
 enum {
@@ -94,67 +81,50 @@ struct bus1_cmd_send {
 } __attribute__((__aligned__(8)));
 
 enum {
+	BUS1_RECV_FLAG_PEEK		= 1ULL <<  0,
+	BUS1_RECV_FLAG_SEED		= 1ULL <<  1,
+	BUS1_RECV_FLAG_INSTALL_FDS	= 1ULL <<  2,
+};
+
+enum {
 	BUS1_MSG_NONE,
 	BUS1_MSG_DATA,
 	BUS1_MSG_NODE_DESTROY,
 	BUS1_MSG_NODE_RELEASE,
 };
 
-struct bus1_msg_data {
-	__u64 destination;
-	__u32 uid;
-	__u32 gid;
-	__u32 pid;
-	__u32 tid;
-	__u64 offset;
-	__u64 n_bytes;
-	__u64 n_handles;
-	__u64 n_fds;
-} __attribute__((__aligned__(8)));
-
-struct bus1_msg_node_destroy {
-	__u64 handle;
-} __attribute__((__aligned__(8)));
-
-struct bus1_msg_node_release {
-	__u64 handle;
-} __attribute__((__aligned__(8)));
-
-enum {
-	BUS1_RECV_FLAG_PEEK		= 1ULL <<  0,
-	BUS1_RECV_FLAG_SEED		= 1ULL <<  1,
-};
-
 struct bus1_cmd_recv {
 	__u64 flags;
-	__u64 type;
 	__u64 n_dropped;
-	union {
-		struct bus1_msg_data data;
-		struct bus1_msg_node_destroy node_destroy;
-		struct bus1_msg_node_release node_release;
-	};
+	struct {
+		__u64 type;
+		__u64 destination;
+		__u32 uid;
+		__u32 gid;
+		__u32 pid;
+		__u32 tid;
+		__u64 offset;
+		__u64 n_bytes;
+		__u64 n_handles;
+		__u64 n_fds;
+	} __attribute__((__aligned__(8))) msg;
 } __attribute__((__aligned__(8)));
 
 enum {
-	BUS1_CMD_PEER_INIT		= _IOWR(BUS1_IOCTL_MAGIC, 0x00,
-						struct bus1_cmd_peer_init),
-	BUS1_CMD_PEER_QUERY		= _IOWR(BUS1_IOCTL_MAGIC, 0x01,
-						struct bus1_cmd_peer_init),
-	BUS1_CMD_PEER_RESET		= _IOWR(BUS1_IOCTL_MAGIC, 0x02,
-						struct bus1_cmd_peer_reset),
-	BUS1_CMD_PEER_CLONE		= _IOWR(BUS1_IOCTL_MAGIC, 0x03,
-						struct bus1_cmd_peer_clone),
-	BUS1_CMD_NODE_DESTROY		= _IOWR(BUS1_IOCTL_MAGIC, 0x04,
-						__u64),
-	BUS1_CMD_HANDLE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x05,
-						__u64),
-	BUS1_CMD_SLICE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x06,
-						__u64),
-	BUS1_CMD_SEND			= _IOWR(BUS1_IOCTL_MAGIC, 0x07,
-						struct bus1_cmd_send),
-	BUS1_CMD_RECV			= _IOWR(BUS1_IOCTL_MAGIC, 0x08,
-						struct bus1_cmd_recv),
+	BUS1_CMD_PEER_RESET		= _IOWR(BUS1_IOCTL_MAGIC, 0x00,
+					__u64),
+	BUS1_CMD_HANDLE_TRANSFER	= _IOWR(BUS1_IOCTL_MAGIC, 0x01,
+					struct bus1_cmd_handle_transfer),
+	BUS1_CMD_HANDLE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x02,
+					__u64),
+	BUS1_CMD_NODE_DESTROY		= _IOWR(BUS1_IOCTL_MAGIC, 0x03,
+					__u64),
+	BUS1_CMD_SLICE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x04,
+					__u64),
+	BUS1_CMD_SEND			= _IOWR(BUS1_IOCTL_MAGIC, 0x05,
+					struct bus1_cmd_send),
+	BUS1_CMD_RECV			= _IOWR(BUS1_IOCTL_MAGIC, 0x06,
+					struct bus1_cmd_recv),
 };
 
 #endif /* _UAPI_LINUX_BUS1_H */

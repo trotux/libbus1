@@ -26,9 +26,4 @@ struct B1Peer {
 
         CRBTree nodes;
         CRBTree handles;
-        CRBTree root_nodes;
 };
-
-B1Node *b1_peer_get_node(B1Peer *peer, uint64_t node_id);
-B1Handle *b1_peer_get_handle(B1Peer *peer, uint64_t handle_id);
-B1Node *b1_peer_get_root_node(B1Peer *peer, const char *name);

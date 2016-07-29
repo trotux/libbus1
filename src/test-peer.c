@@ -23,248 +23,168 @@
 #undef NDEBUG
 #include <assert.h>
 #include <c-macro.h>
+#include <linux/bus1.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <c-variant.h>
 #include "org.bus1/b1-peer.h"
 
-static bool done = false;
+static void test_peer(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer1 = NULL, *peer2 = NULL, *peer3 = NULL;
+        int fd, r;
 
-static int node_function(B1Node *node, void *userdata, B1Message *message)
-{
-        _c_cleanup_(b1_message_unrefp) B1Message *reply = NULL;
-        B1Peer *peer = NULL;
-        uint64_t num1 = 0;
-        uint32_t num2 = 0;
-        int r;
-
-        fprintf(stderr, "PING!\n");
-
-        r = b1_message_read(message, "(tu)", &num1, &num2);
+        /* create three peers: peer1 and peer2 are two instances of the same */
+        r = b1_peer_new(&peer1, NULL);
         assert(r >= 0);
-        assert(num1 = 1);
-        assert(num2 = 2);
+        assert(peer1);
 
-        num1 = 0;
-        num2 = 0;
-        b1_message_rewind(message);
-        r = b1_message_read(message, "(tu)", &num1, &num2);
+        fd = b1_peer_get_fd(peer1);
+        assert(fd >= 0);
+
+        r = b1_peer_new_from_fd(&peer2, fd);
         assert(r >= 0);
-        assert(num1 = 1);
-        assert(num2 = 2);
+        assert(peer2);
 
-        peer = b1_node_get_peer(node);
-        assert(peer);
-
-        r = b1_message_new_reply(peer, &reply, "");
+        r = b1_peer_new(&peer3, NULL);
         assert(r >= 0);
-        assert(message);
-
-        r = b1_message_reply(message, reply);
-        assert(r >= 0);
-
-        return 0;
+        assert(peer3);
 }
 
-static int slot_function(B1ReplySlot *slot, void *userdata, B1Message *message)
-{
-        fprintf(stderr, "PONG!\n");
-
-        done = true;
-
-        return 0;
-}
-
-static void test_cvariant(void)
-{
-        _c_cleanup_(c_variant_freep) CVariant *cv = NULL, *cv2;
-        const struct iovec *vecs;
-        size_t n_vecs;
-        uint64_t num = 0;
-        const char *str1 = NULL, *str2 = NULL;
-        bool b = false;
-        int r;
-
-        r = c_variant_new(&cv, "(tvv)", strlen("(tvv)"));
-        assert(r >= 0);
-        assert(cv);
-
-        r = c_variant_begin(cv, "(");
-        assert(r >= 0);
-        r = c_variant_write(cv, "t", 1);
-        assert(r >= 0);
-        r = c_variant_write(cv, "v", "(ssb)", "foo", "bar", true);
-        assert(r >= 0);
-
-        r = c_variant_seal(cv);
-        assert(r >= 0);
-
-        r = c_variant_enter(cv, "(");;
-        assert(r >= 0);
-        r = c_variant_read(cv, "t", &num);
-        assert(r >= 0);
-        assert(num == 1);
-        r = c_variant_read(cv, "v", "(ssb)", &str1, &str2, &b);
-        assert(r >= 0);
-        assert(str1);
-        assert(!strcmp(str1, "foo"));
-        assert(str2);
-        assert(!strcmp(str2, "bar"));
-        assert(b);
-
-        vecs = c_variant_get_vecs(cv, &n_vecs);
-        assert(vecs);
-        assert(n_vecs == 1);
-
-        r = c_variant_new_from_vecs(&cv2, "(tvv)", strlen("(tvv)"), vecs, 1);
-        assert(r >= 0);
-
-        num = 0;
-        str1 = NULL;
-        str2 = NULL;
-        b = false;
-
-        r = c_variant_enter(cv2, "(");
-        assert(r >= 0);
-        r = c_variant_read(cv2, "t", &num);
-        assert(r >= 0);
-        assert(num == 1);
-        r = c_variant_read(cv2, "v", "(ssb)", &str1, &str2, &b);
-        assert(r >= 0);
-        assert(str1);
-        assert(!strcmp(str1, "foo"));
-        assert(str2);
-        assert(!strcmp(str2, "bar"));
-        assert(b);
-}
-
-static void test_api(void)
-{
+static void test_node(void) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
-        _c_cleanup_(b1_peer_unrefp) B1Peer *clone = NULL;
-        _c_cleanup_(b1_handle_unrefp) B1Handle *parent_handle = NULL;
-        _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
-        _c_cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
-        _c_cleanup_(b1_reply_slot_freep) B1ReplySlot *slot = NULL;
-        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL, *request = NULL, *reply = NULL;
-        uint64_t num1 = 0;
-        uint32_t num2 = 0;
+        B1Handle *handle;
         int r;
-
-        r = b1_interface_new(&interface, "foo");
-        assert(r >= 0);
-        assert(interface);
-
-        r = b1_interface_add_member(interface, "bar", "(tu)", "()", node_function);
-        assert(r >= 0);
 
         r = b1_peer_new(&peer, NULL);
         assert(r >= 0);
-        assert(peer);
+
+        r = b1_node_new(peer, &node, NULL);
+        assert(r >= 0);
+        assert(node);
+
+        assert(b1_node_get_peer(node) == peer);
+
+        handle = b1_node_get_handle(node);
+        assert(handle);
+
+        handle = b1_handle_ref(handle);
+        assert(handle);
+        b1_handle_unref(handle);
+}
+
+static void test_handle(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
+        int r;
+
+        r = b1_peer_new(&peer, NULL);
+        assert(r >= 0);
 
         r = b1_node_new(peer, &node, NULL);
         assert(r >= 0);
 
-        r = b1_node_implement(node, interface);
+        r = b1_handle_transfer(b1_node_get_handle(node), peer, &handle);
         assert(r >= 0);
-
-        r = b1_node_acquire_handle(node, &parent_handle);
-        assert(r >= 0);
-        assert(parent_handle);
-
-        r = b1_peer_clone(peer, &clone, parent_handle, &handle);
-        assert(r >= 0);
-        assert(clone);
         assert(handle);
+        assert(handle == b1_node_get_handle(node));
+}
 
-        r = b1_message_new_call(clone, &message, "foo", "bar", "(tu)", "()", &slot, slot_function, NULL);
+static void test_message(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        B1Handle *handle;
+        int r, fd;
+
+        r = b1_peer_new(&peer, NULL);
+        assert(r >= 0);
+
+        r = b1_node_new(peer, &node, NULL);
+        assert(r >= 0);
+
+        r = b1_message_new(peer, &message);
         assert(r >= 0);
         assert(message);
-        assert(slot);
 
-        r = b1_message_write(message, "(tu)", 1, 2);
+        assert(b1_message_get_type(message) == BUS1_MSG_DATA);
+        assert(!b1_message_get_destination_node(message));
+        assert(!b1_message_get_destination_handle(message));
+        assert(b1_message_get_uid(message) == (uid_t)-1);
+        assert(b1_message_get_gid(message) == (gid_t)-1);
+        assert(b1_message_get_pid(message) == 0);
+        assert(b1_message_get_tid(message) == 0);
+
+        handle = b1_node_get_handle(node);
+
+        r = b1_message_set_handles(message, &handle, 1);
         assert(r >= 0);
-        r = b1_message_seal(message);
+
+        r = b1_message_get_handle(message, 0, &handle);
         assert(r >= 0);
-        r = b1_message_read(message, "(tu)", &num1, &num2);
+        assert(handle);
+        assert(handle == b1_node_get_handle(node));
+
+        fd = b1_peer_get_fd(peer);
+
+        r = b1_message_set_fds(message, &fd, 1);
         assert(r >= 0);
-        assert(num1 == 1);
-        assert(num2 == 2);
+
+        r = b1_message_get_fd(message, 0, &fd);
+        assert(r >= 0);
+        assert(fd >= 0);
+        assert(fd != b1_peer_get_fd(peer));
+}
+
+static void test_transaction(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *src = NULL, *dst = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node = NULL;
+        _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        int r;
+
+        r = b1_peer_new(&src, NULL);
+        assert(r >= 0);
+
+        r = b1_peer_new(&dst, NULL);
+        assert(r >= 0);
+
+
+        r = b1_node_new(dst, &node, NULL);
+        assert(r >= 0);
+
+        r = b1_handle_transfer(b1_node_get_handle(node), src, &handle);
+        assert(r >= 0);
+
+        r = b1_message_new(src, &message);
+        assert(r >= 0);
 
         r = b1_message_send(message, &handle, 1);
         assert(r >= 0);
 
-        r = b1_peer_recv(peer, &request);
+        assert(!b1_message_unref(message));
+
+        r = b1_peer_recv(dst, &message);
         assert(r >= 0);
-        assert(request);
-        r = b1_message_dispatch(request);
-        assert(r >= 0);
-
-        r = b1_peer_recv(clone, &reply);
-        assert(r >= 0);
-        assert(reply);
-        r = b1_message_dispatch(reply);
-        assert(r >= 0);
-
-        assert(done);
-}
-
-static void test_seed(void) {
-        _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
-        _c_cleanup_(b1_message_unrefp) B1Message *seed1 = NULL, *seed2 = NULL;
-        _c_cleanup_(b1_node_freep) B1Node *node1 = NULL, *node2 = NULL;
-        _c_cleanup_(b1_interface_unrefp) B1Interface *interface = NULL;
-        const char *name ="org.foo.bar.Root";
-        int r;
-
-        r = b1_peer_new(&peer, NULL);
-        assert(r >= 0);
-        assert(peer);
-
-        r = b1_node_new_root(peer, &node1, NULL, "org.foo.bar.Root");
-        assert(r >= 0);
-        assert(node1);
-
-        r = b1_message_new_seed(peer, &seed1, &node1, 1, "()");
-        assert(r >= 0);
-        assert(seed1);
-
-        r = b1_message_send(seed1, NULL, 0);
-        assert(r >= 0);
-
-        r = b1_peer_recv_seed(peer, &seed2);
-        assert(r >= 0);
-
-        r = b1_interface_new(&interface, name);
-        assert(r >= 0);
-
-        r = b1_peer_implement(peer, &node2, NULL, interface);
-        assert(!node2);
-        assert(r == -ENOENT);
-
-        r = b1_message_dispatch(seed2);
-        assert(r >= 0);
-
-        r = b1_peer_implement(peer, &node2, NULL, interface);
-        assert(!node2);
-        assert(r == -ENOTUNIQ);
-
-        node1 = b1_node_free(node1);
-        assert(!node1);
-
-        r = b1_peer_implement(peer, &node2, NULL, interface);
-        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_DATA);
+        assert(b1_message_get_destination_node(message) == node);
+        assert(b1_message_get_uid(message) == getuid());
+        assert(b1_message_get_gid(message) == getgid());
+        assert(b1_message_get_pid(message) == getpid());
+        /* XXX: alse check tid */
 }
 
 int main(int argc, char **argv) {
         if (access("/dev/bus1", F_OK) < 0 && errno == ENOENT)
                 return 77;
 
-        test_cvariant();
-        test_api();
-        test_seed();
+        test_peer();
+        test_node();
+        test_handle();
+        test_message();
+        test_transaction();
 
         return 0;
 }

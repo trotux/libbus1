@@ -26,6 +26,4 @@
 /libbus1.so.0
 /src/libbus1.pc
 
-/test-activator
 /test-peer
-/test-perf

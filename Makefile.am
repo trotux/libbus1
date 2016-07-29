@@ -51,13 +51,10 @@ noinst_LIBRARIES += \
 libbus1_a_SOURCES = \
 	src/peer.c \
 	src/peer.h \
-	src/multicast.c \
 	src/message.c \
 	src/message.h \
 	src/node.c \
 	src/node.h \
-	src/interface.c \
-	src/interface.h \
 	src/bus1-client.c \
 	src/bus1-client.h \
 	src/libbus1.sym \
@@ -67,8 +64,7 @@ libbus1_a_SOURCES = \
 libbus1_a_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(CRBTREE_CFLAGS) \
-	$(CSUNDRY_CFLAGS) \
-	$(CVARIANT_CFLAGS)
+	$(CSUNDRY_CFLAGS)
 
 # ------------------------------------------------------------------------------
 # shared library built from archive
@@ -83,8 +79,7 @@ libbus1.so.0: libbus1.a $(top_srcdir)/src/libbus1.sym
 	-Wl,-soname=$@ \
 	-Wl,--version-script=$(top_srcdir)/src/libbus1.sym \
 	-Wl,--whole-archive libbus1.a -Wl,--no-whole-archive \
-	$(CRBTREE_LIBS) \
-	$(CVARIANT_LIBS)
+	$(CRBTREE_LIBS)
 
 CLEANFILES += \
 	libbus1.so.0
@@ -119,26 +114,6 @@ CLEANFILES += \
 	src/libbus1.pc
 
 # ------------------------------------------------------------------------------
-# test-perf
-
-check_PROGRAMS += \
-	test-perf
-
-test_perf_SOURCES = \
-	src/test-perf.c
-
-test_perf_CFLAGS = \
-	$(AM_CFLAGS) \
-	$(CRBTREE_CFLAGS) \
-	$(CSUNDRY_CFLAGS) \
-	$(CVARIANT_CFLAGS)
-
-test_perf_LDADD = \
-	libbus1.a \
-	$(CRBTREE_LIBS) \
-	$(CVARIANT_LIBS)
-
-# ------------------------------------------------------------------------------
 # test-peer
 
 default_tests += \
@@ -150,33 +125,11 @@ test_peer_SOURCES = \
 test_peer_CFLAGS = \
 	$(AM_CFLAGS) \
 	$(CRBTREE_CFLAGS) \
-	$(CSUNDRY_CFLAGS) \
-	$(CVARIANT_CFLAGS)
+	$(CSUNDRY_CFLAGS)
 
 test_peer_LDADD = \
 	libbus1.a \
-	$(CRBTREE_LIBS) \
-	$(CVARIANT_LIBS)
-
-# ------------------------------------------------------------------------------
-# test-activator
-
-default_tests += \
-	test-activator
-
-test_activator_SOURCES = \
-	src/test-activator.c
-
-test_activator_CFLAGS = \
-	$(AM_CFLAGS) \
-	$(CRBTREE_CFLAGS) \
-	$(CSUNDRY_CFLAGS) \
-	$(CVARIANT_CFLAGS)
-
-test_activator_LDADD = \
-	libbus1.a \
-	$(CRBTREE_LIBS) \
-	$(CVARIANT_LIBS)
+	$(CRBTREE_LIBS)
 
 # ------------------------------------------------------------------------------
 # test suite

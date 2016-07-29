@@ -115,11 +115,6 @@ AS_IF([test "$enable_static" = "yes"], [
 
         CSUNDRY_CFLAGS="-I${srcdir}/../c-sundry/src"
         AC_SUBST(CSUNDRY_CFLAGS)
-
-        CVARIANT_CFLAGS="-I${srcdir}/../c-variant/src"
-        CVARIANT_LIBS="-L${srcdir}/../c-variant -lcvariant"
-        AC_SUBST(CVARIANT_CFLAGS)
-        AC_SUBST(CVARIANT_LIBS)
 ], [
         PKG_CHECK_MODULES(CRBTREE, [c-rbtree],
                 [AC_DEFINE(HAVE_CRBTREE, 1, [Define if c-rbtree library is available])],
@@ -128,10 +123,6 @@ AS_IF([test "$enable_static" = "yes"], [
         PKG_CHECK_MODULES(CSUNDRY, [c-sundry],
                 [AC_DEFINE(HAVE_SUNDRY, 1, [Define if c-sundry library is available])],
                 AC_MSG_ERROR([*** c-sundry library not found]))
-
-        PKG_CHECK_MODULES(CVARIANT, [c-variant],
-                [AC_DEFINE(HAVE_VARIANT, 1, [Define if c-variant library is available])],
-                AC_MSG_ERROR([*** c-variant library not found]))
 ])
 
 # ------------------------------------------------------------------------------
