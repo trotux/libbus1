@@ -23,11 +23,11 @@
 #undef NDEBUG
 #include <assert.h>
 #include <c-macro.h>
+#include <c-syscall.h>
 #include <linux/bus1.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/eventfd.h>
-#include <sys/syscall.h>
 #include <unistd.h>
 #include "org.bus1/b1-peer.h"
 
@@ -187,7 +187,7 @@ static void test_transaction(void) {
         assert(b1_message_get_uid(message) == getuid());
         assert(b1_message_get_gid(message) == getgid());
         assert(b1_message_get_pid(message) == getpid());
-        assert(b1_message_get_tid(message) == syscall(SYS_gettid));
+        assert(b1_message_get_tid(message) == c_syscall_gettid());
         r = b1_message_get_handle(message, 0, &handle);
         assert(r >= 0);
         assert(handle == b1_node_get_handle(node));
