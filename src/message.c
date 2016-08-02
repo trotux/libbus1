@@ -168,16 +168,9 @@ int b1_message_new_from_slice(B1Peer *peer,
         for (unsigned int i = 0; i < n_handles; i++) {
                 B1Handle *handle;
 
-                if (handle_ids[i] == BUS1_HANDLE_INVALID)
-                        handle = NULL;
-                else {
-                        r = b1_handle_acquire(peer, &handle, handle_ids[i]);
-                        if (r < 0)
-                                return r;
-                        else if (r == 0)
-                                /* reusing an existing handle, drop ref from kernel */
-                                b1_handle_release(handle);
-                }
+                r = b1_handle_acquire(peer, &handle, handle_ids[i]);
+                if (r < 0)
+                        return r;
 
                 message->handles[i] = handle;
         }

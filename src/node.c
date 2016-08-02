@@ -129,7 +129,11 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
 
         assert(peer);
         assert(handlep);
-        assert(handle_id != BUS1_HANDLE_INVALID);
+
+        if (handle_id == BUS1_HANDLE_INVALID) {
+                *handlep = NULL;
+                return 0;
+        }
 
         slot = c_rbtree_find_slot(&peer->handles, handles_compare, &handle_id, &p);
         if (slot) {
@@ -140,16 +144,15 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
                 handle->id = handle_id;
 
                 c_rbtree_add(&peer->handles, p, slot, &handle->rb);
-
-                *handlep = handle;
-                return 1;
         } else {
                 handle = c_container_of(p, B1Handle, rb);
                 b1_handle_ref(handle);
-
-                *handlep = handle;
-                return 0;
+                /* reusing existing handle, drop redundant reference from kernel */
+                b1_handle_release(handle);
         }
+
+        *handlep = handle;
+        return 0;
 }
 
 /**
