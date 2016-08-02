@@ -186,6 +186,7 @@ int b1_message_new_from_slice(B1Peer *peer,
         if (!message->fds)
                 return -ENOMEM;
         memcpy(message->fds, (uint8_t*)handle_ids + c_align_to(n_handles, 8), n_fds * sizeof(int));
+        message->n_fds = n_fds;
 
         *messagep = message;
         message = NULL;
