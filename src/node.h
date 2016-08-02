@@ -35,7 +35,6 @@ struct B1Node {
         B1Peer *owner;
         B1Handle *handle;
         uint64_t id;
-        void *userdata;
 
         bool live:1;
         bool persistent:1;

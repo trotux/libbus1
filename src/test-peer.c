@@ -61,7 +61,7 @@ static void test_node(void) {
         r = b1_peer_new(&peer, NULL);
         assert(r >= 0);
 
-        r = b1_node_new(peer, &node, NULL);
+        r = b1_node_new(peer, &node);
         assert(r >= 0);
         assert(node);
 
@@ -84,7 +84,7 @@ static void test_handle(void) {
         r = b1_peer_new(&peer, NULL);
         assert(r >= 0);
 
-        r = b1_node_new(peer, &node, NULL);
+        r = b1_node_new(peer, &node);
         assert(r >= 0);
 
         r = b1_handle_transfer(b1_node_get_handle(node), peer, &handle);
@@ -103,7 +103,7 @@ static void test_message(void) {
         r = b1_peer_new(&peer, NULL);
         assert(r >= 0);
 
-        r = b1_node_new(peer, &node, NULL);
+        r = b1_node_new(peer, &node);
         assert(r >= 0);
 
         r = b1_message_new(peer, &message);
@@ -152,7 +152,7 @@ static void test_transaction(void) {
         r = b1_peer_new(&dst, NULL);
         assert(r >= 0);
 
-        r = b1_node_new(dst, &node, NULL);
+        r = b1_node_new(dst, &node);
         assert(r >= 0);
 
         r = b1_handle_transfer(b1_node_get_handle(node), src, &handle);

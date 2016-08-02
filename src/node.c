@@ -156,14 +156,13 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
  * b1_node_new() - create a new node for a peer
  * @peer:               the owning peer
  * @nodep:              pointer to the new node object
- * @userdata:           userdata to associate with the node
  *
  * A root node is a named node, which is like any other node except that it is
  * guaranteed not to be cleaned up in case a peer is reset.
  *
  * Return: 0 on success, and a negative error code on failure.
  */
-_c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
+_c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep) {
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         int r;
 
@@ -173,7 +172,6 @@ _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, void *userdata) {
 
         node->id = BUS1_HANDLE_INVALID;
         node->owner = b1_peer_ref(peer);
-        node->userdata = userdata;
         node->live = false;
         node->persistent = false;
         c_rbnode_init(&node->rb_nodes);
@@ -238,19 +236,6 @@ _c_public_ B1Peer *b1_node_get_peer(B1Node *node) {
  */
 _c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
         return node->handle;
-}
-
-/**
- * b1_node_get_userdata() - get userdata associatde with a node
- * @node:               node to query
- *
- * Return the userdata associated with @node. If it was not set explicitly, it
- * will be set to NULL.
- *
- * Return: Userdata of the given node.
- */
-_c_public_ void *b1_node_get_userdata(B1Node *node) {
-        return node->userdata;
 }
 
 /**
