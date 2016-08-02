@@ -43,7 +43,6 @@ struct B1Node {
 };
 
 int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id);
-void b1_handle_release(B1Handle *handle);
 int b1_handle_link(B1Handle *handle, uint64_t id);
 B1Handle *b1_handle_lookup(B1Peer *peer, uint64_t id);
 
