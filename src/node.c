@@ -205,11 +205,10 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
 
         c_rbtree_remove_init(&node->owner->nodes, &node->rb_nodes);
 
-        b1_node_release(node);
-
         if (!node->persistent)
                 b1_node_destroy(node);
 
+        b1_handle_unref(node->handle);
         b1_peer_unref(node->owner);
         free(node);
 
@@ -239,25 +238,6 @@ _c_public_ B1Peer *b1_node_get_peer(B1Node *node) {
  */
 _c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
         return node->handle;
-}
-
-/**
- * b1_node_release() - release handle to node
- * @node:               node to release, or NULL
- *
- * When the owner of a node releases its handle to it, it means that the node
- * will be released as soon as no other peer is pinning a handle to it. It also
- * means that the owning peer can no longer hand out handles to the node to
- * other peers.
- *
- * If NULL is passed, this is a no-op.
- */
-_c_public_ void b1_node_release(B1Node *node) {
-        if (!node || !node->handle)
-                return;
-
-        node->handle->node = NULL;
-        node->handle = b1_handle_unref(node->handle);
 }
 
 /**
