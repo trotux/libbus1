@@ -36,9 +36,6 @@ struct B1Node {
         B1Handle *handle;
         uint64_t id;
 
-        bool live:1;
-        bool persistent:1;
-
         CRBNode rb_nodes;
 };
 

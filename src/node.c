@@ -189,8 +189,6 @@ _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep) {
 
         node->id = BUS1_HANDLE_INVALID;
         node->owner = b1_peer_ref(peer);
-        node->live = false;
-        node->persistent = false;
         c_rbnode_init(&node->rb_nodes);
 
         r = b1_handle_new(peer, &node->handle);
@@ -219,8 +217,7 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
 
         c_rbtree_remove_init(&node->owner->nodes, &node->rb_nodes);
 
-        if (!node->persistent)
-                b1_node_destroy(node);
+        b1_node_destroy(node);
 
         b1_handle_unref(node->handle);
         b1_peer_unref(node->owner);
