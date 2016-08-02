@@ -51,16 +51,20 @@ static int handles_compare(CRBTree *t, void *k, CRBNode *n) {
 
 static void b1_handle_acquire_kernel(B1Handle *handle) {
         uint64_t dst_id = BUS1_HANDLE_INVALID;
+        int r;
 
         if (handle->id == BUS1_HANDLE_INVALID)
                 return;
 
         /* transfer handle to ourselves to get another reference to it */
-        assert(bus1_client_handle_transfer(handle->holder->client, handle->holder->client, &handle->id, &dst_id) >= 0);
+        r = bus1_client_handle_transfer(handle->holder->client, handle->holder->client, &handle->id, &dst_id);
+        assert(r >= 0);
         assert(handle->id == dst_id);
 }
 
 static void b1_handle_release_kernel(B1Handle *handle) {
+        int r;
+
         if (!handle)
                 return;
 
@@ -69,7 +73,8 @@ static void b1_handle_release_kernel(B1Handle *handle) {
                  * for notifications on the local peer. */
                 return;
 
-        assert(bus1_client_handle_release(handle->holder->client, handle->id) >= 0);
+        r = bus1_client_handle_release(handle->holder->client, handle->id);
+        assert(r >= 0);
 }
 
 int b1_node_link(B1Node *node, uint64_t id) {
