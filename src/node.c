@@ -363,3 +363,50 @@ B1Handle *b1_handle_lookup(B1Peer *peer, uint64_t handle_id) {
 
         return c_container_of(n, B1Handle, rb);
 }
+
+/**
+ * b1_handle_transfer() - transfer a handle from one peer to another
+ * @src_handle:         source handle
+ * @dst:                destination peer
+ * @dst_handlep:        pointer to destination handle
+ *
+ * In order for peers to communicate, they must be reachable from one another.
+ * This transfers a handle from one peer to another.
+ *
+ * Return: 0 on success, or a negative error code on failure.
+ */
+_c_public_ int b1_handle_transfer(B1Handle *src_handle, B1Peer *dst, B1Handle **dst_handlep) {
+        _c_cleanup_(b1_handle_unrefp) B1Handle *dst_handle = NULL;
+        uint64_t src_handle_id, dst_handle_id = BUS1_HANDLE_INVALID;
+        int r;
+
+        if (src_handle->id == BUS1_HANDLE_INVALID)
+                src_handle_id = BUS1_NODE_FLAG_MANAGED | BUS1_NODE_FLAG_ALLOCATE;
+        else
+                src_handle_id = src_handle->id;
+
+        r = bus1_client_handle_transfer(src_handle->holder->client, dst->client, &src_handle_id, &dst_handle_id);
+        if (r < 0)
+                return r;
+
+        if (src_handle->id == BUS1_HANDLE_INVALID) {
+                r = b1_handle_link(src_handle, src_handle_id);
+                if (r < 0)
+                        return r;
+
+                if (src_handle->node) {
+                        r = b1_node_link(src_handle->node, src_handle_id);
+                        if (r < 0)
+                                return r;
+                }
+        }
+
+        r = b1_handle_acquire(dst, &dst_handle, dst_handle_id);
+        if (r < 0)
+                return r;
+
+        *dst_handlep = dst_handle;
+        dst_handle = NULL;
+
+        return 0;
+}
