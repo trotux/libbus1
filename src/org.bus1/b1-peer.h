@@ -77,7 +77,7 @@ int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp);
 
 /* nodes */
 
-int b1_node_new(B1Peer *peer, B1Node **nodep);
+int b1_node_new(B1Peer *peer, B1Node **nodep, B1Handle **handlep);
 B1Node *b1_node_free(B1Node *node);
 
 B1Peer *b1_node_get_peer(B1Node *node);
