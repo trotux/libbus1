@@ -165,11 +165,12 @@ static void test_transaction(void) {
         assert(r >= 0);
 
         fd = eventfd(0, 0);
+        assert(fd >= 0);
 
         r = b1_message_set_fds(message, &fd, 1);
         assert(r >= 0);
 
-        close(fd);
+        assert(close(fd) >= 0);
 
         r = b1_message_send(message, &handle, 1);
         assert(r >= 0);
