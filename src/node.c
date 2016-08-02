@@ -49,6 +49,29 @@ static int handles_compare(CRBTree *t, void *k, CRBNode *n) {
                 return 0;
 }
 
+static void b1_handle_acquire_kernel(B1Handle *handle) {
+        uint64_t dst_id = BUS1_HANDLE_INVALID;
+
+        if (handle->id == BUS1_HANDLE_INVALID)
+                return;
+
+        /* transfer handle to ourselves to get another reference to it */
+        assert(bus1_client_handle_transfer(handle->holder->client, handle->holder->client, &handle->id, &dst_id) >= 0);
+        assert(handle->id == dst_id);
+}
+
+static void b1_handle_release_kernel(B1Handle *handle) {
+        if (!handle)
+                return;
+
+        if (handle->id == BUS1_HANDLE_INVALID)
+                /* XXX: pass this in to the kernel if we have anyone listening
+                 * for notifications on the local peer. */
+                return;
+
+        assert(bus1_client_handle_release(handle->holder->client, handle->id) >= 0);
+}
+
 int b1_node_link(B1Node *node, uint64_t id) {
         CRBNode **slot, *p;
 
@@ -66,7 +89,6 @@ int b1_node_link(B1Node *node, uint64_t id) {
         c_rbtree_add(&node->owner->nodes, p, slot, &node->rb_nodes);
 
         return 0;
-
 }
 
 int b1_handle_link(B1Handle *handle, uint64_t id) {
@@ -85,8 +107,10 @@ int b1_handle_link(B1Handle *handle, uint64_t id) {
 
         c_rbtree_add(&handle->holder->handles, p, slot, &handle->rb);
 
-        return 0;
+        if (handle->node && handle->n_ref == 1)
+                b1_handle_release_kernel(handle);
 
+        return 0;
 }
 
 static int b1_handle_new(B1Peer *peer, B1Handle **handlep) {
@@ -108,18 +132,6 @@ static int b1_handle_new(B1Peer *peer, B1Handle **handlep) {
         *handlep = handle;
         handle = NULL;
         return 0;
-}
-
-static void b1_handle_release_kernel(B1Handle *handle) {
-        if (!handle)
-                return;
-
-        if (handle->id == BUS1_HANDLE_INVALID)
-                /* XXX: pass this in to the kernel if we have anyone listening
-                 * for notifications on the local peer. */
-                return;
-
-        assert(bus1_client_handle_release(handle->holder->client, handle->id) >= 0);
 }
 
 int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
@@ -276,6 +288,8 @@ _c_public_ B1Handle *b1_handle_ref(B1Handle *handle) {
         if (handle) {
                 assert(handle->n_ref > 0);
                 ++handle->n_ref;
+                if (handle->node && handle->n_ref == 2)
+                        b1_handle_acquire_kernel(handle);
         }
         return handle;
 }
@@ -297,10 +311,14 @@ _c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
 
         assert(handle->n_ref > 0);
 
-        if (--handle->n_ref > 0)
+        if (--handle->n_ref > 0) {
+                if (handle->node && handle->n_ref == 1)
+                        b1_handle_release_kernel(handle);
                 return NULL;
+        }
 
-        b1_handle_release_kernel(handle);
+        if (!handle->node)
+                b1_handle_release_kernel(handle);
 
         if (handle->id != BUS1_HANDLE_INVALID)
                 c_rbtree_remove(&handle->holder->handles, &handle->rb);
