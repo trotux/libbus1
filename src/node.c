@@ -176,11 +176,10 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
  * b1_node_new() - create a new node for a peer
  * @peer:               the owning peer
  * @nodep:              pointer to the new node object
- * @handlep:            pointer to the new corresponding handle object, or NULL
  *
  * Return: 0 on success, and a negative error code on failure.
  */
-_c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
+_c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep) {
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         int r;
 
@@ -200,8 +199,6 @@ _c_public_ int b1_node_new(B1Peer *peer, B1Node **nodep, B1Handle **handlep) {
 
         node->handle->node = node;
 
-        if (handlep)
-                *handlep = b1_handle_ref(node->handle);
         *nodep = node;
         node = NULL;
         return 0;
