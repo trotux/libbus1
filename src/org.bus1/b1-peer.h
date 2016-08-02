@@ -38,7 +38,7 @@ typedef struct B1Peer B1Peer;
 
 /* peers */
 
-int b1_peer_new(B1Peer **peerp, const char *path);
+int b1_peer_new(B1Peer **peerp);
 int b1_peer_new_from_fd(B1Peer **peerp, int fd);
 B1Peer *b1_peer_ref(B1Peer *peer);
 B1Peer *b1_peer_unref(B1Peer *peer);

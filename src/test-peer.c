@@ -36,7 +36,7 @@ static void test_peer(void) {
         int fd, r;
 
         /* create three peers: peer1 and peer2 are two instances of the same */
-        r = b1_peer_new(&peer1, NULL);
+        r = b1_peer_new(&peer1);
         assert(r >= 0);
         assert(peer1);
 
@@ -47,7 +47,7 @@ static void test_peer(void) {
         assert(r >= 0);
         assert(peer2);
 
-        r = b1_peer_new(&peer3, NULL);
+        r = b1_peer_new(&peer3);
         assert(r >= 0);
         assert(peer3);
 }
@@ -58,7 +58,7 @@ static void test_node(void) {
         B1Handle *handle;
         int r;
 
-        r = b1_peer_new(&peer, NULL);
+        r = b1_peer_new(&peer);
         assert(r >= 0);
 
         r = b1_node_new(peer, &node);
@@ -81,7 +81,7 @@ static void test_handle(void) {
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
         int r;
 
-        r = b1_peer_new(&peer, NULL);
+        r = b1_peer_new(&peer);
         assert(r >= 0);
 
         r = b1_node_new(peer, &node);
@@ -100,7 +100,7 @@ static void test_message(void) {
         B1Handle *handle;
         int r, fd;
 
-        r = b1_peer_new(&peer, NULL);
+        r = b1_peer_new(&peer);
         assert(r >= 0);
 
         r = b1_node_new(peer, &node);
@@ -146,10 +146,10 @@ static void test_transaction(void) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r, fd;
 
-        r = b1_peer_new(&src, NULL);
+        r = b1_peer_new(&src);
         assert(r >= 0);
 
-        r = b1_peer_new(&dst, NULL);
+        r = b1_peer_new(&dst);
         assert(r >= 0);
 
         r = b1_node_new(dst, &node);

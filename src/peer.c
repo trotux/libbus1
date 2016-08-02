@@ -28,13 +28,12 @@
 /**
  * b1_peer_new() - creates a new disconnected peer
  * @peerp:              the new peer object
- * @path:               the path to the bus1 character device, or NULL
  *
  * Create a new peer disconnected from all existing peers.
  *
  * Return: 0 on success, a negative error code on failure.
  */
-_c_public_ int b1_peer_new(B1Peer **peerp, const char *path) {
+_c_public_ int b1_peer_new(B1Peer **peerp) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *peer = NULL;
         int r;
 
@@ -44,7 +43,7 @@ _c_public_ int b1_peer_new(B1Peer **peerp, const char *path) {
 
         peer->n_ref = 1;
 
-        r = bus1_client_new_from_path(&peer->client, path);
+        r = bus1_client_new_from_path(&peer->client, NULL);
         if (r < 0)
                 return r;
 
