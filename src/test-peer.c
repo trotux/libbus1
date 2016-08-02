@@ -26,6 +26,7 @@
 #include <linux/bus1.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/eventfd.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 #include "org.bus1/b1-peer.h"
@@ -143,14 +144,13 @@ static void test_transaction(void) {
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
-        int r;
+        int r, fd;
 
         r = b1_peer_new(&src, NULL);
         assert(r >= 0);
 
         r = b1_peer_new(&dst, NULL);
         assert(r >= 0);
-
 
         r = b1_node_new(dst, &node, NULL);
         assert(r >= 0);
@@ -161,10 +161,23 @@ static void test_transaction(void) {
         r = b1_message_new(src, &message);
         assert(r >= 0);
 
+        r = b1_message_set_handles(message, &handle, 1);
+        assert(r >= 0);
+
+        fd = eventfd(0, 0);
+
+        r = b1_message_set_fds(message, &fd, 1);
+        assert(r >= 0);
+
+        close(fd);
+
         r = b1_message_send(message, &handle, 1);
         assert(r >= 0);
 
-        assert(!b1_message_unref(message));
+        message = b1_message_unref(message);
+        assert(!message);
+        handle = b1_handle_unref(handle);
+        assert(!handle);
 
         r = b1_peer_recv(dst, &message);
         assert(r >= 0);
@@ -175,6 +188,12 @@ static void test_transaction(void) {
         assert(b1_message_get_gid(message) == getgid());
         assert(b1_message_get_pid(message) == getpid());
         assert(b1_message_get_tid(message) == syscall(SYS_gettid));
+        r = b1_message_get_handle(message, 0, &handle);
+        assert(r >= 0);
+        assert(handle == b1_node_get_handle(node));
+        r = b1_message_get_fd(message, 0, &fd);
+        assert(r >= 0);
+        assert(fd >= 0);
 }
 
 int main(int argc, char **argv) {
