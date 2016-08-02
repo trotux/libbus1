@@ -26,6 +26,7 @@
 #include <linux/bus1.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 #include "org.bus1/b1-peer.h"
 
@@ -173,7 +174,7 @@ static void test_transaction(void) {
         assert(b1_message_get_uid(message) == getuid());
         assert(b1_message_get_gid(message) == getgid());
         assert(b1_message_get_pid(message) == getpid());
-        /* XXX: alse check tid */
+        assert(b1_message_get_tid(message) == syscall(SYS_gettid));
 }
 
 int main(int argc, char **argv) {
