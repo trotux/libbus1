@@ -188,6 +188,105 @@ static void test_transaction(void) {
         r = b1_message_get_fd(message, 0, &fd);
         assert(r >= 0);
         assert(fd >= 0);
+
+        /* XXX: verify the handle release notification */
+}
+
+static void test_multicast(void) {
+        _c_cleanup_(b1_peer_unrefp) B1Peer *src = NULL, *dst1 = NULL, *dst2 = NULL;
+        _c_cleanup_(b1_node_freep) B1Node *node1 = NULL, *node2 = NULL;
+        _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        B1Handle *handles[2], *handle;
+        int r, fd;
+
+        r = b1_peer_new(&src);
+        assert(r >= 0);
+
+        r = b1_peer_new(&dst1);
+        assert(r >= 0);
+
+        r = b1_peer_new(&dst2);
+        assert(r >= 0);
+
+        r = b1_node_new(dst1, &node1);
+        assert(r >= 0);
+
+        r = b1_node_new(dst2, &node2);
+        assert(r >= 0);
+
+        r = b1_handle_transfer(b1_node_get_handle(node1), src, &handles[0]);
+        assert(r >= 0);
+
+        r = b1_handle_transfer(b1_node_get_handle(node2), src, &handles[1]);
+        assert(r >= 0);
+
+        r = b1_message_new(src, &message);
+        assert(r >= 0);
+
+        r = b1_message_set_handles(message, handles, 2);
+        assert(r >= 0);
+
+        fd = eventfd(0, 0);
+        assert(fd >= 0);
+
+        r = b1_message_set_fds(message, &fd, 1);
+        assert(r >= 0);
+
+        assert(close(fd) >= 0);
+
+        r = b1_message_send(message, handles, 2);
+        assert(r >= 0);
+
+        message = b1_message_unref(message);
+        assert(!message);
+        handles[0] = b1_handle_unref(handles[0]);
+        assert(!handles[0]);
+        handles[1] = b1_handle_unref(handles[1]);
+        assert(!handles[1]);
+
+        r = b1_peer_recv(dst1, &message);
+        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_DATA);
+        assert(b1_message_get_destination_node(message) == node1);
+        assert(b1_message_get_uid(message) == getuid());
+        assert(b1_message_get_gid(message) == getgid());
+        assert(b1_message_get_pid(message) == getpid());
+        assert(b1_message_get_tid(message) == c_syscall_gettid());
+        r = b1_message_get_handle(message, 0, &handle);
+        assert(r >= 0);
+        assert(handle == b1_node_get_handle(node1));
+        r = b1_message_get_handle(message, 1, &handle);
+        assert(r >= 0);
+        assert(handle);
+        assert(handle != b1_node_get_handle(node1));
+        r = b1_message_get_fd(message, 0, &fd);
+        assert(r >= 0);
+        assert(fd >= 0);
+        message = b1_message_unref(message);
+
+        r = b1_peer_recv(dst2, &message);
+        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_DATA);
+        assert(b1_message_get_destination_node(message) == node2);
+        assert(b1_message_get_uid(message) == getuid());
+        assert(b1_message_get_gid(message) == getgid());
+        assert(b1_message_get_pid(message) == getpid());
+        assert(b1_message_get_tid(message) == c_syscall_gettid());
+        r = b1_message_get_handle(message, 0, &handle);
+        assert(r >= 0);
+        assert(handle);
+        assert(handle != b1_node_get_handle(node2));
+        r = b1_message_get_handle(message, 1, &handle);
+        assert(r >= 0);
+        assert(handle);
+        assert(handle == b1_node_get_handle(node2));
+        r = b1_message_get_fd(message, 0, &fd);
+        assert(r >= 0);
+        assert(fd >= 0);
+
+        /* XXX: verify the handle release notification */
 }
 
 int main(int argc, char **argv) {
@@ -199,6 +298,7 @@ int main(int argc, char **argv) {
         test_handle();
         test_message();
         test_transaction();
+        test_multicast();
 
         return 0;
 }
