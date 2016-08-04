@@ -184,6 +184,7 @@ static void test_transaction(void) {
         r = b1_message_get_handle(message, 0, &handle);
         assert(r >= 0);
         assert(handle == b1_node_get_handle(node));
+        handle = NULL;
         r = b1_message_get_fd(message, 0, &fd);
         assert(r >= 0);
         assert(fd >= 0);
