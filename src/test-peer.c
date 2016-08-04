@@ -188,8 +188,23 @@ static void test_transaction(void) {
         r = b1_message_get_fd(message, 0, &fd);
         assert(r >= 0);
         assert(fd >= 0);
+        message = b1_message_unref(message);
 
-        /* XXX: verify the handle release notification */
+        r = b1_peer_recv(dst, &message);
+        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_NODE_RELEASE);
+        assert(b1_message_get_destination_node(message) == node);
+        assert(b1_message_get_uid(message) == (uid_t)-1);
+        assert(b1_message_get_gid(message) == (gid_t)-1);
+        assert(b1_message_get_pid(message) == 0);
+        assert(b1_message_get_tid(message) == 0);
+        message = b1_message_unref(message);
+
+        r = b1_peer_recv(dst, &message);
+        assert(r == -EAGAIN);
+        r = b1_peer_recv(src, &message);
+        assert(r == -EAGAIN);
 }
 
 static void test_multicast(void) {
@@ -285,8 +300,36 @@ static void test_multicast(void) {
         r = b1_message_get_fd(message, 0, &fd);
         assert(r >= 0);
         assert(fd >= 0);
+        message = b1_message_unref(message);
 
-        /* XXX: verify the handle release notification */
+        r = b1_peer_recv(dst1, &message);
+        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_NODE_RELEASE);
+        assert(b1_message_get_destination_node(message) == node1);
+        assert(b1_message_get_uid(message) == (uid_t)-1);
+        assert(b1_message_get_gid(message) == (gid_t)-1);
+        assert(b1_message_get_pid(message) == 0);
+        assert(b1_message_get_tid(message) == 0);
+        message = b1_message_unref(message);
+
+        r = b1_peer_recv(dst2, &message);
+        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_NODE_RELEASE);
+        assert(b1_message_get_destination_node(message) == node2);
+        assert(b1_message_get_uid(message) == (uid_t)-1);
+        assert(b1_message_get_gid(message) == (gid_t)-1);
+        assert(b1_message_get_pid(message) == 0);
+        assert(b1_message_get_tid(message) == 0);
+        message = b1_message_unref(message);
+
+        r = b1_peer_recv(dst1, &message);
+        assert(r == -EAGAIN);
+        r = b1_peer_recv(dst2, &message);
+        assert(r == -EAGAIN);
+        r = b1_peer_recv(src, &message);
+        assert(r == -EAGAIN);
 }
 
 int main(int argc, char **argv) {
