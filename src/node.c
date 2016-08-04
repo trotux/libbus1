@@ -49,7 +49,7 @@ static void b1_handle_acquire_kernel(B1Handle *handle) {
                 return;
 
         /* transfer handle to ourselves to get another reference to it */
-        r = bus1_client_handle_transfer(handle->holder->client, handle->holder->client, &handle->id, &dst_id);
+        r = bus1_peer_handle_transfer(handle->holder->peer, handle->holder->peer, &handle->id, &dst_id);
         assert(r >= 0);
         assert(handle->id == dst_id);
 }
@@ -65,7 +65,7 @@ static void b1_handle_release_kernel(B1Handle *handle) {
                  * for notifications on the local peer. */
                 return;
 
-        r = bus1_client_handle_release(handle->holder->client, handle->id);
+        r = bus1_peer_handle_release(handle->holder->peer, handle->id);
         assert(r >= 0);
 }
 
@@ -261,7 +261,7 @@ _c_public_ void b1_node_destroy(B1Node *node) {
                  * for notifications on the local peer. */
                 return;
 
-        (void)bus1_client_node_destroy(node->owner->client, node->id);
+        (void)bus1_peer_node_destroy(node->owner->peer, node->id);
 }
 
 /**
@@ -377,7 +377,7 @@ _c_public_ int b1_handle_transfer(B1Handle *src_handle, B1Peer *dst, B1Handle **
         else
                 src_handle_id = src_handle->id;
 
-        r = bus1_client_handle_transfer(src_handle->holder->client, dst->client, &src_handle_id, &dst_handle_id);
+        r = bus1_peer_handle_transfer(src_handle->holder->peer, dst->peer, &src_handle_id, &dst_handle_id);
         if (r < 0)
                 return r;
 

@@ -16,7 +16,7 @@
 #include "peer.h"
 #include <stdlib.h>
 #include <string.h>
-#include "bus1-client.h"
+#include "bus1-peer.h"
 #include "org.bus1/b1-peer.h"
 
 static int b1_message_new_internal(B1Peer *peer, B1Message **messagep) {
@@ -240,7 +240,7 @@ _c_public_ int b1_message_send(B1Message *message,
                 destination_ids[i] = destinations[i]->id;
         }
 
-        r = bus1_client_send(message->peer->client, &send);
+        r = bus1_peer_send(message->peer->peer, &send);
         if (r < 0)
                 goto error;
 

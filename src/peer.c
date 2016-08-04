@@ -35,11 +35,11 @@ _c_public_ int b1_peer_new(B1Peer **peerp) {
 
         peer->n_ref = 1;
 
-        r = bus1_client_new_from_path(&peer->client, NULL);
+        r = bus1_peer_new_from_path(&peer->peer, NULL);
         if (r < 0)
                 return r;
 
-        r = bus1_client_mmap(peer->client);
+        r = bus1_peer_mmap(peer->peer);
         if (r < 0)
                 return r;
 
@@ -69,11 +69,11 @@ _c_public_ int b1_peer_new_from_fd(B1Peer **peerp, int fd) {
 
         peer->n_ref = 1;
 
-        r = bus1_client_new_from_fd(&peer->client, fd);
+        r = bus1_peer_new_from_fd(&peer->peer, fd);
         if (r < 0)
                 return r;
 
-        r = bus1_client_mmap(peer->client);
+        r = bus1_peer_mmap(peer->peer);
         if (r < 0)
                 return r;
 
@@ -117,7 +117,7 @@ _c_public_ B1Peer *b1_peer_unref(B1Peer *peer) {
 
         assert(!c_rbtree_first(&peer->handles));
         assert(!c_rbtree_first(&peer->nodes));
-        bus1_client_free(peer->client);
+        bus1_peer_free(peer->peer);
         free(peer);
 
         return NULL;
@@ -130,7 +130,7 @@ _c_public_ B1Peer *b1_peer_unref(B1Peer *peer) {
  * Return: the file descriptor.
  */
 _c_public_ int b1_peer_get_fd(B1Peer *peer) {
-        return bus1_client_get_fd(peer->client);
+        return bus1_peer_get_fd(peer->peer);
 }
 
 /*
@@ -148,7 +148,7 @@ _c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep) {
 
         assert(peer);
 
-        r = bus1_client_recv(peer->client, &recv);
+        r = bus1_peer_recv(peer->peer, &recv);
         if (r < 0)
                 return r;
 
@@ -162,7 +162,7 @@ _c_public_ int b1_peer_recv(B1Peer *peer, B1Message **messagep) {
 
         return b1_message_new_from_slice(peer,
                                          messagep,
-                                         bus1_client_slice_from_offset(peer->client, recv.msg.offset),
+                                         bus1_peer_slice_from_offset(peer->peer, recv.msg.offset),
                                          recv.msg.type,
                                          recv.msg.destination,
                                          recv.msg.uid,
@@ -191,7 +191,7 @@ _c_public_ int b1_peer_get_seed(B1Peer *peer, B1Message **seedp) {
         };
         int r;
 
-        r = bus1_client_recv(peer->client, &recv);
+        r = bus1_peer_recv(peer->peer, &recv);
         if (r < 0)
                 return r;
 
@@ -203,7 +203,7 @@ _c_public_ int b1_peer_get_seed(B1Peer *peer, B1Message **seedp) {
 
         return b1_message_new_from_slice(peer,
                                          seedp,
-                                         bus1_client_slice_from_offset(peer->client, recv.msg.offset),
+                                         bus1_peer_slice_from_offset(peer->peer, recv.msg.offset),
                                          recv.msg.type,
                                          recv.msg.destination,
                                          recv.msg.uid,

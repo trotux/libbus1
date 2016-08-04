@@ -55,8 +55,8 @@ libbus1_a_SOURCES = \
 	src/message.h \
 	src/node.c \
 	src/node.h \
-	src/bus1-client.c \
-	src/bus1-client.h \
+	src/bus1-peer.c \
+	src/bus1-peer.h \
 	src/libbus1.sym \
 	src/linux/bus1.h \
 	src/org.bus1/b1-peer.h

@@ -8,13 +8,13 @@
  */
 
 #include <c-rbtree.h>
-#include "bus1-client.h"
+#include "bus1-peer.h"
 #include "org.bus1/b1-peer.h"
 
 struct B1Peer {
         unsigned long n_ref;
 
-        struct bus1_client *client;
+        struct bus1_peer *peer;
 
         CRBTree nodes;
         CRBTree handles;

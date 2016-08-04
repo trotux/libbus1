@@ -10,40 +10,10 @@
  * your option) any later version.
  */
 
-/**
- * Public Bus1 API
- *
- * This header defines the public bus1 API. If the kernel module is loaded, its
- * entry point is a single character device named 'bus1', accepting ioctls as
- * defined below.
- */
-
-/**
- * Error Codes
- *
- * All operations performed on bus1 fds return negative error codes. The
- * following error codes are well-defined and used all over the place:
- *
- *   EAGAIN:            no messages ready to be dequeued
- *   EBADF:             invalid file-descriptor
- *   EDQUOT:            quota exceeded
- *   EFAULT:            cannot access ioctl parameters
- *   EHOSTUNREACH:      destination node has been destroyed
- *   EINVAL:            invalid ioctl parameters
- *   EMSGSIZE:          ioctl parameters are too small/large
- *   ENOMEM:            out of kernel memory
- *   ENOTTY:            unknown ioctl
- *   ENXIO:             invalid handle or slice
- *   EOPNOTSUPP:        could not pass file-descriptor of unsupported type
- *   EPERM:             permission denied to mmap pool as writable
- *   ESHUTDOWN:         local peer was already disconnected
- *   EXFULL:            target memory pool is full
- */
-
 #include <linux/ioctl.h>
 #include <linux/types.h>
 
-#define BUS1_VEC_MAX		(512) /* UIO_MAXIOV is 1024 */
+#define BUS1_VEC_MAX		(1024) /* UIO_MAXIOV is 1024 */
 #define BUS1_FD_MAX		(256)
 
 #define BUS1_IOCTL_MAGIC		0x96
@@ -113,17 +83,17 @@ struct bus1_cmd_recv {
 enum {
 	BUS1_CMD_PEER_RESET		= _IOWR(BUS1_IOCTL_MAGIC, 0x00,
 					__u64),
-	BUS1_CMD_HANDLE_TRANSFER	= _IOWR(BUS1_IOCTL_MAGIC, 0x01,
+	BUS1_CMD_HANDLE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x10,
+					__u64),
+	BUS1_CMD_HANDLE_TRANSFER	= _IOWR(BUS1_IOCTL_MAGIC, 0x11,
 					struct bus1_cmd_handle_transfer),
-	BUS1_CMD_HANDLE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x02,
+	BUS1_CMD_NODE_DESTROY		= _IOWR(BUS1_IOCTL_MAGIC, 0x20,
 					__u64),
-	BUS1_CMD_NODE_DESTROY		= _IOWR(BUS1_IOCTL_MAGIC, 0x03,
+	BUS1_CMD_SLICE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x30,
 					__u64),
-	BUS1_CMD_SLICE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x04,
-					__u64),
-	BUS1_CMD_SEND			= _IOWR(BUS1_IOCTL_MAGIC, 0x05,
+	BUS1_CMD_SEND			= _IOWR(BUS1_IOCTL_MAGIC, 0x40,
 					struct bus1_cmd_send),
-	BUS1_CMD_RECV			= _IOWR(BUS1_IOCTL_MAGIC, 0x06,
+	BUS1_CMD_RECV			= _IOWR(BUS1_IOCTL_MAGIC, 0x50,
 					struct bus1_cmd_recv),
 };
 
