@@ -7,11 +7,12 @@
  * (at your option) any later version.
  */
 
+#include <c-ref.h>
 #include <stdlib.h>
 #include "org.bus1/b1-peer.h"
 
 struct B1Message {
-        unsigned long n_ref;
+        CRef ref;
         B1Peer *peer;
         const void *slice; /* NULL if not backed by a slice */
 

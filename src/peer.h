@@ -8,11 +8,12 @@
  */
 
 #include <c-rbtree.h>
+#include <c-ref.h>
 #include "bus1-peer.h"
 #include "org.bus1/b1-peer.h"
 
 struct B1Peer {
-        unsigned long n_ref;
+        CRef ref;
 
         struct bus1_peer *peer;
 

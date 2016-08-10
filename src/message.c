@@ -25,7 +25,7 @@ static int b1_message_new_internal(B1Peer *peer, B1Message **messagep) {
         if (!message)
                 return -ENOMEM;
 
-        message->n_ref = 1;
+        message->ref = (CRef)C_REF_INIT;
         message->peer = b1_peer_ref(peer);
 
         *messagep = message;
@@ -62,12 +62,8 @@ _c_public_ int b1_message_new(B1Peer *peer, B1Message **messagep) {
  * Return: @message is returned.
  */
 _c_public_ B1Message *b1_message_ref(B1Message *message) {
-        if (!message)
-                return NULL;
-
-        assert(message->n_ref > 0);
-
-        ++message->n_ref;
+        if (message)
+                c_ref_inc(&message->ref);
 
         return message;
 }
@@ -89,6 +85,16 @@ static void b1_message_free_fds(B1Message *message) {
         message->fds = NULL;
 }
 
+static void b1_message_free(CRef *ref, void *userdata) {
+        B1Message *message = userdata;
+
+        b1_message_free_handles(message);
+        b1_message_free_fds(message);
+
+        b1_peer_unref(message->peer);
+        free(message);
+}
+
 /**
  * b1_message_unref() - release reference
  * @message:            message to release reference to, or NULL
@@ -96,19 +102,8 @@ static void b1_message_free_fds(B1Message *message) {
  * Return: NULL is returned.
  */
 _c_public_ B1Message *b1_message_unref(B1Message *message) {
-        if (!message)
-                return NULL;
-
-        assert(message->n_ref > 0);
-
-        if (--message->n_ref > 0)
-                return NULL;
-
-        b1_message_free_handles(message);
-        b1_message_free_fds(message);
-
-        b1_peer_unref(message->peer);
-        free(message);
+        if (message)
+                c_ref_dec(&message->ref, b1_message_free, message);
 
         return NULL;
 }

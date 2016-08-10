@@ -33,7 +33,7 @@ _c_public_ int b1_peer_new(B1Peer **peerp) {
         if (!peer)
                 return -ENOMEM;
 
-        peer->n_ref = 1;
+        peer->ref = (CRef)C_REF_INIT;
 
         r = bus1_peer_new_from_path(&peer->peer, NULL);
         if (r < 0)
@@ -67,7 +67,7 @@ _c_public_ int b1_peer_new_from_fd(B1Peer **peerp, int fd) {
         if (!peer)
                 return -ENOMEM;
 
-        peer->n_ref = 1;
+        peer->ref = (CRef)C_REF_INIT;
 
         r = bus1_peer_new_from_fd(&peer->peer, fd);
         if (r < 0)
@@ -90,14 +90,19 @@ _c_public_ int b1_peer_new_from_fd(B1Peer **peerp, int fd) {
  * Return: @peer is returned.
  */
 _c_public_ B1Peer *b1_peer_ref(B1Peer *peer) {
-        if (!peer)
-                return NULL;
-
-        assert(peer->n_ref > 0);
-
-        ++peer->n_ref;
+        if (peer)
+                c_ref_inc(&peer->ref);
 
         return peer;
+}
+
+static void b1_peer_free(CRef *ref, void *userdata) {
+        B1Peer *peer = userdata;
+
+        assert(!c_rbtree_first(&peer->handles));
+        assert(!c_rbtree_first(&peer->nodes));
+        bus1_peer_free(peer->peer);
+        free(peer);
 }
 
 /**
@@ -107,18 +112,8 @@ _c_public_ B1Peer *b1_peer_ref(B1Peer *peer) {
  * Return: NULL is returned.
  */
 _c_public_ B1Peer *b1_peer_unref(B1Peer *peer) {
-        if (!peer)
-                return NULL;
-
-        assert(peer->n_ref > 0);
-
-        if (--peer->n_ref > 0)
-                return NULL;
-
-        assert(!c_rbtree_first(&peer->handles));
-        assert(!c_rbtree_first(&peer->nodes));
-        bus1_peer_free(peer->peer);
-        free(peer);
+        if (peer)
+                c_ref_dec(&peer->ref, b1_peer_free, peer);
 
         return NULL;
 }
