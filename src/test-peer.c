@@ -201,6 +201,21 @@ static void test_transaction(void) {
         assert(b1_message_get_tid(message) == 0);
         message = b1_message_unref(message);
 
+        r = b1_node_destroy(node);
+        assert(r >= 0);
+
+        r = b1_peer_recv(dst, &message);
+        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_NODE_DESTROY);
+        assert(b1_message_get_destination_node(message));
+        assert(b1_message_get_destination_node(message) == node);
+        assert(b1_message_get_uid(message) == (uid_t)-1);
+        assert(b1_message_get_gid(message) == (gid_t)-1);
+        assert(b1_message_get_pid(message) == 0);
+        assert(b1_message_get_tid(message) == 0);
+        message = b1_message_unref(message);
+
         r = b1_peer_recv(dst, &message);
         assert(r == -EAGAIN);
         r = b1_peer_recv(src, &message);
@@ -317,6 +332,34 @@ static void test_multicast(void) {
         assert(r >= 0);
         assert(message);
         assert(b1_message_get_type(message) == BUS1_MSG_NODE_RELEASE);
+        assert(b1_message_get_destination_node(message) == node2);
+        assert(b1_message_get_uid(message) == (uid_t)-1);
+        assert(b1_message_get_gid(message) == (gid_t)-1);
+        assert(b1_message_get_pid(message) == 0);
+        assert(b1_message_get_tid(message) == 0);
+        message = b1_message_unref(message);
+
+        r = b1_node_destroy(node1);
+        assert(r >= 0);
+
+        r = b1_peer_recv(dst1, &message);
+        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_NODE_DESTROY);
+        assert(b1_message_get_destination_node(message) == node1);
+        assert(b1_message_get_uid(message) == (uid_t)-1);
+        assert(b1_message_get_gid(message) == (gid_t)-1);
+        assert(b1_message_get_pid(message) == 0);
+        assert(b1_message_get_tid(message) == 0);
+        message = b1_message_unref(message);
+
+        r = b1_node_destroy(node2);
+        assert(r >= 0);
+
+        r = b1_peer_recv(dst2, &message);
+        assert(r >= 0);
+        assert(message);
+        assert(b1_message_get_type(message) == BUS1_MSG_NODE_DESTROY);
         assert(b1_message_get_destination_node(message) == node2);
         assert(b1_message_get_uid(message) == (uid_t)-1);
         assert(b1_message_get_gid(message) == (gid_t)-1);

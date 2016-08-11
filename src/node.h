@@ -8,16 +8,18 @@
  */
 
 #include <c-rbtree.h>
-#include <c-list.h>
+#include <c-ref.h>
 #include "org.bus1/b1-peer.h"
 
 struct B1Handle {
-        unsigned long n_ref;
+        CRef ref;
+        CRef ref_kernel;
 
         B1Peer *holder;
         B1Node *node;
         uint64_t id;
 
+        bool live; /* holds a reference in the kernel */
         bool marked; /* used for duplicate detection */
 
         CRBNode rb;

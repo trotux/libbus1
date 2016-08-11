@@ -9,7 +9,6 @@
 
 #include <assert.h>
 #include <c-macro.h>
-#include <c-rbtree.h>
 #include <errno.h>
 #include "linux/bus1.h"
 #include "node.h"
@@ -39,34 +38,6 @@ static int handles_compare(CRBTree *t, void *k, CRBNode *n) {
                 return 1;
         else
                 return 0;
-}
-
-static void b1_handle_acquire_kernel(B1Handle *handle) {
-        uint64_t dst_id = BUS1_HANDLE_INVALID;
-        int r;
-
-        if (handle->id == BUS1_HANDLE_INVALID)
-                return;
-
-        /* transfer handle to ourselves to get another reference to it */
-        r = bus1_peer_handle_transfer(handle->holder->peer, handle->holder->peer, &handle->id, &dst_id);
-        assert(r >= 0);
-        assert(handle->id == dst_id);
-}
-
-static void b1_handle_release_kernel(B1Handle *handle) {
-        int r;
-
-        if (!handle)
-                return;
-
-        if (handle->id == BUS1_HANDLE_INVALID)
-                /* XXX: pass this in to the kernel if we have anyone listening
-                 * for notifications on the local peer. */
-                return;
-
-        r = bus1_peer_handle_release(handle->holder->peer, handle->id);
-        assert(r >= 0);
 }
 
 int b1_node_link(B1Node *node, uint64_t id) {
@@ -104,9 +75,6 @@ int b1_handle_link(B1Handle *handle, uint64_t id) {
 
         c_rbtree_add(&handle->holder->handles, p, slot, &handle->rb);
 
-        if (handle->node && handle->n_ref == 1)
-                b1_handle_release_kernel(handle);
-
         return 0;
 }
 
@@ -120,10 +88,11 @@ static int b1_handle_new(B1Peer *peer, B1Handle **handlep) {
         if (!handle)
                 return -ENOMEM;
 
-        handle->n_ref = 1;
+        handle->ref = (CRef)C_REF_INIT;
         handle->holder = b1_peer_ref(peer);
         handle->id = BUS1_HANDLE_INVALID;
         handle->marked = false;
+        handle->live = false;
         c_rbnode_init(&handle->rb);
 
         *handlep = handle;
@@ -150,14 +119,24 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
                 if (r < 0)
                         return r;
 
+                handle->ref_kernel = (CRef)C_REF_INIT;
+                handle->live = true;
                 handle->id = handle_id;
 
                 c_rbtree_add(&peer->handles, p, slot, &handle->rb);
         } else {
                 handle = c_container_of(p, B1Handle, rb);
-                b1_handle_ref(handle);
-                /* reusing existing handle, drop redundant reference from kernel */
-                b1_handle_release_kernel(handle);
+                if (handle->live) {
+                        c_ref_inc(&handle->ref_kernel);
+                        /* reusing existing handle, drop redundant reference from kernel */
+                        r = bus1_peer_handle_release(handle->holder->peer, handle->id);
+                        if (r < 0)
+                                return r;
+                } else {
+                        handle->ref_kernel = (CRef)C_REF_INIT;
+                        handle->live = true;
+                }
+                c_ref_inc(&handle->ref);
         }
 
         *handlep = handle;
@@ -274,13 +253,41 @@ _c_public_ int b1_node_destroy(B1Node *node) {
  * Return: @handle is returned.
  */
 _c_public_ B1Handle *b1_handle_ref(B1Handle *handle) {
+        B1Handle *new_handle;
+        int r;
+
         if (handle) {
-                assert(handle->n_ref > 0);
-                ++handle->n_ref;
-                if (handle->node && handle->n_ref == 2)
-                        b1_handle_acquire_kernel(handle);
+                if (!handle->live) {
+                        r = b1_handle_transfer(handle, handle->holder, &new_handle);
+                        assert(r >= 0);
+                        assert(new_handle == handle);
+                } else {
+                        c_ref_inc(&handle->ref_kernel);
+                        c_ref_inc(&handle->ref);
+                }
         }
+
         return handle;
+}
+
+static void b1_handle_release(CRef *ref, void *userdata) {
+        B1Handle *handle = userdata;
+        int r;
+
+        handle->live = false;
+        r = bus1_peer_handle_release(handle->holder->peer, handle->id);
+        assert(r >= 0);
+}
+
+static void b1_handle_free(CRef *ref, void *userdata) {
+        B1Handle *handle = userdata;
+
+        assert(!handle->live);
+
+        c_rbtree_remove_init(&handle->holder->handles, &handle->rb);
+
+        b1_peer_unref(handle->holder);
+        free(handle);
 }
 
 /**
@@ -295,25 +302,11 @@ _c_public_ B1Handle *b1_handle_ref(B1Handle *handle) {
  * Return: NULL is returned.
  */
 _c_public_ B1Handle *b1_handle_unref(B1Handle *handle) {
-        if (!handle)
-                return NULL;
-
-        assert(handle->n_ref > 0);
-
-        if (--handle->n_ref > 0) {
-                if (handle->node && handle->n_ref == 1)
-                        b1_handle_release_kernel(handle);
-                return NULL;
+        if (handle) {
+                if (handle->live)
+                        c_ref_dec(&handle->ref_kernel, b1_handle_release, handle);
+                c_ref_dec(&handle->ref, b1_handle_free, handle);
         }
-
-        if (!handle->node)
-                b1_handle_release_kernel(handle);
-
-        if (handle->id != BUS1_HANDLE_INVALID)
-                c_rbtree_remove(&handle->holder->handles, &handle->rb);
-
-        b1_peer_unref(handle->holder);
-        free(handle);
 
         return NULL;
 }
@@ -397,6 +390,5 @@ _c_public_ int b1_handle_transfer(B1Handle *src_handle, B1Peer *dst, B1Handle **
 
         *dst_handlep = dst_handle;
         dst_handle = NULL;
-
         return 0;
 }
