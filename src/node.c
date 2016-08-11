@@ -252,16 +252,14 @@ _c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
  * notifications for this node.
  *
  * If NULL is passed, this is a no-op.
+ *
+ * Return: 0 on success, and a negative error code on failure.
  */
-_c_public_ void b1_node_destroy(B1Node *node) {
+_c_public_ int b1_node_destroy(B1Node *node) {
         if (!node)
-                return;
-        if (node->id == BUS1_HANDLE_INVALID)
-                /* XXX: pass this in to the kernel if we have anyone listening
-                 * for notifications on the local peer. */
-                return;
+                return 0;
 
-        (void)bus1_peer_node_destroy(node->owner->peer, node->id);
+        return bus1_peer_node_destroy(node->owner->peer, node->id);
 }
 
 /**

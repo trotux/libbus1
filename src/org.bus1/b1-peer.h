@@ -75,7 +75,7 @@ B1Node *b1_node_free(B1Node *node);
 B1Peer *b1_node_get_peer(B1Node *node);
 B1Handle *b1_node_get_handle(B1Node *node);
 
-void b1_node_destroy(B1Node *node);
+int b1_node_destroy(B1Node *node);
 
 /* handles */
 
