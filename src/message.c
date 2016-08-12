@@ -33,6 +33,15 @@ static int b1_message_new_internal(B1Peer *peer, B1Message **messagep) {
         return 0;
 }
 
+/**
+ * b1_message_new - create a new message object
+ * @peer:               the owning peer
+ * @messagep:           pointer to the new message
+ *
+ * Creates a new empty data message.
+ *
+ * Return: 0 on success, or a negative error code on failure.
+ */
 _c_public_ int b1_message_new(B1Peer *peer, B1Message **messagep) {
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
         int r;
@@ -173,6 +182,7 @@ int b1_message_new_from_slice(B1Peer *peer,
 
         return 0;
 }
+
 /**
  * b1_message_send() - send a message to the given handles
  * @message             the message to be sent
@@ -267,6 +277,18 @@ error:
         return r;
 }
 
+/**
+ * b1_message_set_handles() - attach the given handles to the message
+ * @message             the message to be sent
+ * @handles             the handles to attach
+ * @n_handles           the number of handles
+ *
+ * The hanldes will be attach to the message, and each receiver of the message
+ * will receive handles to the same underlying nodes (or new references to
+ * existing ones).
+ *
+ * Return: 0 on succes, or a negative error code on failure.
+ */
 _c_public_ int b1_message_set_handles(B1Message *message, B1Handle **handles, size_t n_handles) {
         B1Handle **handles_new;
 
@@ -297,6 +319,17 @@ _c_public_ int b1_message_set_handles(B1Message *message, B1Handle **handles, si
         return 0;
 }
 
+/**
+ * b1_message_set_fds() - attach the given file descriptors to the message
+ * @message             the message to be sent
+ * @fds                 the file descriptors to attach
+ * @n_fds               the number of file descriptors
+ *
+ * The file descriptors will be attach to the message, and each receiver of the
+ * message will receive file descriptors to the same underlying file.
+ *
+ * Return: 0 on succes, or a negative error code on failure.
+ */
 _c_public_ int b1_message_set_fds(B1Message *message, int *fds, size_t n_fds) {
         int *fds_new, r;
 
@@ -337,12 +370,12 @@ error:
 
 /**
  * b1_message_get_type() - get the message type
- * @message:            the message
+ * @message:            the received message
  *
- * A message can be a call, a reply, an error, or a node destruction
- * notification.
+ * A recevied message can be a data, node destruction notification or node
+ * release notification. An explicitly created message must be a data message.
  *
- * Return: the message type.
+ * Return: the message type, or BUS1_MSG_NONE if not a message.
  */
 _c_public_ unsigned int b1_message_get_type(B1Message *message) {
         if (!message)
@@ -351,10 +384,27 @@ _c_public_ unsigned int b1_message_get_type(B1Message *message) {
         return message->type;
 }
 
+/**
+ * b1_message_get_destination_node - get the node the message is destined for
+ * @message:            the received message
+ *
+ * Any message type can be destined for a node.
+ *
+ * Return: the node, or NULL in case of error.
+ */
 _c_public_ B1Node *b1_message_get_destination_node(B1Message *message) {
         return b1_node_lookup(message->peer, message->destination);
 }
 
+/**
+ * b1_message_get_destination_handle - get the handle the message is destined for
+ * @message:            the received message
+ *
+ * A node destruction notification may be destined for a handle associated with
+ * the node. No other message type can be destined for a handle.
+ *
+ * Return: the handle, or NULL in case of error.
+ */
 _c_public_ B1Handle *b1_message_get_destination_handle(B1Message *message) {
         if (message->type != BUS1_MSG_NODE_DESTROY)
                 return NULL;

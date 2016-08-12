@@ -54,8 +54,8 @@ _c_public_ int b1_peer_new(B1Peer **peerp) {
  * @peerp:              the new peer object
  * @fd:                 a file descriptor representing an existing peer
  *
- * This takes a pre-initialized bus1 filedescriptor and wrapps creates a b1_peer
- * object around it.
+ * This takes a pre-initialized bus1 filedescriptor and creates a b1_peer object
+ * around it.
  *
  * Return: 0 on success, a negative error code on failure.
  */
