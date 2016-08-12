@@ -352,9 +352,6 @@ _c_public_ unsigned int b1_message_get_type(B1Message *message) {
 }
 
 _c_public_ B1Node *b1_message_get_destination_node(B1Message *message) {
-        if (message->type == BUS1_MSG_NODE_DESTROY)
-                return NULL;
-
         return b1_node_lookup(message->peer, message->destination);
 }
 
