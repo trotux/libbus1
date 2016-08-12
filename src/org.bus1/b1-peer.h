@@ -48,7 +48,7 @@ int b1_message_new(B1Peer *peer, B1Message **messagep);
 B1Message *b1_message_ref(B1Message *message);
 B1Message *b1_message_unref(B1Message *message);
 
-int b1_message_set_payload(B1Message *message, void *payload, size_t size);
+int b1_message_set_payload(B1Message *message, struct iovec *vecs, size_t n_vecs);
 int b1_message_set_handles(B1Message *message, B1Handle **handles, size_t n_handles);
 int b1_message_set_fds(B1Message *message, int *fds, size_t n_fds);
 
@@ -63,7 +63,7 @@ unsigned int b1_message_get_type(B1Message *message);
 B1Node *b1_message_get_destination_node(B1Message *message);
 B1Handle *b1_message_get_destination_handle(B1Message *message);
 
-int b1_message_get_payload(B1Message *message, void **payloadp, size_t *sizep);
+int b1_message_get_payload(B1Message *message, struct iovec **vecsp, size_t *n_vecsp);
 int b1_message_get_handle(B1Message *message, unsigned int index, B1Handle **handlep);
 int b1_message_get_fd(B1Message *message, unsigned int index, int *fdp);
 

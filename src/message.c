@@ -77,6 +77,12 @@ _c_public_ B1Message *b1_message_ref(B1Message *message) {
         return message;
 }
 
+static void b1_message_free_vecs(B1Message *message) {
+        free(message->vecs);
+        message->vecs = NULL;
+        message->n_vecs = 0;
+}
+
 static void b1_message_free_handles(B1Message *message) {
         for (unsigned int i = 0; i < message->n_handles; i++)
                 b1_handle_unref(message->handles[i]);
@@ -97,6 +103,7 @@ static void b1_message_free_fds(B1Message *message) {
 static void b1_message_free(CRef *ref, void *userdata) {
         B1Message *message = userdata;
 
+        b1_message_free_vecs(message);
         b1_message_free_handles(message);
         b1_message_free_fds(message);
 
@@ -151,9 +158,7 @@ int b1_message_new_from_slice(B1Peer *peer,
                 return -ENOMEM;
 
         message->vecs->iov_base = (void*)slice;
-        message->vecs->iov_len = c_align_to(n_bytes, 8) +
-                                 c_align_to(n_handles * sizeof(uint64_t), 8) +
-                                 c_align_to(n_fds * sizeof(int), 8);
+        message->vecs->iov_len = n_bytes;
         message->n_vecs = 1;
 
         message->handles = calloc(n_handles, sizeof(B1Handle*));
@@ -275,6 +280,42 @@ error:
                 message->handles[i]->marked = false;
 
         return r;
+}
+
+/**
+ * b1_message_set_payload() - set the message payload
+ * @message             the message to be sent
+ * @vecs                the iovec array to set as payload
+ * @n_vecs              the number of iovecs
+ *
+ * The iovec array will be the payload of the message, and each receiver will
+ * receive a copy of the payload in their pool.
+ *
+ * The caller must ensure that the underlying data remains valid for the
+ * lifetime of the message, but the iovec array itself may be freed.
+ *
+ * Return: 0 on succes, or a negative error code on failure.
+ */
+_c_public_ int b1_message_set_payload(B1Message *message, struct iovec *vecs, size_t n_vecs) {
+        struct iovec *vecs_new;
+
+        assert(!vecs || n_vecs);
+
+        if (n_vecs == 0) {
+                b1_message_free_vecs(message);
+                return 0;
+        }
+
+        vecs_new = malloc(sizeof(*vecs_new) * n_vecs);
+        if (!vecs_new)
+                return -ENOMEM;
+        memcpy(vecs_new, vecs, sizeof(*vecs) * n_vecs);
+
+        b1_message_free_vecs(message);
+        message->vecs = vecs_new;
+        message->n_vecs = n_vecs;
+
+        return 0;
 }
 
 /**
@@ -462,6 +503,31 @@ _c_public_ pid_t b1_message_get_tid(B1Message *message) {
                 return 0;
 
         return message->tid;
+}
+
+/**
+ * b1_message_get_payload() - get the message payload
+ * @message:            the message
+ * @vecsp:              pointer to the iovec array
+ * @n_vecs:             number of ivocs in the array
+ *
+ * Both the returned array and the underlying data remain owned by the message,
+ * so the caller must either pin the message or make a copy of the data for as
+ * long as the data is needed.
+ *
+ * Returns: 0 on success, or a negative error code on failure.
+ */
+_c_public_ int b1_message_get_payload(B1Message *message, struct iovec **vecsp, size_t *n_vecsp)
+{
+        if (!message) {
+                *vecsp = NULL;
+                *n_vecsp = 0;
+        } else {
+                *vecsp = message->vecs;
+                *n_vecsp = message->n_vecs;
+        }
+
+        return 0;
 }
 
 /**
