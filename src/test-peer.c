@@ -136,6 +136,13 @@ static void test_transaction(void) {
         _c_cleanup_(b1_node_freep) B1Node *node = NULL;
         _c_cleanup_(b1_handle_unrefp) B1Handle *handle = NULL;
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        const char *payload = "WOOF";
+        struct iovec vec = {
+                .iov_base = (void*)payload,
+                .iov_len = strlen(payload) + 1,
+        };
+        struct iovec *vec_out;
+        size_t n_vec;
         int r, fd;
 
         r = b1_peer_new(&src);
@@ -151,6 +158,9 @@ static void test_transaction(void) {
         assert(r >= 0);
 
         r = b1_message_new(src, &message);
+        assert(r >= 0);
+
+        r = b1_message_set_payload(message, &vec, 1);
         assert(r >= 0);
 
         r = b1_message_set_handles(message, &handle, 1);
@@ -181,6 +191,12 @@ static void test_transaction(void) {
         assert(b1_message_get_gid(message) == getgid());
         assert(b1_message_get_pid(message) == getpid());
         assert(b1_message_get_tid(message) == c_syscall_gettid());
+        r = b1_message_get_payload(message, &vec_out, &n_vec);
+        assert(r >= 0);
+        assert(vec_out);
+        assert(n_vec == 1);
+        assert(vec_out->iov_len == strlen("WOOF") + 1);
+        assert(strcmp(vec_out->iov_base, "WOOF") == 0);
         r = b1_message_get_handle(message, 0, &handle);
         assert(r >= 0);
         assert(handle == b1_node_get_handle(node));
@@ -226,6 +242,13 @@ static void test_multicast(void) {
         _c_cleanup_(b1_peer_unrefp) B1Peer *src = NULL, *dst1 = NULL, *dst2 = NULL;
         _c_cleanup_(b1_node_freep) B1Node *node1 = NULL, *node2 = NULL;
         _c_cleanup_(b1_message_unrefp) B1Message *message = NULL;
+        const char *payload = "WOOF";
+        struct iovec vec = {
+                .iov_base = (void*)payload,
+                .iov_len = strlen(payload) + 1,
+        };
+        struct iovec *vec_out;
+        size_t n_vec;
         B1Handle *handles[2], *handle;
         int r, fd;
 
@@ -251,6 +274,9 @@ static void test_multicast(void) {
         assert(r >= 0);
 
         r = b1_message_new(src, &message);
+        assert(r >= 0);
+
+        r = b1_message_set_payload(message, &vec, 1);
         assert(r >= 0);
 
         r = b1_message_set_handles(message, handles, 2);
@@ -283,6 +309,12 @@ static void test_multicast(void) {
         assert(b1_message_get_gid(message) == getgid());
         assert(b1_message_get_pid(message) == getpid());
         assert(b1_message_get_tid(message) == c_syscall_gettid());
+        r = b1_message_get_payload(message, &vec_out, &n_vec);
+        assert(r >= 0);
+        assert(vec_out);
+        assert(n_vec == 1);
+        assert(vec_out->iov_len == strlen("WOOF") + 1);
+        assert(strcmp(vec_out->iov_base, "WOOF") == 0);
         r = b1_message_get_handle(message, 0, &handle);
         assert(r >= 0);
         assert(handle == b1_node_get_handle(node1));
@@ -304,6 +336,12 @@ static void test_multicast(void) {
         assert(b1_message_get_gid(message) == getgid());
         assert(b1_message_get_pid(message) == getpid());
         assert(b1_message_get_tid(message) == c_syscall_gettid());
+        r = b1_message_get_payload(message, &vec_out, &n_vec);
+        assert(r >= 0);
+        assert(vec_out);
+        assert(n_vec == 1);
+        assert(vec_out->iov_len == strlen("WOOF") + 1);
+        assert(strcmp(vec_out->iov_base, "WOOF") == 0);
         r = b1_message_get_handle(message, 0, &handle);
         assert(r >= 0);
         assert(handle);
