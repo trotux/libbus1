@@ -21,6 +21,10 @@
 #define BUS1_OFFSET_INVALID		((__u64)-1)
 
 enum {
+	BUS1_RESET_FLAG_DISCONNECT	= 1ULL << 0,
+};
+
+enum {
 	BUS1_NODE_FLAG_MANAGED		= 1ULL <<  0,
 	BUS1_NODE_FLAG_ALLOCATE		= 1ULL <<  1,
 	BUS1_NODE_FLAG_PERSISTENT	= 1ULL <<  2,
@@ -31,6 +35,12 @@ struct bus1_cmd_handle_transfer {
 	__u64 src_handle;
 	__u64 dst_fd;
 	__u64 dst_handle;
+} __attribute__((__aligned__(8)));
+
+struct bus1_cmd_nodes_destroy {
+	__u64 flags;
+	__u64 ptr_nodes;
+	__u64 n_nodes;
 } __attribute__((__aligned__(8)));
 
 enum {
@@ -87,8 +97,8 @@ enum {
 					__u64),
 	BUS1_CMD_HANDLE_TRANSFER	= _IOWR(BUS1_IOCTL_MAGIC, 0x11,
 					struct bus1_cmd_handle_transfer),
-	BUS1_CMD_NODE_DESTROY		= _IOWR(BUS1_IOCTL_MAGIC, 0x20,
-					__u64),
+	BUS1_CMD_NODES_DESTROY		= _IOWR(BUS1_IOCTL_MAGIC, 0x20,
+					struct bus1_cmd_nodes_destroy),
 	BUS1_CMD_SLICE_RELEASE		= _IOWR(BUS1_IOCTL_MAGIC, 0x30,
 					__u64),
 	BUS1_CMD_SEND			= _IOWR(BUS1_IOCTL_MAGIC, 0x40,

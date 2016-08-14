@@ -235,10 +235,15 @@ _c_public_ B1Handle *b1_node_get_handle(B1Node *node) {
  * Return: 0 on success, and a negative error code on failure.
  */
 _c_public_ int b1_node_destroy(B1Node *node) {
+        struct bus1_cmd_nodes_destroy nodes_destroy = {
+                .ptr_nodes = (uintptr_t)&node->id,
+                .n_nodes = 1,
+        };
+
         if (!node)
                 return 0;
 
-        return bus1_peer_node_destroy(node->owner->peer, node->id);
+        return bus1_peer_nodes_destroy(node->owner->peer, &nodes_destroy);
 }
 
 /**
