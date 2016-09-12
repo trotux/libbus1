@@ -162,6 +162,9 @@ int b1_message_new_from_slice(B1Peer *peer,
         message->n_vecs = 1;
 
         message->handles = calloc(n_handles, sizeof(B1Handle*));
+        if (!message->handles)
+                return -ENOMEM;
+
         message->n_handles = n_handles;
 
         handle_ids = (uint64_t*)((uint8_t*)slice + c_align_to(n_bytes, 8));
