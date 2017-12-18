@@ -25,7 +25,7 @@ static int b1_message_new_internal(B1Peer *peer, B1Message **messagep) {
         if (!message)
                 return -ENOMEM;
 
-        message->ref = (CRef)C_REF_INIT;
+        message->ref = C_REF_INIT;
         message->peer = b1_peer_ref(peer);
 
         *messagep = message;
@@ -100,7 +100,7 @@ static void b1_message_free_fds(B1Message *message) {
         message->fds = NULL;
 }
 
-static void b1_message_free(CRef *ref, void *userdata) {
+static void b1_message_free(_Atomic unsigned long *ref, void *userdata) {
         B1Message *message = userdata;
 
         b1_message_free_vecs(message);

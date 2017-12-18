@@ -7,13 +7,14 @@
  * any later version.
  */
 
+#include <stdatomic.h>
 #include <c-rbtree.h>
 #include <c-ref.h>
 #include "org.bus1/b1-peer.h"
 
 struct B1Handle {
-        CRef ref;
-        CRef ref_kernel;
+        _Atomic unsigned long ref;
+        _Atomic unsigned long ref_kernel;
 
         B1Peer *holder;
         B1Node *node;

@@ -88,7 +88,7 @@ static int b1_handle_new(B1Peer *peer, B1Handle **handlep) {
         if (!handle)
                 return -ENOMEM;
 
-        handle->ref = (CRef)C_REF_INIT;
+        handle->ref = C_REF_INIT;
         handle->holder = b1_peer_ref(peer);
         handle->id = BUS1_HANDLE_INVALID;
         handle->marked = false;
@@ -119,7 +119,7 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
                 if (r < 0)
                         return r;
 
-                handle->ref_kernel = (CRef)C_REF_INIT;
+                handle->ref_kernel = C_REF_INIT;
                 handle->live = true;
                 handle->id = handle_id;
 
@@ -133,7 +133,7 @@ int b1_handle_acquire(B1Peer *peer, B1Handle **handlep, uint64_t handle_id) {
                         if (r < 0)
                                 return r;
                 } else {
-                        handle->ref_kernel = (CRef)C_REF_INIT;
+                        handle->ref_kernel = C_REF_INIT;
                         handle->live = true;
                 }
                 c_ref_inc(&handle->ref);
@@ -186,8 +186,8 @@ _c_public_ B1Node *b1_node_free(B1Node *node) {
         if (!node)
                 return NULL;
 
-        c_rbtree_remove_init(&node->owner->nodes, &node->rb_nodes);
-
+//        c_rbtree_remove_init(&node->owner->nodes, &node->rb_nodes);
+        c_rbnode_unlink(&node->rb_nodes);
         b1_node_destroy(node);
 
         b1_handle_unref(node->handle);
@@ -275,7 +275,7 @@ _c_public_ B1Handle *b1_handle_ref(B1Handle *handle) {
         return handle;
 }
 
-static void b1_handle_release(CRef *ref, void *userdata) {
+static void b1_handle_release(_Atomic unsigned long *ref, void *userdata) {
         B1Handle *handle = userdata;
         int r;
 
@@ -284,12 +284,13 @@ static void b1_handle_release(CRef *ref, void *userdata) {
         assert(r >= 0);
 }
 
-static void b1_handle_free(CRef *ref, void *userdata) {
+static void b1_handle_free(_Atomic unsigned long *ref, void *userdata) {
         B1Handle *handle = userdata;
 
         assert(!handle->live);
 
-        c_rbtree_remove_init(&handle->holder->handles, &handle->rb);
+//        c_rbtree_remove_init(&handle->holder->handles, &handle->rb);
+        c_rbnode_unlink(&handle->rb);
 
         b1_peer_unref(handle->holder);
         free(handle);

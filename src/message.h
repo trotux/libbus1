@@ -9,10 +9,11 @@
 
 #include <c-ref.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 #include "org.bus1/b1-peer.h"
 
 struct B1Message {
-        CRef ref;
+        _Atomic unsigned long ref;
         B1Peer *peer;
         const void *slice; /* NULL if not backed by a slice */
 

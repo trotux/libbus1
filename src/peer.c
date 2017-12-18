@@ -33,7 +33,7 @@ _c_public_ int b1_peer_new(B1Peer **peerp) {
         if (!peer)
                 return -ENOMEM;
 
-        peer->ref = (CRef)C_REF_INIT;
+        peer->ref = C_REF_INIT;
 
         r = bus1_peer_new_from_path(&peer->peer, NULL);
         if (r < 0)
@@ -67,7 +67,7 @@ _c_public_ int b1_peer_new_from_fd(B1Peer **peerp, int fd) {
         if (!peer)
                 return -ENOMEM;
 
-        peer->ref = (CRef)C_REF_INIT;
+        peer->ref = C_REF_INIT;
 
         r = bus1_peer_new_from_fd(&peer->peer, fd);
         if (r < 0)
@@ -96,7 +96,7 @@ _c_public_ B1Peer *b1_peer_ref(B1Peer *peer) {
         return peer;
 }
 
-static void b1_peer_free(CRef *ref, void *userdata) {
+static void b1_peer_free(_Atomic unsigned long *ref, void *userdata) {
         B1Peer *peer = userdata;
 
         assert(!c_rbtree_first(&peer->handles));
